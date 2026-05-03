@@ -185,12 +185,30 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
               properties: {
                 website: { type: "string", description: "Their own website URL." },
                 phones: { type: "array", items: { type: "string" }, description: "All phone numbers found, Swedish format." },
-                trucks_info: { type: "string", description: "What trucks/vehicles they own or operate. 1-3 sentences." },
-                fleet_size: { type: "string", description: "Number of vehicles, e.g. '12 trucks' or 'unknown'." },
+                trucks_info: { type: "string", description: "Short summary of fleet (1-3 sentences)." },
+                fleet_size: { type: "string", description: "Total number of vehicles, e.g. '12'." },
                 contact_person: { type: "string" },
                 address: { type: "string" },
+                vehicles: {
+                  type: "array",
+                  description: "Every vehicle from the merinfo /fordon page or other sources. One object per vehicle.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      registration: { type: "string", description: "Registration plate, e.g. ABC123." },
+                      brand: { type: "string", description: "Brand/make, e.g. Volvo, Scania." },
+                      model: { type: "string" },
+                      type: { type: "string", description: "Vehicle type in Swedish: lastbil, släp, personbil, buss, traktor etc." },
+                      year: { type: "string", description: "Model year." },
+                      fuel: { type: "string", description: "Fuel type, e.g. diesel, el, bensin." },
+                      weight: { type: "string", description: "Total weight if listed." },
+                    },
+                    required: ["registration"],
+                    additionalProperties: false,
+                  },
+                },
               },
-              required: ["phones", "trucks_info"],
+              required: ["phones", "trucks_info", "vehicles"],
               additionalProperties: false,
             },
           },
@@ -209,7 +227,7 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
 
   const json = await aiRes.json();
   const call = json.choices?.[0]?.message?.tool_calls?.[0];
-  let parsed: Partial<ResearchResult> = { phones: [] };
+  let parsed: Partial<ResearchResult> = { phones: [], vehicles: [] };
   let toolCallRaw: string | undefined;
   if (call?.function?.arguments) {
     toolCallRaw = call.function.arguments;
@@ -220,13 +238,16 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
   const aiPhones = (parsed.phones ?? []).map((p) => p.trim()).filter(Boolean);
   const phones = Array.from(new Set([...aiPhones, ...regexPhones])).slice(0, 10);
 
+  const vehicles = (parsed.vehicles ?? []).filter((v) => v && (v.registration || v.brand || v.model));
+
   return {
     website: parsed.website || ownSite?.url,
     phones,
     trucks_info: parsed.trucks_info,
-    fleet_size: parsed.fleet_size,
+    fleet_size: parsed.fleet_size ?? (vehicles.length ? String(vehicles.length) : undefined),
     contact_person: parsed.contact_person,
     address: parsed.address,
+    vehicles,
     sources,
     debug: { query: queries.join(" | "), contextChars: context.length, toolCallRaw },
   };
