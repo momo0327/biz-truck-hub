@@ -71,7 +71,9 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
       ? `"${name}" ${orgNumber} telefon kontakt`
       : `"${name}" telefon kontakt Sverige`,
     `"${name}" lastbil OR fordon OR åkeri`,
-    `"${name}" site:allabolag.se OR site:hitta.se OR site:eniro.se`,
+    orgNumber
+      ? `${orgNumber} site:merinfo.se OR site:allabolag.se OR site:hitta.se`
+      : `"${name}" site:merinfo.se OR site:allabolag.se OR site:hitta.se`,
   ];
 
   const allResults: Array<{ url: string; title?: string; markdown?: string; description?: string }> = [];
@@ -92,17 +94,35 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
     return true;
   });
 
-  // 2) Try to detect the company's own website and scrape it for phones/trucks
+  // 2) Find merinfo.se page and ALWAYS scrape its /fordon (vehicles) subpage —
+  //    that's where the actual fleet (truck regnums + models) lives.
+  const merinfo = results.find((r) => /merinfo\.se\/foretag\//i.test(r.url));
+  if (merinfo) {
+    // Scrape main merinfo page (phones, address, contact)
+    const main = await firecrawlScrape(merinfo.url).catch(() => null);
+    const mainMd = main?.data?.markdown || main?.markdown;
+    if (mainMd) merinfo.markdown = mainMd;
+
+    // Build /fordon URL (strip any trailing path, ensure single trailing slash)
+    const base = merinfo.url.replace(/\/(fordon|kontakt|ekonomi|styrelse)\/?$/i, "").replace(/\/$/, "");
+    const fordonUrl = `${base}/fordon`;
+    const fordon = await firecrawlScrape(fordonUrl).catch(() => null);
+    const fordonMd = fordon?.data?.markdown || fordon?.markdown;
+    if (fordonMd) {
+      results.push({ url: fordonUrl, title: "Merinfo - Fordon (fleet)", markdown: fordonMd });
+    }
+  }
+
+  // 3) Try to detect the company's own website and scrape it for phones/trucks
   const ownSite = results.find((r) => {
     const u = r.url.toLowerCase();
     return !u.includes("allabolag.se") && !u.includes("hitta.se") && !u.includes("eniro.se")
-      && !u.includes("linkedin.com") && !u.includes("facebook.com");
+      && !u.includes("merinfo.se") && !u.includes("linkedin.com") && !u.includes("facebook.com");
   });
   if (ownSite) {
     const scraped = await firecrawlScrape(ownSite.url).catch(() => null);
     const md = scraped?.data?.markdown || scraped?.markdown;
     if (md) ownSite.markdown = md;
-    // also try /kontakt
     try {
       const u = new URL(ownSite.url);
       const contactUrl = `${u.origin}/kontakt`;
