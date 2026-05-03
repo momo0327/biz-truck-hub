@@ -2,6 +2,16 @@
 const FIRECRAWL_KEY = () => process.env.FIRECRAWL_API_KEY;
 const LOVABLE_KEY = () => process.env.LOVABLE_API_KEY;
 
+export type Vehicle = {
+  registration?: string;
+  brand?: string;
+  model?: string;
+  type?: string;
+  year?: string;
+  fuel?: string;
+  weight?: string;
+};
+
 export type ResearchResult = {
   website?: string;
   phones: string[];
@@ -9,6 +19,7 @@ export type ResearchResult = {
   fleet_size?: string;
   contact_person?: string;
   address?: string;
+  vehicles: Vehicle[];
   sources: string[];
   debug?: { query: string; contextChars: number; toolCallRaw?: string };
 };
