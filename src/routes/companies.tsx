@@ -3,11 +3,12 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
 import { ImportDialog } from "@/components/ImportDialog";
+import { AddCompanyDialog } from "@/components/AddCompanyDialog";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { PhoneButtons } from "@/components/PhoneButtons";
 import { useCompanies, STATUS_META, type Company } from "@/lib/companies";
 import { researchCompanyFn } from "@/server/research.functions";
-import { Plus, Loader2, Sparkles, Search } from "lucide-react";
+import { Plus, Loader2, Sparkles, Search, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/companies")({ component: () => <AppShell><CompaniesPage /></AppShell> });
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/companies")({ component: () => <AppShell>
 function CompaniesPage() {
   const { companies, refresh } = useCompanies();
   const [importOpen, setImportOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState<Company | null>(null);
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -67,6 +69,12 @@ function CompaniesPage() {
           >
             {bulkBusy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
             Research All
+          </button>
+          <button
+            onClick={() => setAddOpen(true)}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-md border bg-card text-sm hover:bg-muted"
+          >
+            <UserPlus className="size-4" /> Add company
           </button>
           <button
             onClick={() => setImportOpen(true)}
@@ -144,6 +152,15 @@ function CompaniesPage() {
       </div>
 
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} onImported={refresh} />}
+      {addOpen && (
+        <AddCompanyDialog
+          onClose={() => setAddOpen(false)}
+          onAdded={async (id) => {
+            await refresh();
+            researchOne(id);
+          }}
+        />
+      )}
       {selected && <CompanyDrawer company={companies.find((c) => c.id === selected.id) ?? selected} onClose={() => setSelected(null)} />}
     </div>
   );
