@@ -67,6 +67,7 @@ export type Database = {
           trucks_info: string | null
           updated_at: string
           user_id: string
+          vehicles: Json
           website: string | null
         }
         Insert: {
@@ -86,6 +87,7 @@ export type Database = {
           trucks_info?: string | null
           updated_at?: string
           user_id: string
+          vehicles?: Json
           website?: string | null
         }
         Update: {
@@ -105,6 +107,7 @@ export type Database = {
           trucks_info?: string | null
           updated_at?: string
           user_id?: string
+          vehicles?: Json
           website?: string | null
         }
         Relationships: []

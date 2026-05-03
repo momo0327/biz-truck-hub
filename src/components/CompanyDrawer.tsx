@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { researchCompanyFn } from "@/server/research.functions";
 import { STATUS_META, STATUS_ORDER, type Company, type CallLog, type Status } from "@/lib/companies";
 import { PhoneButtons } from "./PhoneButtons";
+import { VehiclesTable, type Vehicle } from "./VehiclesTable";
 import { toast } from "sonner";
 
 export function CompanyDrawer({ company, onClose }: { company: Company; onClose: () => void }) {
@@ -116,26 +117,28 @@ export function CompanyDrawer({ company, onClose }: { company: Company; onClose:
           </section>
 
           <section className="space-y-2">
-            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Fleet</h4>
-            <div className="rounded-md border bg-muted/30 p-3 text-sm">
-              {company.trucks_info ? (
-                <p>{company.trucks_info}</p>
-              ) : (
-                <p className="text-muted-foreground italic">No fleet info yet — click "Research with AI"</p>
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Fleet</h4>
+              {company.fleet_size && (
+                <span className="text-xs text-muted-foreground">{company.fleet_size} vehicles</span>
               )}
-              {company.fleet_size && <p className="mt-2 text-xs text-muted-foreground">Fleet size: {company.fleet_size}</p>}
             </div>
-            {sources && sources.length > 0 && (
-              <details className="text-xs text-muted-foreground">
-                <summary className="cursor-pointer">Sources ({sources.length})</summary>
-                <ul className="mt-1 space-y-0.5">
-                  {sources.map((s) => (
-                    <li key={s}><a href={s} target="_blank" rel="noreferrer" className="hover:underline">{s}</a></li>
-                  ))}
-                </ul>
-              </details>
+            {company.trucks_info && (
+              <p className="text-xs text-muted-foreground">{company.trucks_info}</p>
             )}
+            <VehiclesTable vehicles={((company.vehicles as unknown) as Vehicle[]) ?? []} />
           </section>
+
+          {sources && sources.length > 0 && (
+            <details className="text-xs text-muted-foreground">
+              <summary className="cursor-pointer">Sources ({sources.length})</summary>
+              <ul className="mt-1 space-y-0.5">
+                {sources.map((s) => (
+                  <li key={s}><a href={s} target="_blank" rel="noreferrer" className="hover:underline">{s}</a></li>
+                ))}
+              </ul>
+            </details>
+          )}
 
           <section className="space-y-2">
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Status</h4>

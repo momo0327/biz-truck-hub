@@ -2,6 +2,16 @@
 const FIRECRAWL_KEY = () => process.env.FIRECRAWL_API_KEY;
 const LOVABLE_KEY = () => process.env.LOVABLE_API_KEY;
 
+export type Vehicle = {
+  registration?: string;
+  brand?: string;
+  model?: string;
+  type?: string;
+  year?: string;
+  fuel?: string;
+  weight?: string;
+};
+
 export type ResearchResult = {
   website?: string;
   phones: string[];
@@ -9,6 +19,7 @@ export type ResearchResult = {
   fleet_size?: string;
   contact_person?: string;
   address?: string;
+  vehicles: Vehicle[];
   sources: string[];
   debug?: { query: string; contextChars: number; toolCallRaw?: string };
 };
@@ -156,11 +167,11 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
         {
           role: "system",
           content:
-            "You extract Swedish company info for a truck-buying CRM. Output ONLY via save_company_info. Phones MUST be Swedish format (+46... or 0...). The merinfo.se /fordon page lists every vehicle the company owns with registration plates, brand and model — extract a SUMMARY (brands, types like lastbil/släp/personbil, count) into trucks_info, and the total count into fleet_size. List EVERY phone number found across sources.",
+            "You extract Swedish company info for a truck-buying CRM. Output ONLY via save_company_info. Phones MUST be Swedish format (+46... or 0...). The merinfo.se /fordon page lists every vehicle the company owns with registration plates, brand, model, type and year — you MUST list EVERY single vehicle as a separate object in the `vehicles` array (one per row). Also write a short SUMMARY into trucks_info (brands and types) and the total count into fleet_size. List EVERY phone number found across sources.",
         },
         {
           role: "user",
-          content: `Company: ${name}\nOrg number: ${orgNumber ?? "unknown"}\n\nWeb sources (note: any URL ending in /fordon is the official vehicle registry list):\n${context}\n\nExtract: own website domain, all phone numbers, contact person, address, summary of trucks/vehicles, total fleet size.`,
+          content: `Company: ${name}\nOrg number: ${orgNumber ?? "unknown"}\n\nWeb sources (note: any URL ending in /fordon is the official vehicle registry list — extract every row):\n${context}\n\nExtract: own website domain, all phone numbers, contact person, address, full vehicles list (one entry per registration plate), summary of trucks, total fleet size.`,
         },
       ],
       tools: [
@@ -174,12 +185,30 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
               properties: {
                 website: { type: "string", description: "Their own website URL." },
                 phones: { type: "array", items: { type: "string" }, description: "All phone numbers found, Swedish format." },
-                trucks_info: { type: "string", description: "What trucks/vehicles they own or operate. 1-3 sentences." },
-                fleet_size: { type: "string", description: "Number of vehicles, e.g. '12 trucks' or 'unknown'." },
+                trucks_info: { type: "string", description: "Short summary of fleet (1-3 sentences)." },
+                fleet_size: { type: "string", description: "Total number of vehicles, e.g. '12'." },
                 contact_person: { type: "string" },
                 address: { type: "string" },
+                vehicles: {
+                  type: "array",
+                  description: "Every vehicle from the merinfo /fordon page or other sources. One object per vehicle.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      registration: { type: "string", description: "Registration plate, e.g. ABC123." },
+                      brand: { type: "string", description: "Brand/make, e.g. Volvo, Scania." },
+                      model: { type: "string" },
+                      type: { type: "string", description: "Vehicle type in Swedish: lastbil, släp, personbil, buss, traktor etc." },
+                      year: { type: "string", description: "Model year." },
+                      fuel: { type: "string", description: "Fuel type, e.g. diesel, el, bensin." },
+                      weight: { type: "string", description: "Total weight if listed." },
+                    },
+                    required: ["registration"],
+                    additionalProperties: false,
+                  },
+                },
               },
-              required: ["phones", "trucks_info"],
+              required: ["phones", "trucks_info", "vehicles"],
               additionalProperties: false,
             },
           },
@@ -198,7 +227,7 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
 
   const json = await aiRes.json();
   const call = json.choices?.[0]?.message?.tool_calls?.[0];
-  let parsed: Partial<ResearchResult> = { phones: [] };
+  let parsed: Partial<ResearchResult> = { phones: [], vehicles: [] };
   let toolCallRaw: string | undefined;
   if (call?.function?.arguments) {
     toolCallRaw = call.function.arguments;
@@ -209,13 +238,16 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
   const aiPhones = (parsed.phones ?? []).map((p) => p.trim()).filter(Boolean);
   const phones = Array.from(new Set([...aiPhones, ...regexPhones])).slice(0, 10);
 
+  const vehicles = (parsed.vehicles ?? []).filter((v) => v && (v.registration || v.brand || v.model));
+
   return {
     website: parsed.website || ownSite?.url,
     phones,
     trucks_info: parsed.trucks_info,
-    fleet_size: parsed.fleet_size,
+    fleet_size: parsed.fleet_size ?? (vehicles.length ? String(vehicles.length) : undefined),
     contact_person: parsed.contact_person,
     address: parsed.address,
+    vehicles,
     sources,
     debug: { query: queries.join(" | "), contextChars: context.length, toolCallRaw },
   };
