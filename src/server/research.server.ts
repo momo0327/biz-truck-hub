@@ -156,11 +156,11 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
         {
           role: "system",
           content:
-            "You extract Swedish company information for a truck-buying CRM. Output ONLY by calling save_company_info. Phones MUST be in Swedish format (+46... or 0...). Include EVERY phone number you can find in the sources. If you find no fleet info but the company is in transport/åkeri/logistik, still note that in trucks_info. Never return empty fields when info is in the sources.",
+            "You extract Swedish company info for a truck-buying CRM. Output ONLY via save_company_info. Phones MUST be Swedish format (+46... or 0...). The merinfo.se /fordon page lists every vehicle the company owns with registration plates, brand and model — extract a SUMMARY (brands, types like lastbil/släp/personbil, count) into trucks_info, and the total count into fleet_size. List EVERY phone number found across sources.",
         },
         {
           role: "user",
-          content: `Company: ${name}\nOrg number: ${orgNumber ?? "unknown"}\n\nWeb sources:\n${context}\n\nExtract: website (their own domain), all phone numbers, contact person, address, trucks/vehicles they own, fleet size.`,
+          content: `Company: ${name}\nOrg number: ${orgNumber ?? "unknown"}\n\nWeb sources (note: any URL ending in /fordon is the official vehicle registry list):\n${context}\n\nExtract: own website domain, all phone numbers, contact person, address, summary of trucks/vehicles, total fleet size.`,
         },
       ],
       tools: [
