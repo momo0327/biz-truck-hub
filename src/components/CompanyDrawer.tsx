@@ -139,16 +139,6 @@ export function CompanyDrawer({ company, onClose }: { company: Company; onClose:
               </ul>
             </details>
           )}
-              <details className="text-xs text-muted-foreground">
-                <summary className="cursor-pointer">Sources ({sources.length})</summary>
-                <ul className="mt-1 space-y-0.5">
-                  {sources.map((s) => (
-                    <li key={s}><a href={s} target="_blank" rel="noreferrer" className="hover:underline">{s}</a></li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </section>
 
           <section className="space-y-2">
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Status</h4>
