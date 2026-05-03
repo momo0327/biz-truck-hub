@@ -2,8 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { Truck } from "lucide-react";
 import { toast } from "sonner";
+import logo from "@/assets/logo.png";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -45,12 +45,7 @@ function LoginPage() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
       <div className="hidden lg:flex flex-col justify-between p-10 bg-sidebar text-sidebar-foreground">
-        <div className="flex items-center gap-2">
-          <div className="size-9 rounded-md bg-sidebar-accent flex items-center justify-center">
-            <Truck className="size-5" />
-          </div>
-          <span className="font-display text-lg">FleetCRM</span>
-        </div>
+        <img src={logo} alt="Auto Wahab Export" className="h-10 w-auto brightness-0 invert" />
         <div>
           <h1 className="font-display text-4xl leading-tight max-w-md">
             Find. Call. Close.

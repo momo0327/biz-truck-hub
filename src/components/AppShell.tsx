@@ -1,8 +1,9 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Building2, KanbanSquare, Settings, LogOut, Truck } from "lucide-react";
+import { LayoutDashboard, Building2, KanbanSquare, Settings, LogOut } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth, signOut } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/logo.png";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -31,14 +32,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="w-60 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col">
-        <div className="px-5 py-6 flex items-center gap-2">
-          <div className="size-8 rounded-md bg-sidebar-accent flex items-center justify-center">
-            <Truck className="size-4" />
-          </div>
-          <div>
-            <div className="font-display text-base font-semibold tracking-tight">FleetCRM</div>
-            <div className="text-xs opacity-60">Truck buyers</div>
-          </div>
+        <div className="px-5 py-6">
+          <img src={logo} alt="Auto Wahab Export" className="h-8 w-auto brightness-0 invert" />
         </div>
         <nav className="px-3 flex-1 space-y-0.5">
           {nav.map((n) => {
