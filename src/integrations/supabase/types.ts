@@ -14,7 +14,125 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      call_logs: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          note: string
+          outcome: string | null
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          note: string
+          outcome?: string | null
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          note?: string
+          outcome?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      companies: {
+        Row: {
+          address: string | null
+          contact_person: string | null
+          created_at: string
+          fleet_size: string | null
+          id: string
+          last_contact: string | null
+          name: string
+          notes: string | null
+          org_number: string | null
+          phones: string[]
+          research_raw: Json | null
+          researched_at: string | null
+          status: Database["public"]["Enums"]["company_status"]
+          trucks_info: string | null
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          fleet_size?: string | null
+          id?: string
+          last_contact?: string | null
+          name: string
+          notes?: string | null
+          org_number?: string | null
+          phones?: string[]
+          research_raw?: Json | null
+          researched_at?: string | null
+          status?: Database["public"]["Enums"]["company_status"]
+          trucks_info?: string | null
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          fleet_size?: string | null
+          id?: string
+          last_contact?: string | null
+          name?: string
+          notes?: string | null
+          org_number?: string | null
+          phones?: string[]
+          research_raw?: Json | null
+          researched_at?: string | null
+          status?: Database["public"]["Enums"]["company_status"]
+          trucks_info?: string | null
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +141,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      company_status:
+        | "new"
+        | "called_no_answer"
+        | "follow_up"
+        | "in_negotiation"
+        | "deal_made"
+        | "not_interested"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +274,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      company_status: [
+        "new",
+        "called_no_answer",
+        "follow_up",
+        "in_negotiation",
+        "deal_made",
+        "not_interested",
+      ],
+    },
   },
 } as const
