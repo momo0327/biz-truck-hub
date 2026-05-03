@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { researchCompanyFn } from "@/server/research.functions";
 import { STATUS_META, STATUS_ORDER, type Company, type CallLog, type Status } from "@/lib/companies";
 import { PhoneButtons } from "./PhoneButtons";
+import { VehiclesTable, type Vehicle } from "./VehiclesTable";
 import { toast } from "sonner";
 
 export function CompanyDrawer({ company, onClose }: { company: Company; onClose: () => void }) {
