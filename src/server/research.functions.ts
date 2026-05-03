@@ -28,6 +28,7 @@ export const researchCompanyFn = createServerFn({ method: "POST" })
           fleet_size: result.fleet_size ?? null,
           contact_person: result.contact_person ?? null,
           address: result.address ?? null,
+          vehicles: result.vehicles as any,
           research_raw: { sources: result.sources, debug: result.debug } as any,
           researched_at: new Date().toISOString(),
         })
