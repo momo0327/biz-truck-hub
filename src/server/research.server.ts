@@ -72,6 +72,42 @@ function extractSwedishPhones(text: string): string[] {
   return Array.from(found);
 }
 
+// Parse the merinfo.se /fordon markdown table. Each vehicle is rendered as
+// 5 consecutive lines: brand/model, regnr, color, type, year, followed by
+// a "Se fullständig fordonsinfo" link.
+function parseMerinfoVehicles(md: string): Vehicle[] {
+  const vehicles: Vehicle[] = [];
+  // Split into blocks separated by the "Se fullständig fordonsinfo" link.
+  const blocks = md.split(/\[Se fullständig fordonsinfo\][^\n]*/i);
+  for (const block of blocks) {
+    const lines = block
+      .split("\n")
+      .map((l) => l.trim().replace(/,$/, "").trim())
+      .filter((l) => l.length > 0 && !/^#|^!\[|^\[|^-\s|^\*\s/.test(l));
+    // Find a Swedish reg-plate line (3 letters + 2-3 alphanumerics, e.g. ABC12X or ABC123)
+    const regIdx = lines.findIndex((l) => /^[A-ZÅÄÖ]{3}\d{2}[A-Z0-9]$|^[A-ZÅÄÖ]{3}\d{3}$/.test(l));
+    if (regIdx < 1) continue;
+    const brandModel = lines[regIdx - 1];
+    const reg = lines[regIdx];
+    const color = lines[regIdx + 1];
+    const type = lines[regIdx + 2];
+    const year = lines[regIdx + 3];
+    if (!brandModel || !reg) continue;
+    // Split brand/model: first token is brand, rest is model
+    const parts = brandModel.split(/\s+/);
+    const brand = parts[0];
+    const model = parts.slice(1).join(" ") || undefined;
+    vehicles.push({
+      registration: reg,
+      brand,
+      model,
+      type: type && /^[a-zåäö ]+$/i.test(type) ? type.toLowerCase() : undefined,
+      year: year && /^(19|20)\d{2}$/.test(year) ? year : undefined,
+    });
+  }
+  return vehicles;
+}
+
 export async function researchCompany(name: string, orgNumber?: string | null): Promise<ResearchResult> {
   const lovKey = LOVABLE_KEY();
   if (!lovKey) throw new Error("LOVABLE_API_KEY not configured");
