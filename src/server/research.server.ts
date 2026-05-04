@@ -107,6 +107,9 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
 
   // 2) Find merinfo.se page and ALWAYS scrape its /fordon (vehicles) subpage —
   //    that's where the actual fleet (truck regnums + models) lives.
+  // The /fordon page is paginated (25 vehicles per page), so loop until empty.
+  let parsedVehicles: Vehicle[] = [];
+  let totalFleetFromMerinfo: string | undefined;
   const merinfo = results.find((r) => /merinfo\.se\/foretag\//i.test(r.url));
   if (merinfo) {
     // Scrape main merinfo page (phones, address, contact)
@@ -115,13 +118,40 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
     if (mainMd) merinfo.markdown = mainMd;
 
     // Build /fordon URL (strip any trailing path, ensure single trailing slash)
-    const base = merinfo.url.replace(/\/(fordon|kontakt|ekonomi|styrelse)\/?$/i, "").replace(/\/$/, "");
-    const fordonUrl = `${base}/fordon`;
-    const fordon = await firecrawlScrape(fordonUrl).catch(() => null);
-    const fordonMd = fordon?.data?.markdown || fordon?.markdown;
-    if (fordonMd) {
-      results.push({ url: fordonUrl, title: "Merinfo - Fordon (fleet)", markdown: fordonMd });
+    const base = merinfo.url.replace(/\/(fordon|telefonnummer|adresser|styrelse-koncern|verklig-huvudman|nyckeltal|kontakt|ekonomi|styrelse)(\/.*)?$/i, "").replace(/\/$/, "");
+
+    // Paginate: page 1, 2, 3... up to 10 pages safety cap (250 vehicles)
+    for (let page = 1; page <= 10; page++) {
+      const fordonUrl = page === 1 ? `${base}/fordon` : `${base}/fordon?page=${page}`;
+      const fordon = await firecrawlScrape(fordonUrl).catch(() => null);
+      const fordonMd = fordon?.data?.markdown || fordon?.markdown;
+      if (!fordonMd) break;
+
+      // Capture fleet total once
+      if (!totalFleetFromMerinfo) {
+        const totalMatch = fordonMd.match(/Totalt antal fordon:\s*(\d+)/i);
+        if (totalMatch) totalFleetFromMerinfo = totalMatch[1];
+      }
+
+      const pageVehicles = parseMerinfoVehicles(fordonMd);
+      if (pageVehicles.length === 0) break;
+      parsedVehicles.push(...pageVehicles);
+
+      results.push({ url: fordonUrl, title: `Merinfo - Fordon page ${page}`, markdown: fordonMd });
+
+      // Stop if no "Nästa" (next) link
+      if (!/[?&]page=\d+["')\]]/i.test(fordonMd) && page > 1) break;
+      if (!/Nästa|page=\d+/i.test(fordonMd)) break;
     }
+
+    // Dedupe vehicles by registration
+    const seenReg = new Set<string>();
+    parsedVehicles = parsedVehicles.filter((v) => {
+      const r = (v.registration ?? "").toUpperCase();
+      if (!r || seenReg.has(r)) return false;
+      seenReg.add(r);
+      return true;
+    });
   }
 
   // 3) Try to detect the company's own website and scrape it for phones/trucks
