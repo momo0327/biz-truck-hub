@@ -9,6 +9,8 @@ export type Vehicle = {
   year?: string;
   fuel?: string;
   weight?: string;
+  source?: "excel" | "ai";
+  matched?: boolean;
 };
 
 type SortKey = keyof Vehicle;
