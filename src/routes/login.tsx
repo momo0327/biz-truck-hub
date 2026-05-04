@@ -44,7 +44,7 @@ function LoginPage() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      <div className="hidden lg:flex flex-col justify-between py-10 pr-10 pl-2 bg-sidebar text-sidebar-foreground">
+      <div className="hidden lg:flex flex-col justify-between p-10 bg-sidebar text-sidebar-foreground">
         <img src={logo} alt="Auto Wahab Export" className="h-24 w-auto object-contain self-start brightness-0 invert" />
         <div>
           <h1 className="font-display text-4xl leading-tight max-w-md">
