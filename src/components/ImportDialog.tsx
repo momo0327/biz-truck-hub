@@ -127,21 +127,14 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
         }
       }
 
+      // Count this row as one vehicle (we ignore reg/brand/model from Excel —
+      // AI research will web-scrape the actual fleet). We only need the count.
+      const reg = String(r.registration ?? "").trim();
       const brandRaw = String(r.brand ?? "").trim();
       const modelRaw = String(r.model ?? "").trim();
-      const { brand, model } = splitBrandModel(brandRaw, modelRaw);
-      const yearRaw = r.year != null && r.year !== "" ? String(r.year).trim() : "";
-      const reg = String(r.registration ?? "").trim();
-
-      if (reg || brand || model) {
-        draft.vehicles.push({
-          registration: reg || undefined,
-          brand: brand || undefined,
-          model: model || undefined,
-          year: yearRaw || undefined,
-          date: excelDateToISO(r.date),
-          notes: noteRaw && !looksLikePhone(noteRaw) ? noteRaw : undefined,
-        });
+      if (reg || brandRaw || modelRaw) {
+        // Push a placeholder so the count is correct; details come from AI later.
+        draft.vehicles.push({});
       }
     }
 
