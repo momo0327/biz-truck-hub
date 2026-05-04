@@ -20,6 +20,7 @@ export function VehiclesTable({ vehicles }: { vehicles: Vehicle[] }) {
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [brandFilter, setBrandFilter] = useState<string>("");
   const [fuelFilter, setFuelFilter] = useState<string>("");
+  const [sourceFilter, setSourceFilter] = useState<string>("");
   const [sortKey, setSortKey] = useState<SortKey>("registration");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
