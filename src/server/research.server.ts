@@ -149,6 +149,7 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
   // 2) Find merinfo.se page and ALWAYS scrape its /fordon (vehicles) subpage —
   //    that's where the actual fleet (truck regnums + models) lives.
   const merinfo = results.find((r) => /merinfo\.se\/foretag\//i.test(r.url));
+  let fordonMd: string | undefined;
   if (merinfo) {
     // Scrape main merinfo page (phones, address, contact)
     const main = await firecrawlScrape(merinfo.url).catch(() => null);
@@ -159,11 +160,14 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
     const base = merinfo.url.replace(/\/(fordon|kontakt|ekonomi|styrelse)\/?$/i, "").replace(/\/$/, "");
     const fordonUrl = `${base}/fordon`;
     const fordon = await firecrawlScrape(fordonUrl).catch(() => null);
-    const fordonMd = fordon?.data?.markdown || fordon?.markdown;
+    fordonMd = fordon?.data?.markdown || fordon?.markdown;
     if (fordonMd) {
       results.push({ url: fordonUrl, title: "Merinfo - Fordon (fleet)", markdown: fordonMd });
     }
   }
+
+  // Deterministic parse of merinfo /fordon (works even for 50+ vehicle fleets)
+  const merinfoVehicles: Vehicle[] = fordonMd ? parseMerinfoFordon(fordonMd) : [];
 
   // 3) Try to detect the company's own website and scrape it for phones/trucks
   const ownSite = results.find((r) => {
