@@ -304,13 +304,26 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
   const aiPhones = (parsed.phones ?? []).map((p) => p.trim()).filter(Boolean);
   const phones = Array.from(new Set([...aiPhones, ...regexPhones])).slice(0, 10);
 
-  const vehicles = (parsed.vehicles ?? []).filter((v) => v && (v.registration || v.brand || v.model));
+  const aiVehicles = (parsed.vehicles ?? []).filter((v) => v && (v.registration || v.brand || v.model));
+
+  // Prefer deterministic merinfo-parsed vehicles; merge any extra AI-found
+  // vehicles (by registration plate) that the parser missed.
+  const seenRegs = new Set(parsedVehicles.map((v) => (v.registration ?? "").toUpperCase()));
+  const merged = [...parsedVehicles];
+  for (const v of aiVehicles) {
+    const r = (v.registration ?? "").toUpperCase();
+    if (r && !seenRegs.has(r)) {
+      merged.push(v);
+      seenRegs.add(r);
+    }
+  }
+  const vehicles = merged;
 
   return {
     website: parsed.website || ownSite?.url,
     phones,
     trucks_info: parsed.trucks_info,
-    fleet_size: parsed.fleet_size ?? (vehicles.length ? String(vehicles.length) : undefined),
+    fleet_size: parsed.fleet_size ?? totalFleetFromMerinfo ?? (vehicles.length ? String(vehicles.length) : undefined),
     contact_person: parsed.contact_person,
     address: parsed.address,
     vehicles,
