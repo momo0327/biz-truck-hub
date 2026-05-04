@@ -43,19 +43,24 @@ export function VehiclesTable({ vehicles }: { vehicles: Vehicle[] }) {
       if (typeFilter && v.type !== typeFilter) return false;
       if (brandFilter && v.brand !== brandFilter) return false;
       if (fuelFilter && v.fuel !== fuelFilter) return false;
+      if (sourceFilter === "excel" && v.source !== "excel") return false;
+      if (sourceFilter === "ai" && v.source !== "ai") return false;
+      if (sourceFilter === "matched" && !v.matched) return false;
       if (!ql) return true;
       return [v.registration, v.brand, v.model, v.type, v.year, v.fuel]
         .filter(Boolean)
         .some((x) => x!.toLowerCase().includes(ql));
     });
     list.sort((a, b) => {
+      // matched first
+      if ((a.matched ? 1 : 0) !== (b.matched ? 1 : 0)) return a.matched ? -1 : 1;
       const av = (a[sortKey] ?? "").toString().toLowerCase();
       const bv = (b[sortKey] ?? "").toString().toLowerCase();
       if (av === bv) return 0;
       return (av > bv ? 1 : -1) * (sortDir === "asc" ? 1 : -1);
     });
     return list;
-  }, [vehicles, q, typeFilter, brandFilter, fuelFilter, sortKey, sortDir]);
+  }, [vehicles, q, typeFilter, brandFilter, fuelFilter, sourceFilter, sortKey, sortDir]);
 
   function toggleSort(k: SortKey) {
     if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
