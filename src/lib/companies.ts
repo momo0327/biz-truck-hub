@@ -27,7 +27,8 @@ export function useCompanies() {
     const { data, error } = await supabase
       .from("companies")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false });
     if (!error && data) setCompanies(data);
     setLoading(false);
   }, []);
