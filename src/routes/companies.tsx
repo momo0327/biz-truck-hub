@@ -150,6 +150,21 @@ function CompaniesPage() {
               const busy = busyIds.has(c.id);
               return (
                 <tr key={c.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelected(c)}>
+                  <td className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(c.id)}
+                      onChange={(e) => {
+                        setSelectedIds((prev) => {
+                          const n = new Set(prev);
+                          if (e.target.checked) n.add(c.id);
+                          else n.delete(c.id);
+                          return n;
+                        });
+                      }}
+                      className="size-4 cursor-pointer"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="font-medium">{c.name}</div>
                     <div className="text-xs text-muted-foreground">{c.org_number ?? "—"}</div>
