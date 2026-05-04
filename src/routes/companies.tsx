@@ -64,6 +64,24 @@ function CompaniesPage() {
           <p className="text-sm text-muted-foreground mt-1">{companies.length} imported</p>
         </div>
         <div className="flex gap-2">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={async () => {
+                if (!confirm(`Delete ${selectedIds.size} selected companies?`)) return;
+                const ids = Array.from(selectedIds);
+                const { error } = await supabase.from("companies").delete().in("id", ids);
+                if (error) toast.error(error.message);
+                else {
+                  toast.success(`Deleted ${ids.length} companies`);
+                  setSelectedIds(new Set());
+                  refresh();
+                }
+              }}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-destructive/30 text-destructive text-sm hover:bg-destructive/10"
+            >
+              <Trash2 className="size-4" /> Delete {selectedIds.size}
+            </button>
+          )}
           <button
             onClick={researchAll}
             disabled={bulkBusy}
