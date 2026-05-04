@@ -8,8 +8,9 @@ import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { PhoneButtons } from "@/components/PhoneButtons";
 import { useCompanies, STATUS_META, type Company } from "@/lib/companies";
 import { researchCompanyFn } from "@/server/research.functions";
-import { Plus, Loader2, Sparkles, Search, UserPlus } from "lucide-react";
+import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/companies")({ component: () => <AppShell><CompaniesPage /></AppShell> });
 
@@ -21,6 +22,7 @@ function CompaniesPage() {
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [q, setQ] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const research = useServerFn(researchCompanyFn);
 
   const filtered = companies.filter(
@@ -62,6 +64,24 @@ function CompaniesPage() {
           <p className="text-sm text-muted-foreground mt-1">{companies.length} imported</p>
         </div>
         <div className="flex gap-2">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={async () => {
+                if (!confirm(`Delete ${selectedIds.size} selected companies?`)) return;
+                const ids = Array.from(selectedIds);
+                const { error } = await supabase.from("companies").delete().in("id", ids);
+                if (error) toast.error(error.message);
+                else {
+                  toast.success(`Deleted ${ids.length} companies`);
+                  setSelectedIds(new Set());
+                  refresh();
+                }
+              }}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-destructive/30 text-destructive text-sm hover:bg-destructive/10"
+            >
+              <Trash2 className="size-4" /> Delete {selectedIds.size}
+            </button>
+          )}
           <button
             onClick={researchAll}
             disabled={bulkBusy}
@@ -99,6 +119,24 @@ function CompaniesPage() {
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
+              <th className="px-4 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={filtered.length > 0 && filtered.every((c) => selectedIds.has(c.id))}
+                  ref={(el) => {
+                    if (el) {
+                      const some = filtered.some((c) => selectedIds.has(c.id));
+                      const all = filtered.length > 0 && filtered.every((c) => selectedIds.has(c.id));
+                      el.indeterminate = some && !all;
+                    }
+                  }}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelectedIds(new Set(filtered.map((c) => c.id)));
+                    else setSelectedIds(new Set());
+                  }}
+                  className="size-4 cursor-pointer"
+                />
+              </th>
               <th className="text-left px-4 py-3">Company</th>
               <th className="text-left px-4 py-3">Phones</th>
               <th className="text-left px-4 py-3">Status</th>
@@ -112,6 +150,21 @@ function CompaniesPage() {
               const busy = busyIds.has(c.id);
               return (
                 <tr key={c.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelected(c)}>
+                  <td className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(c.id)}
+                      onChange={(e) => {
+                        setSelectedIds((prev) => {
+                          const n = new Set(prev);
+                          if (e.target.checked) n.add(c.id);
+                          else n.delete(c.id);
+                          return n;
+                        });
+                      }}
+                      className="size-4 cursor-pointer"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="font-medium">{c.name}</div>
                     <div className="text-xs text-muted-foreground">{c.org_number ?? "—"}</div>
@@ -142,7 +195,7 @@ function CompaniesPage() {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground text-sm">
+                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground text-sm">
                   No companies. Click <strong>Import</strong> to add your Excel list.
                 </td>
               </tr>
