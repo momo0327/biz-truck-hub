@@ -24,12 +24,24 @@ export function useCompanies() {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("companies")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false });
-    if (!error && data) setCompanies(data);
+    // Supabase caps at 1000 rows per request — paginate to load all.
+    const pageSize = 1000;
+    let from = 0;
+    const all: Company[] = [];
+    for (;;) {
+      const { data, error } = await supabase
+        .from("companies")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (error) break;
+      if (!data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    setCompanies(all);
     setLoading(false);
   }, []);
 
