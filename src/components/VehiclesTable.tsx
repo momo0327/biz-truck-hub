@@ -9,6 +9,8 @@ export type Vehicle = {
   year?: string;
   fuel?: string;
   weight?: string;
+  source?: "excel" | "ai";
+  matched?: boolean;
 };
 
 type SortKey = keyof Vehicle;
@@ -18,6 +20,7 @@ export function VehiclesTable({ vehicles }: { vehicles: Vehicle[] }) {
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [brandFilter, setBrandFilter] = useState<string>("");
   const [fuelFilter, setFuelFilter] = useState<string>("");
+  const [sourceFilter, setSourceFilter] = useState<string>("");
   const [sortKey, setSortKey] = useState<SortKey>("registration");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
@@ -40,19 +43,24 @@ export function VehiclesTable({ vehicles }: { vehicles: Vehicle[] }) {
       if (typeFilter && v.type !== typeFilter) return false;
       if (brandFilter && v.brand !== brandFilter) return false;
       if (fuelFilter && v.fuel !== fuelFilter) return false;
+      if (sourceFilter === "excel" && v.source !== "excel") return false;
+      if (sourceFilter === "ai" && v.source !== "ai") return false;
+      if (sourceFilter === "matched" && !v.matched) return false;
       if (!ql) return true;
       return [v.registration, v.brand, v.model, v.type, v.year, v.fuel]
         .filter(Boolean)
         .some((x) => x!.toLowerCase().includes(ql));
     });
     list.sort((a, b) => {
+      // matched first
+      if ((a.matched ? 1 : 0) !== (b.matched ? 1 : 0)) return a.matched ? -1 : 1;
       const av = (a[sortKey] ?? "").toString().toLowerCase();
       const bv = (b[sortKey] ?? "").toString().toLowerCase();
       if (av === bv) return 0;
       return (av > bv ? 1 : -1) * (sortDir === "asc" ? 1 : -1);
     });
     return list;
-  }, [vehicles, q, typeFilter, brandFilter, fuelFilter, sortKey, sortDir]);
+  }, [vehicles, q, typeFilter, brandFilter, fuelFilter, sourceFilter, sortKey, sortDir]);
 
   function toggleSort(k: SortKey) {
     if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -121,12 +129,21 @@ export function VehiclesTable({ vehicles }: { vehicles: Vehicle[] }) {
             {fuels.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
         )}
+        <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} className="text-xs px-2 py-1.5 rounded-md border bg-background">
+          <option value="">All sources</option>
+          <option value="excel">From Excel</option>
+          <option value="ai">AI-found</option>
+          <option value="matched">✓ Matched (AI confirmed)</option>
+        </select>
         <button onClick={downloadCsv} className="inline-flex items-center gap-1 text-xs px-2 py-1.5 rounded-md border hover:bg-muted">
           <Download className="size-3" /> CSV
         </button>
       </div>
-      <div className="text-xs text-muted-foreground">
-        {filtered.length} of {vehicles.length} vehicles
+      <div className="text-xs text-muted-foreground flex flex-wrap gap-3">
+        <span>{filtered.length} of {vehicles.length} vehicles</span>
+        <span className="text-success">✓ {vehicles.filter((v) => v.matched).length} matched</span>
+        <span>📄 {vehicles.filter((v) => v.source === "excel").length} from Excel</span>
+        <span>✨ {vehicles.filter((v) => v.source === "ai").length} AI-found</span>
       </div>
       <div className="rounded-md border overflow-hidden">
         <div className="max-h-80 overflow-auto">
@@ -140,21 +157,41 @@ export function VehiclesTable({ vehicles }: { vehicles: Vehicle[] }) {
                     </button>
                   </th>
                 ))}
+                <th className="text-left px-2 py-2 font-medium">Source</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {filtered.map((v, i) => (
-                <tr key={(v.registration ?? "") + i} className="hover:bg-muted/30">
-                  <td className="px-2 py-1.5 font-mono uppercase">{v.registration ?? "—"}</td>
+                <tr
+                  key={(v.registration ?? "") + i}
+                  className={
+                    v.matched
+                      ? "bg-success/10 hover:bg-success/20 ring-1 ring-success/30"
+                      : "hover:bg-muted/30"
+                  }
+                >
+                  <td className="px-2 py-1.5 font-mono uppercase">
+                    <span className="inline-flex items-center gap-1">
+                      {v.matched && <span title="Confirmed by AI research" className="text-success">✓</span>}
+                      {v.registration ?? "—"}
+                    </span>
+                  </td>
                   <td className="px-2 py-1.5">{v.brand ?? "—"}</td>
                   <td className="px-2 py-1.5">{v.model ?? "—"}</td>
                   <td className="px-2 py-1.5">{v.type ?? "—"}</td>
                   <td className="px-2 py-1.5">{v.year ?? "—"}</td>
                   <td className="px-2 py-1.5">{v.fuel ?? "—"}</td>
+                  <td className="px-2 py-1.5">
+                    {v.source === "excel" ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Excel</span>
+                    ) : v.source === "ai" ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">AI</span>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-6 text-muted-foreground italic">No matches</td></tr>
+                <tr><td colSpan={7} className="text-center py-6 text-muted-foreground italic">No matches</td></tr>
               )}
             </tbody>
           </table>

@@ -1,0 +1,1 @@
+DELETE FROM public.companies WHERE name IN ('Registreringsnr', 'Organisationsnr', 'Namn');
