@@ -283,7 +283,15 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
   const aiPhones = (parsed.phones ?? []).map((p) => p.trim()).filter(Boolean);
   const phones = Array.from(new Set([...aiPhones, ...regexPhones])).slice(0, 10);
 
-  const vehicles = (parsed.vehicles ?? []).filter((v) => v && (v.registration || v.brand || v.model));
+  // Vehicles: merinfo regex parse is authoritative (complete + accurate). Add
+  // any extra AI vehicles whose regnr isn't already in the merinfo set.
+  const aiVehicles = (parsed.vehicles ?? []).filter((v) => v && (v.registration || v.brand || v.model));
+  const merinfoRegs = new Set(merinfoVehicles.map((v) => (v.registration ?? "").toUpperCase()));
+  const extraAi = aiVehicles.filter((v) => {
+    const r = (v.registration ?? "").toUpperCase();
+    return !r || !merinfoRegs.has(r);
+  });
+  const vehicles = [...merinfoVehicles, ...extraAi];
 
   return {
     website: parsed.website || ownSite?.url,
@@ -294,6 +302,6 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
     address: parsed.address,
     vehicles,
     sources,
-    debug: { query: queries.join(" | "), contextChars: context.length, toolCallRaw },
+    debug: { query: queries.join(" | "), contextChars: context.length, toolCallRaw, merinfoCount: merinfoVehicles.length } as any,
   };
 }
