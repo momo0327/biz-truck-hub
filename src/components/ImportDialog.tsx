@@ -127,15 +127,10 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
         }
       }
 
-      // Count this row as one vehicle (we ignore reg/brand/model from Excel —
-      // AI research will web-scrape the actual fleet). We only need the count.
-      const reg = String(r.registration ?? "").trim();
-      const brandRaw = String(r.brand ?? "").trim();
-      const modelRaw = String(r.model ?? "").trim();
-      if (reg || brandRaw || modelRaw) {
-        // Push a placeholder so the count is correct; details come from AI later.
-        draft.vehicles.push({});
-      }
+      // Each row in the Excel represents one vehicle owned by this company.
+      // We don't keep reg/brand/model from Excel — AI research will scrape the
+      // actual vehicle details from the web. We just need the correct count.
+      draft.vehicles.push({});
     }
 
     setDrafts(Array.from(map.values()));
