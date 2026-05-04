@@ -22,6 +22,7 @@ function CompaniesPage() {
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [q, setQ] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const research = useServerFn(researchCompanyFn);
 
   const filtered = companies.filter(
