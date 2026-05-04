@@ -157,6 +157,7 @@ export function VehiclesTable({ vehicles }: { vehicles: Vehicle[] }) {
                     </button>
                   </th>
                 ))}
+                <th className="text-left px-2 py-2 font-medium">Source</th>
               </tr>
             </thead>
             <tbody className="divide-y">
