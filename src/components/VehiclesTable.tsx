@@ -161,17 +161,36 @@ export function VehiclesTable({ vehicles }: { vehicles: Vehicle[] }) {
             </thead>
             <tbody className="divide-y">
               {filtered.map((v, i) => (
-                <tr key={(v.registration ?? "") + i} className="hover:bg-muted/30">
-                  <td className="px-2 py-1.5 font-mono uppercase">{v.registration ?? "—"}</td>
+                <tr
+                  key={(v.registration ?? "") + i}
+                  className={
+                    v.matched
+                      ? "bg-success/10 hover:bg-success/20 ring-1 ring-success/30"
+                      : "hover:bg-muted/30"
+                  }
+                >
+                  <td className="px-2 py-1.5 font-mono uppercase">
+                    <span className="inline-flex items-center gap-1">
+                      {v.matched && <span title="Confirmed by AI research" className="text-success">✓</span>}
+                      {v.registration ?? "—"}
+                    </span>
+                  </td>
                   <td className="px-2 py-1.5">{v.brand ?? "—"}</td>
                   <td className="px-2 py-1.5">{v.model ?? "—"}</td>
                   <td className="px-2 py-1.5">{v.type ?? "—"}</td>
                   <td className="px-2 py-1.5">{v.year ?? "—"}</td>
                   <td className="px-2 py-1.5">{v.fuel ?? "—"}</td>
+                  <td className="px-2 py-1.5">
+                    {v.source === "excel" ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Excel</span>
+                    ) : v.source === "ai" ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">AI</span>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-6 text-muted-foreground italic">No matches</td></tr>
+                <tr><td colSpan={7} className="text-center py-6 text-muted-foreground italic">No matches</td></tr>
               )}
             </tbody>
           </table>
