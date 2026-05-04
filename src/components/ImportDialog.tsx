@@ -2,57 +2,110 @@ import { useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useServerFn } from "@tanstack/react-start";
+import { researchCompanyFn } from "@/server/research.functions";
 import { toast } from "sonner";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Loader2, Sparkles } from "lucide-react";
+
+type Row = { name: string; org_number: string | null };
+
+const NAME_KEYS = ["namn", "name", "company", "företag", "foretag", "company name"];
+const ORG_KEYS = ["organisationsnr", "orgnr", "org number", "org_number", "organisationsnummer", "org no", "org"];
+
+function normalizeOrg(s: string | null | undefined): string | null {
+  if (!s) return null;
+  const digits = String(s).replace(/\D/g, "");
+  if (!digits) return null;
+  // Format Swedish org numbers as XXXXXX-XXXX when 10 digits
+  if (digits.length === 10) return `${digits.slice(0, 6)}-${digits.slice(6)}`;
+  return digits;
+}
+
+function pickColumns(headerRow: any[]): { nameIdx: number; orgIdx: number } {
+  const norm = headerRow.map((h) => String(h ?? "").trim().toLowerCase());
+  const findIdx = (keys: string[]) => norm.findIndex((h) => keys.some((k) => h === k || h.includes(k)));
+  return { nameIdx: findIdx(NAME_KEYS), orgIdx: findIdx(ORG_KEYS) };
+}
 
 export function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
   const { user } = useAuth();
-  const [text, setText] = useState("");
+  const [rows, setRows] = useState<Row[]>([]);
+  const [fileName, setFileName] = useState("");
   const [busy, setBusy] = useState(false);
-
-  function parseRows(): Array<{ name: string; org_number: string | null }> {
-    if (!text.trim()) return [];
-    const lines = text.trim().split(/\r?\n/);
-    const rows: Array<{ name: string; org_number: string | null }> = [];
-    for (const line of lines) {
-      const parts = line.split(/[\t,;]/).map((s) => s.trim());
-      const name = parts[0]?.replace(/^"|"$/g, "");
-      const org = parts[1]?.replace(/^"|"$/g, "") || null;
-      if (!name || /company\s*name|namn/i.test(name)) continue;
-      rows.push({ name, org_number: org });
-    }
-    return rows;
-  }
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const research = useServerFn(researchCompanyFn);
 
   async function handleFile(file: File) {
+    setFileName(file.name);
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf);
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const aoa: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
-    const lines = aoa
-      .filter((r) => r && r.length)
-      .map((r) => r.slice(0, 2).map((c) => (c == null ? "" : String(c))).join("\t"));
-    setText(lines.join("\n"));
+
+    const collected: Row[] = [];
+    for (const sheetName of wb.SheetNames) {
+      const ws = wb.Sheets[sheetName];
+      const aoa: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false });
+      if (!aoa.length) continue;
+      const { nameIdx, orgIdx } = pickColumns(aoa[0] ?? []);
+      if (nameIdx === -1) continue;
+      for (let i = 1; i < aoa.length; i++) {
+        const r = aoa[i];
+        if (!r) continue;
+        const rawName = r[nameIdx];
+        if (rawName == null || String(rawName).trim() === "") continue;
+        const name = String(rawName).trim();
+        const org = orgIdx !== -1 ? normalizeOrg(r[orgIdx] != null ? String(r[orgIdx]) : null) : null;
+        collected.push({ name, org_number: org });
+      }
+    }
+
+    // Dedupe by org_number (preferred) or name
+    const seen = new Set<string>();
+    const unique: Row[] = [];
+    for (const r of collected) {
+      const key = (r.org_number || r.name).toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(r);
+    }
+    setRows(unique);
+    if (!unique.length) toast.error("Couldn't find a 'Namn' column in the file.");
   }
 
   async function importNow() {
-    if (!user) return;
-    const rows = parseRows();
-    if (!rows.length) {
-      toast.error("No rows detected. Use: Name, OrgNumber per line.");
-      return;
-    }
+    if (!user || !rows.length) return;
     setBusy(true);
-    const payload = rows.map((r) => ({ ...r, user_id: user.id }));
-    const { error } = await supabase.from("companies").insert(payload);
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const payload = rows.map((r) => ({ ...r, user_id: user.id }));
+      const { data: inserted, error } = await supabase
+        .from("companies")
+        .insert(payload)
+        .select("id");
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success(`Imported ${inserted?.length ?? 0} companies — researching now…`);
+      onImported();
+
+      const ids = (inserted ?? []).map((r) => r.id);
+      setProgress({ done: 0, total: ids.length });
+
+      // Run research sequentially to avoid rate-limit issues
+      for (let i = 0; i < ids.length; i++) {
+        try {
+          await research({ data: { companyId: ids[i] } });
+        } catch (e: any) {
+          console.error("Research failed for", ids[i], e);
+        }
+        setProgress({ done: i + 1, total: ids.length });
+      }
+      toast.success("Research complete");
+      onImported();
+      onClose();
+    } finally {
+      setBusy(false);
+      setProgress(null);
     }
-    toast.success(`Imported ${rows.length} companies`);
-    onImported();
-    onClose();
   }
 
   return (
@@ -65,42 +118,82 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
           <div>
             <h3 className="font-display text-xl">Import companies</h3>
             <p className="text-sm text-muted-foreground">
-              Upload an Excel/CSV or paste rows: <code>Name, OrgNumber</code>
+              Upload an Excel file. Only the <strong>Namn</strong> and <strong>Organisationsnr</strong> columns
+              are used — duplicates are merged, then AI research runs automatically.
             </p>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" disabled={busy}>
             <X className="size-5" />
           </button>
         </div>
 
         <label className="flex items-center justify-center gap-2 border-2 border-dashed rounded-md py-6 cursor-pointer hover:bg-muted/50">
           <Upload className="size-4" />
-          <span className="text-sm">Choose .xlsx or .csv</span>
+          <span className="text-sm">{fileName || "Choose .xlsx, .xls or .csv"}</span>
           <input
             type="file"
             accept=".xlsx,.xls,.csv"
             className="hidden"
+            disabled={busy}
             onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
           />
         </label>
 
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={"Acme AB\t5566778899\nFraktbolaget AB\t5512345678"}
-          className="w-full h-48 p-3 border rounded-md text-sm font-mono bg-background"
-        />
+        {rows.length > 0 && (
+          <div className="rounded-md border bg-muted/30 max-h-64 overflow-y-auto">
+            <div className="px-3 py-2 text-xs text-muted-foreground border-b sticky top-0 bg-muted/50">
+              {rows.length} unique companies detected
+            </div>
+            <ul className="divide-y text-sm">
+              {rows.slice(0, 50).map((r, i) => (
+                <li key={i} className="px-3 py-1.5 flex justify-between gap-3">
+                  <span className="truncate">{r.name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">{r.org_number ?? "—"}</span>
+                </li>
+              ))}
+              {rows.length > 50 && (
+                <li className="px-3 py-1.5 text-xs text-muted-foreground italic">
+                  …and {rows.length - 50} more
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+
+        {progress && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <Sparkles className="size-3" /> Researching companies…
+              </span>
+              <span>
+                {progress.done} / {progress.total}
+              </span>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all"
+                style={{ width: `${(progress.done / Math.max(progress.total, 1)) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-md hover:bg-muted">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm rounded-md hover:bg-muted disabled:opacity-50"
+            disabled={busy}
+          >
             Cancel
           </button>
           <button
             onClick={importNow}
-            disabled={busy}
-            className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            disabled={busy || !rows.length}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
-            {busy ? "Importing…" : "Import"}
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+            {busy ? "Working…" : `Import & research ${rows.length || ""}`}
           </button>
         </div>
       </div>
