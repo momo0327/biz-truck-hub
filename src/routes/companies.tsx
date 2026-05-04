@@ -195,7 +195,7 @@ function CompaniesPage() {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground text-sm">
+                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground text-sm">
                   No companies. Click <strong>Import</strong> to add your Excel list.
                 </td>
               </tr>
