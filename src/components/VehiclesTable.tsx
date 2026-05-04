@@ -129,12 +129,21 @@ export function VehiclesTable({ vehicles }: { vehicles: Vehicle[] }) {
             {fuels.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
         )}
+        <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} className="text-xs px-2 py-1.5 rounded-md border bg-background">
+          <option value="">All sources</option>
+          <option value="excel">From Excel</option>
+          <option value="ai">AI-found</option>
+          <option value="matched">✓ Matched (AI confirmed)</option>
+        </select>
         <button onClick={downloadCsv} className="inline-flex items-center gap-1 text-xs px-2 py-1.5 rounded-md border hover:bg-muted">
           <Download className="size-3" /> CSV
         </button>
       </div>
-      <div className="text-xs text-muted-foreground">
-        {filtered.length} of {vehicles.length} vehicles
+      <div className="text-xs text-muted-foreground flex flex-wrap gap-3">
+        <span>{filtered.length} of {vehicles.length} vehicles</span>
+        <span className="text-success">✓ {vehicles.filter((v) => v.matched).length} matched</span>
+        <span>📄 {vehicles.filter((v) => v.source === "excel").length} from Excel</span>
+        <span>✨ {vehicles.filter((v) => v.source === "ai").length} AI-found</span>
       </div>
       <div className="rounded-md border overflow-hidden">
         <div className="max-h-80 overflow-auto">
