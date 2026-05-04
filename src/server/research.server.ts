@@ -72,47 +72,6 @@ function extractSwedishPhones(text: string): string[] {
   return Array.from(found);
 }
 
-// Deterministically parse the merinfo /fordon markdown — it has a strict
-// repeating block per vehicle: brand/model line, regnr, color, type, year,
-// then a "Se fullständig fordonsinfo" link. Far more reliable than the AI
-// (which gets truncated for fleets of 30+ vehicles).
-function parseMerinfoFordon(md: string): Vehicle[] {
-  const vehicles: Vehicle[] = [];
-  const blocks = md.split(/\[Se fullständig fordonsinfo\]\([^)]+\)/);
-  for (let i = 0; i < blocks.length - 1; i++) {
-    const lines = blocks[i]
-      .split(/\r?\n/)
-      .map((l) => l.trim().replace(/,\s*$/, "").trim())
-      .filter(Boolean);
-    if (lines.length < 4) continue;
-    const tail = lines.slice(-5);
-    // Skip the table-header block ("Märke / modell", "Regnr", ...)
-    if (tail.some((l) => /^Märke\s*\/\s*modell$/i.test(l) || l === "Regnr")) continue;
-
-    let brandModel = "", regnr = "", color = "", type = "", year = "";
-    if (tail.length >= 5) {
-      [brandModel, regnr, color, type, year] = tail.slice(-5);
-    } else {
-      year = tail.find((l) => /^(19|20)\d{2}$/.test(l)) ?? "";
-      regnr = tail.find((l) => /^[A-Z]{3}\s?\d{2}[A-Z0-9]$/.test(l.replace(/\s/g, ""))) ?? "";
-    }
-    const cleanReg = regnr.replace(/\s/g, "").toUpperCase();
-    if (!/^[A-Z0-9]{5,7}$/.test(cleanReg)) continue;
-
-    const parts = brandModel.split(/\s+/);
-    const brand = parts[0] ?? "";
-    const model = parts.slice(1).join(" ");
-    vehicles.push({
-      registration: cleanReg,
-      brand: brand || undefined,
-      model: model || undefined,
-      type: type || undefined,
-      year: /^(19|20)\d{2}$/.test(year) ? year : undefined,
-    });
-  }
-  return vehicles;
-}
-
 export async function researchCompany(name: string, orgNumber?: string | null): Promise<ResearchResult> {
   const lovKey = LOVABLE_KEY();
   if (!lovKey) throw new Error("LOVABLE_API_KEY not configured");
@@ -149,7 +108,6 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
   // 2) Find merinfo.se page and ALWAYS scrape its /fordon (vehicles) subpage —
   //    that's where the actual fleet (truck regnums + models) lives.
   const merinfo = results.find((r) => /merinfo\.se\/foretag\//i.test(r.url));
-  let fordonMd: string | undefined;
   if (merinfo) {
     // Scrape main merinfo page (phones, address, contact)
     const main = await firecrawlScrape(merinfo.url).catch(() => null);
@@ -160,14 +118,11 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
     const base = merinfo.url.replace(/\/(fordon|kontakt|ekonomi|styrelse)\/?$/i, "").replace(/\/$/, "");
     const fordonUrl = `${base}/fordon`;
     const fordon = await firecrawlScrape(fordonUrl).catch(() => null);
-    fordonMd = fordon?.data?.markdown || fordon?.markdown;
+    const fordonMd = fordon?.data?.markdown || fordon?.markdown;
     if (fordonMd) {
       results.push({ url: fordonUrl, title: "Merinfo - Fordon (fleet)", markdown: fordonMd });
     }
   }
-
-  // Deterministic parse of merinfo /fordon (works even for 50+ vehicle fleets)
-  const merinfoVehicles: Vehicle[] = fordonMd ? parseMerinfoFordon(fordonMd) : [];
 
   // 3) Try to detect the company's own website and scrape it for phones/trucks
   const ownSite = results.find((r) => {
@@ -283,15 +238,7 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
   const aiPhones = (parsed.phones ?? []).map((p) => p.trim()).filter(Boolean);
   const phones = Array.from(new Set([...aiPhones, ...regexPhones])).slice(0, 10);
 
-  // Vehicles: merinfo regex parse is authoritative (complete + accurate). Add
-  // any extra AI vehicles whose regnr isn't already in the merinfo set.
-  const aiVehicles = (parsed.vehicles ?? []).filter((v) => v && (v.registration || v.brand || v.model));
-  const merinfoRegs = new Set(merinfoVehicles.map((v) => (v.registration ?? "").toUpperCase()));
-  const extraAi = aiVehicles.filter((v) => {
-    const r = (v.registration ?? "").toUpperCase();
-    return !r || !merinfoRegs.has(r);
-  });
-  const vehicles = [...merinfoVehicles, ...extraAi];
+  const vehicles = (parsed.vehicles ?? []).filter((v) => v && (v.registration || v.brand || v.model));
 
   return {
     website: parsed.website || ownSite?.url,
@@ -302,6 +249,6 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
     address: parsed.address,
     vehicles,
     sources,
-    debug: { query: queries.join(" | "), contextChars: context.length, toolCallRaw, merinfoCount: merinfoVehicles.length } as any,
+    debug: { query: queries.join(" | "), contextChars: context.length, toolCallRaw },
   };
 }

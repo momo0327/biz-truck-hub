@@ -1,1 +1,0 @@
-DELETE FROM public.companies WHERE name ~ '^[A-Z0-9]{5,7}$' AND name = upper(name);

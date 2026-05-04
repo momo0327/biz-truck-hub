@@ -12,28 +12,23 @@ export const researchCompanyFn = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { data: company, error } = await supabase
       .from("companies")
-      .select("id,name,org_number,vehicles")
+      .select("id,name,org_number")
       .eq("id", data.companyId)
       .single();
     if (error || !company) throw new Error("Company not found");
 
     try {
       const result = await researchCompany(company.name, company.org_number);
-
-      // Excel only provides company name, org number and a fleet count.
-      // AI research scrapes the actual vehicles from the web (merinfo /fordon).
-      const aiVehicles = (result.vehicles ?? []).map((v: any) => ({ ...v, source: "ai" }));
-
       const { error: upErr } = await supabase
         .from("companies")
         .update({
           website: result.website ?? null,
           phones: result.phones,
           trucks_info: result.trucks_info ?? null,
-          fleet_size: result.fleet_size ?? String(aiVehicles.length),
+          fleet_size: result.fleet_size ?? null,
           contact_person: result.contact_person ?? null,
           address: result.address ?? null,
-          vehicles: aiVehicles as any,
+          vehicles: result.vehicles as any,
           research_raw: { sources: result.sources, debug: result.debug } as any,
           researched_at: new Date().toISOString(),
         })
