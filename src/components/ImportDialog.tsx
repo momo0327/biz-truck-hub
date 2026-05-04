@@ -154,8 +154,8 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
       org_number: d.org_number,
       phones: d.phones,
       notes: d.notes,
-      vehicles: d.vehicles as any,
-      fleet_size: String(d.vehicles.length),
+      vehicles: [] as any, // empty — AI research will populate from web
+      fleet_size: String(d.vehicles.length), // count from Excel rows
     }));
     // Insert in chunks to avoid payload limits
     const chunkSize = 200;
