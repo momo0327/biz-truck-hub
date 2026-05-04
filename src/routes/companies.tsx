@@ -119,6 +119,24 @@ function CompaniesPage() {
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
+              <th className="px-4 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={filtered.length > 0 && filtered.every((c) => selectedIds.has(c.id))}
+                  ref={(el) => {
+                    if (el) {
+                      const some = filtered.some((c) => selectedIds.has(c.id));
+                      const all = filtered.length > 0 && filtered.every((c) => selectedIds.has(c.id));
+                      el.indeterminate = some && !all;
+                    }
+                  }}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelectedIds(new Set(filtered.map((c) => c.id)));
+                    else setSelectedIds(new Set());
+                  }}
+                  className="size-4 cursor-pointer"
+                />
+              </th>
               <th className="text-left px-4 py-3">Company</th>
               <th className="text-left px-4 py-3">Phones</th>
               <th className="text-left px-4 py-3">Status</th>
