@@ -72,6 +72,47 @@ function extractSwedishPhones(text: string): string[] {
   return Array.from(found);
 }
 
+// Deterministically parse the merinfo /fordon markdown — it has a strict
+// repeating block per vehicle: brand/model line, regnr, color, type, year,
+// then a "Se fullständig fordonsinfo" link. Far more reliable than the AI
+// (which gets truncated for fleets of 30+ vehicles).
+function parseMerinfoFordon(md: string): Vehicle[] {
+  const vehicles: Vehicle[] = [];
+  const blocks = md.split(/\[Se fullständig fordonsinfo\]\([^)]+\)/);
+  for (let i = 0; i < blocks.length - 1; i++) {
+    const lines = blocks[i]
+      .split(/\r?\n/)
+      .map((l) => l.trim().replace(/,\s*$/, "").trim())
+      .filter(Boolean);
+    if (lines.length < 4) continue;
+    const tail = lines.slice(-5);
+    // Skip the table-header block ("Märke / modell", "Regnr", ...)
+    if (tail.some((l) => /^Märke\s*\/\s*modell$/i.test(l) || l === "Regnr")) continue;
+
+    let brandModel = "", regnr = "", color = "", type = "", year = "";
+    if (tail.length >= 5) {
+      [brandModel, regnr, color, type, year] = tail.slice(-5);
+    } else {
+      year = tail.find((l) => /^(19|20)\d{2}$/.test(l)) ?? "";
+      regnr = tail.find((l) => /^[A-Z]{3}\s?\d{2}[A-Z0-9]$/.test(l.replace(/\s/g, ""))) ?? "";
+    }
+    const cleanReg = regnr.replace(/\s/g, "").toUpperCase();
+    if (!/^[A-Z0-9]{5,7}$/.test(cleanReg)) continue;
+
+    const parts = brandModel.split(/\s+/);
+    const brand = parts[0] ?? "";
+    const model = parts.slice(1).join(" ");
+    vehicles.push({
+      registration: cleanReg,
+      brand: brand || undefined,
+      model: model || undefined,
+      type: type || undefined,
+      year: /^(19|20)\d{2}$/.test(year) ? year : undefined,
+    });
+  }
+  return vehicles;
+}
+
 export async function researchCompany(name: string, orgNumber?: string | null): Promise<ResearchResult> {
   const lovKey = LOVABLE_KEY();
   if (!lovKey) throw new Error("LOVABLE_API_KEY not configured");
