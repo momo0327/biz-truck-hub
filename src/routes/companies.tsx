@@ -24,6 +24,7 @@ function CompaniesPage() {
   const [q, setQ] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const research = useServerFn(researchCompanyFn);
+  const deleteMany = useServerFn(deleteCompaniesFn);
 
   const filtered = companies.filter(
     (c) =>
