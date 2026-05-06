@@ -13,7 +13,7 @@ export const Route = createFileRoute("/settings")({ component: () => <AppShell><
 function SettingsPage() {
   const { user } = useAuth();
   const { companies, refresh } = useCompanies();
-
+  const deleteAll = useServerFn(deleteAllCompaniesFn);
   function exportCsv() {
     const rows = [
       ["Name", "Org Number", "Status", "Phones", "Website", "Contact", "Trucks", "Last Contact", "Notes"],
