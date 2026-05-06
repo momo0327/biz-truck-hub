@@ -3,6 +3,8 @@ import { AppShell } from "@/components/AppShell";
 import { useCompanies, STATUS_META } from "@/lib/companies";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useServerFn } from "@tanstack/react-start";
+import { deleteAllCompaniesFn } from "@/server/research.functions";
 import { toast } from "sonner";
 import { Download, Trash2 } from "lucide-react";
 
