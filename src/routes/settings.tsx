@@ -35,8 +35,33 @@ function SettingsPage() {
     if (!user) return;
     if (!confirm("Delete ALL your companies? This cannot be undone.")) return;
     try {
+      // Try server function first (works on published)
       const res = await deleteAll({});
       toast.success(`Deleted ${res.deleted} companies`);
+      refresh();
+      return;
+    } catch (e) {
+      // Preview proxy can break server fns — fall back to chunked client deletes
+      console.warn("Server delete failed, falling back to chunked client delete", e);
+    }
+    try {
+      let totalDeleted = 0;
+      for (;;) {
+        const { data: batch, error: selErr } = await supabase
+          .from("companies")
+          .select("id")
+          .eq("user_id", user.id)
+          .limit(200);
+        if (selErr) throw selErr;
+        if (!batch || batch.length === 0) break;
+        const ids = batch.map((r) => r.id);
+        const { error: delErr } = await supabase.from("companies").delete().in("id", ids);
+        if (delErr) throw delErr;
+        totalDeleted += ids.length;
+        toast.message(`Deleted ${totalDeleted}…`);
+        if (batch.length < 200) break;
+      }
+      toast.success(`Deleted ${totalDeleted} companies`);
       refresh();
     } catch (e: any) {
       toast.error(e.message ?? "Failed to delete");
