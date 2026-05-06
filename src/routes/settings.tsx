@@ -3,6 +3,8 @@ import { AppShell } from "@/components/AppShell";
 import { useCompanies, STATUS_META } from "@/lib/companies";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useServerFn } from "@tanstack/react-start";
+import { deleteAllCompaniesFn } from "@/server/research.functions";
 import { toast } from "sonner";
 import { Download, Trash2 } from "lucide-react";
 
@@ -11,7 +13,7 @@ export const Route = createFileRoute("/settings")({ component: () => <AppShell><
 function SettingsPage() {
   const { user } = useAuth();
   const { companies, refresh } = useCompanies();
-
+  const deleteAll = useServerFn(deleteAllCompaniesFn);
   function exportCsv() {
     const rows = [
       ["Name", "Org Number", "Status", "Phones", "Website", "Contact", "Trucks", "Last Contact", "Notes"],
@@ -32,9 +34,13 @@ function SettingsPage() {
   async function clearAll() {
     if (!user) return;
     if (!confirm("Delete ALL your companies? This cannot be undone.")) return;
-    const { error } = await supabase.from("companies").delete().eq("user_id", user.id);
-    if (error) toast.error(error.message);
-    else { toast.success("All companies deleted"); refresh(); }
+    try {
+      const res = await deleteAll({});
+      toast.success(`Deleted ${res.deleted} companies`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to delete");
+    }
   }
 
   return (

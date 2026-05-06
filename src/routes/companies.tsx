@@ -7,7 +7,7 @@ import { AddCompanyDialog } from "@/components/AddCompanyDialog";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { PhoneButtons } from "@/components/PhoneButtons";
 import { useCompanies, STATUS_META, type Company } from "@/lib/companies";
-import { researchCompanyFn } from "@/server/research.functions";
+import { researchCompanyFn, deleteCompaniesFn } from "@/server/research.functions";
 import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,7 @@ function CompaniesPage() {
   const [q, setQ] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const research = useServerFn(researchCompanyFn);
+  const deleteMany = useServerFn(deleteCompaniesFn);
 
   const filtered = companies.filter(
     (c) =>
@@ -69,12 +70,13 @@ function CompaniesPage() {
               onClick={async () => {
                 if (!confirm(`Delete ${selectedIds.size} selected companies?`)) return;
                 const ids = Array.from(selectedIds);
-                const { error } = await supabase.from("companies").delete().in("id", ids);
-                if (error) toast.error(error.message);
-                else {
-                  toast.success(`Deleted ${ids.length} companies`);
+                try {
+                  const res = await deleteMany({ data: { ids } });
+                  toast.success(`Deleted ${res.deleted} companies`);
                   setSelectedIds(new Set());
                   refresh();
+                } catch (e: any) {
+                  toast.error(e.message ?? "Failed to delete");
                 }
               }}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-destructive/30 text-destructive text-sm hover:bg-destructive/10"

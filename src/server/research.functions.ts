@@ -5,6 +5,32 @@ import { researchCompany } from "./research.server";
 
 const inputSchema = z.object({ companyId: z.string().uuid() });
 
+export const deleteAllCompaniesFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { error, count } = await supabase
+      .from("companies")
+      .delete({ count: "exact" })
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true, deleted: count ?? 0 };
+  });
+
+export const deleteCompaniesFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ ids: z.array(z.string().uuid()).min(1).max(5000) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error, count } = await supabase
+      .from("companies")
+      .delete({ count: "exact" })
+      .eq("user_id", userId)
+      .in("id", data.ids);
+    if (error) throw new Error(error.message);
+    return { ok: true, deleted: count ?? 0 };
+  });
+
 export const researchCompanyFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => inputSchema.parse(d))
