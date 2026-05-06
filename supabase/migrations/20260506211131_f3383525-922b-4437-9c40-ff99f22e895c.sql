@@ -1,0 +1,1 @@
+DELETE FROM public.call_logs; DELETE FROM public.companies;
