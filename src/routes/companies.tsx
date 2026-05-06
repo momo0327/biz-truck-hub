@@ -70,12 +70,13 @@ function CompaniesPage() {
               onClick={async () => {
                 if (!confirm(`Delete ${selectedIds.size} selected companies?`)) return;
                 const ids = Array.from(selectedIds);
-                const { error } = await supabase.from("companies").delete().in("id", ids);
-                if (error) toast.error(error.message);
-                else {
-                  toast.success(`Deleted ${ids.length} companies`);
+                try {
+                  const res = await deleteMany({ data: { ids } });
+                  toast.success(`Deleted ${res.deleted} companies`);
                   setSelectedIds(new Set());
                   refresh();
+                } catch (e: any) {
+                  toast.error(e.message ?? "Failed to delete");
                 }
               }}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-destructive/30 text-destructive text-sm hover:bg-destructive/10"
