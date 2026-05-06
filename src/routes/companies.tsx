@@ -7,7 +7,7 @@ import { AddCompanyDialog } from "@/components/AddCompanyDialog";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { PhoneButtons } from "@/components/PhoneButtons";
 import { useCompanies, STATUS_META, type Company } from "@/lib/companies";
-import { researchCompanyFn } from "@/server/research.functions";
+import { researchCompanyFn, deleteCompaniesFn } from "@/server/research.functions";
 import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
