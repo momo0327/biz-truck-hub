@@ -34,9 +34,13 @@ function SettingsPage() {
   async function clearAll() {
     if (!user) return;
     if (!confirm("Delete ALL your companies? This cannot be undone.")) return;
-    const { error } = await supabase.from("companies").delete().eq("user_id", user.id);
-    if (error) toast.error(error.message);
-    else { toast.success("All companies deleted"); refresh(); }
+    try {
+      const res = await deleteAll({});
+      toast.success(`Deleted ${res.deleted} companies`);
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to delete");
+    }
   }
 
   return (
