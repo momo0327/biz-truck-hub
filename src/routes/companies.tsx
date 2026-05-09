@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/companies")({ component: () => <AppShell><CompaniesPage /></AppShell> });
 
 function CompaniesPage() {
-  const { companies, refresh, refetchCompany, removeCompanies } = useCompanies();
+  const { companies, refresh, upsertCompany, refetchCompany, removeCompanies } = useCompanies();
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState<Company | null>(null);
@@ -217,7 +217,17 @@ function CompaniesPage() {
           }}
         />
       )}
-      {selected && <CompanyDrawer company={companies.find((c) => c.id === selected.id) ?? selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <CompanyDrawer
+          company={companies.find((c) => c.id === selected.id) ?? selected}
+          onClose={() => setSelected(null)}
+          onCompanyChange={(company) => {
+            upsertCompany(company);
+            setSelected(company);
+          }}
+          onCompanyDeleted={(id) => removeCompanies([id])}
+        />
+      )}
     </div>
   );
 }
