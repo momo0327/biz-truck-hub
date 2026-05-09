@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/companies")({ component: () => <AppShell><CompaniesPage /></AppShell> });
 
 function CompaniesPage() {
-  const { companies, refresh } = useCompanies();
+  const { companies, refresh, refetchCompany, removeCompanies } = useCompanies();
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState<Company | null>(null);
@@ -37,7 +37,8 @@ function CompaniesPage() {
     setBusyIds((s) => new Set(s).add(id));
     try {
       const res = await research({ data: { companyId: id } });
-      if (!res.ok) toast.error(res.error ?? "Research failed");
+      if (res.ok) await refetchCompany(id);
+      else toast.error(res.error ?? "Research failed");
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -74,7 +75,7 @@ function CompaniesPage() {
                   const res = await deleteMany({ data: { ids } });
                   toast.success(`Deleted ${res.deleted} companies`);
                   setSelectedIds(new Set());
-                  refresh();
+                  removeCompanies(ids);
                 } catch (e: any) {
                   toast.error(e.message ?? "Failed to delete");
                 }
