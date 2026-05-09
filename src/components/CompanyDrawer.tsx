@@ -8,7 +8,7 @@ import { PhoneButtons } from "./PhoneButtons";
 import { VehiclesTable, type Vehicle } from "./VehiclesTable";
 import { toast } from "sonner";
 
-export function CompanyDrawer({ company: initial, onClose }: { company: Company; onClose: () => void }) {
+export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCompanyDeleted }: { company: Company; onClose: () => void; onCompanyChange?: (company: Company) => void; onCompanyDeleted?: (id: string) => void }) {
   const [company, setCompany] = useState<Company>(initial);
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [note, setNote] = useState("");
@@ -33,7 +33,11 @@ export function CompanyDrawer({ company: initial, onClose }: { company: Company;
 
   async function refetchCompany() {
     const { data } = await supabase.from("companies").select("*").eq("id", company.id).single();
-    if (data) setCompany(data as Company);
+    if (data) {
+      const row = data as Company;
+      setCompany(row);
+      onCompanyChange?.(row);
+    }
   }
 
   async function doResearch() {
@@ -52,11 +56,24 @@ export function CompanyDrawer({ company: initial, onClose }: { company: Company;
   }
 
   async function changeStatus(status: Status) {
-    await supabase.from("companies").update({ status, last_contact: new Date().toISOString() }).eq("id", company.id);
+    const { data, error } = await supabase
+      .from("companies")
+      .update({ status, last_contact: new Date().toISOString() })
+      .eq("id", company.id)
+      .select()
+      .single();
+    if (error) return toast.error(error.message);
+    const row = data as Company;
+    setCompany(row);
+    onCompanyChange?.(row);
   }
 
   async function saveNotes() {
-    await supabase.from("companies").update({ notes }).eq("id", company.id);
+    const { data, error } = await supabase.from("companies").update({ notes }).eq("id", company.id).select().single();
+    if (error) return toast.error(error.message);
+    const row = data as Company;
+    setCompany(row);
+    onCompanyChange?.(row);
     toast.success("Notes saved");
   }
 
@@ -72,12 +89,24 @@ export function CompanyDrawer({ company: initial, onClose }: { company: Company;
     if (error) return toast.error(error.message);
     setCalls((c) => [data, ...c]);
     setNote("");
-    await supabase.from("companies").update({ last_contact: new Date().toISOString() }).eq("id", company.id);
+    const { data: updated } = await supabase
+      .from("companies")
+      .update({ last_contact: new Date().toISOString() })
+      .eq("id", company.id)
+      .select()
+      .single();
+    if (updated) {
+      const row = updated as Company;
+      setCompany(row);
+      onCompanyChange?.(row);
+    }
   }
 
   async function deleteCompany() {
     if (!confirm("Delete this company?")) return;
-    await supabase.from("companies").delete().eq("id", company.id);
+    const { error } = await supabase.from("companies").delete().eq("id", company.id);
+    if (error) return toast.error(error.message);
+    onCompanyDeleted?.(company.id);
     onClose();
   }
 

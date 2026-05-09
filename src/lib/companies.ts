@@ -23,6 +23,26 @@ export function useCompanies() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const upsertCompany = useCallback((row: Company) => {
+    setCompanies((prev) => {
+      const exists = prev.some((c) => c.id === row.id);
+      return exists ? prev.map((c) => (c.id === row.id ? row : c)) : [row, ...prev];
+    });
+  }, []);
+
+  const removeCompanies = useCallback((ids: string[]) => {
+    const idSet = new Set(ids);
+    setCompanies((prev) => prev.filter((c) => !idSet.has(c.id)));
+  }, []);
+
+  const refetchCompany = useCallback(async (id: string) => {
+    const { data, error } = await supabase.from("companies").select("*").eq("id", id).single();
+    if (error || !data) return null;
+    const row = data as Company;
+    upsertCompany(row);
+    return row;
+  }, [upsertCompany]);
+
   const refresh = useCallback(async () => {
     // Supabase caps at 1000 rows per request — paginate to load all.
     const pageSize = 1000;
@@ -52,25 +72,28 @@ export function useCompanies() {
     const channel = supabase
       .channel("companies-changes")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "companies" }, (payload) => {
-        const row = payload.new as Company;
-        setCompanies((prev) => (prev.some((c) => c.id === row.id) ? prev : [row, ...prev]));
+        upsertCompany(payload.new as Company);
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "companies" }, (payload) => {
-        const row = payload.new as Company;
-        setCompanies((prev) => prev.map((c) => (c.id === row.id ? row : c)));
+        upsertCompany(payload.new as Company);
       })
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "companies" }, (payload) => {
         const oldRow = payload.old as { id?: string };
         if (!oldRow?.id) return;
-        setCompanies((prev) => prev.filter((c) => c.id !== oldRow.id));
+        removeCompanies([oldRow.id]);
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [refresh]);
+  }, [refresh, removeCompanies, upsertCompany]);
 
-  return { companies, loading, refresh };
+  return { companies, loading, refresh, upsertCompany, removeCompanies, refetchCompany };
 }
 
 export async function updateStatus(id: string, status: Status) {
-  return supabase.from("companies").update({ status, last_contact: new Date().toISOString() }).eq("id", id);
+  return supabase
+    .from("companies")
+    .update({ status, last_contact: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
 }
