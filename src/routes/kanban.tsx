@@ -4,12 +4,15 @@ import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-p
 import { AppShell } from "@/components/AppShell";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { useCompanies, updateStatus, STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
+import { KanbanSkeleton } from "@/components/PageSkeletons";
 
 export const Route = createFileRoute("/kanban")({ component: () => <AppShell><KanbanPage /></AppShell> });
 
 function KanbanPage() {
-  const { companies, upsertCompany, removeCompanies } = useCompanies();
+  const { companies, loading, upsertCompany, removeCompanies } = useCompanies();
   const [selected, setSelected] = useState<Company | null>(null);
+
+  if (loading) return <KanbanSkeleton />;
 
   async function onDragEnd(r: DropResult) {
     if (!r.destination) return;

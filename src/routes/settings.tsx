@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useCompanies, STATUS_META } from "@/lib/companies";
+import { SettingsSkeleton } from "@/components/PageSkeletons";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useServerFn } from "@tanstack/react-start";
@@ -12,7 +13,7 @@ export const Route = createFileRoute("/settings")({ component: () => <AppShell><
 
 function SettingsPage() {
   const { user } = useAuth();
-  const { companies, refresh } = useCompanies();
+  const { companies, loading, refresh } = useCompanies();
   const deleteAll = useServerFn(deleteAllCompaniesFn);
   function exportCsv() {
     const rows = [
@@ -67,6 +68,8 @@ function SettingsPage() {
       toast.error(e.message ?? "Failed to delete");
     }
   }
+
+  if (loading) return <SettingsSkeleton />;
 
   return (
     <div className="p-8 max-w-3xl space-y-8">

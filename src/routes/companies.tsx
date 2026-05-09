@@ -7,6 +7,7 @@ import { AddCompanyDialog } from "@/components/AddCompanyDialog";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { PhoneButtons } from "@/components/PhoneButtons";
 import { useCompanies, STATUS_META, type Company } from "@/lib/companies";
+import { CompaniesSkeleton } from "@/components/PageSkeletons";
 import { researchCompanyFn, deleteCompaniesFn } from "@/server/research.functions";
 import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -15,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/companies")({ component: () => <AppShell><CompaniesPage /></AppShell> });
 
 function CompaniesPage() {
-  const { companies, refresh, upsertCompany, refetchCompany, removeCompanies } = useCompanies();
+  const { companies, loading, refresh, upsertCompany, refetchCompany, removeCompanies } = useCompanies();
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState<Company | null>(null);
@@ -57,6 +58,8 @@ function CompaniesPage() {
     setBulkBusy(false);
     toast.success("Research batch finished");
   }
+
+  if (loading) return <CompaniesSkeleton />;
 
   return (
     <div className="p-8 space-y-6 max-w-7xl">
