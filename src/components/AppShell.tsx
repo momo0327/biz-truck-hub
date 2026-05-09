@@ -43,8 +43,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={n.to}
                 to={n.to}
+                onClick={(e) => {
+                  const target = e.currentTarget;
+                  const rect = target.getBoundingClientRect();
+                  const span = document.createElement("span");
+                  const size = Math.max(rect.width, rect.height);
+                  span.className = "ripple-span";
+                  span.style.width = span.style.height = `${size}px`;
+                  span.style.left = `${e.clientX - rect.left - size / 2}px`;
+                  span.style.top = `${e.clientY - rect.top - size / 2}px`;
+                  target.appendChild(span);
+                  setTimeout(() => span.remove(), 600);
+                }}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                  "relative overflow-hidden flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
                   active
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "hover:bg-sidebar-accent/40"
