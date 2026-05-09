@@ -61,6 +61,8 @@ function Dashboard() {
         })}
       </div>
 
+      <CallsChart companies={companies} />
+
       <section>
         <h2 className="font-display text-lg mb-3">Recent activity</h2>
         <div className="rounded-lg border bg-card overflow-hidden">
