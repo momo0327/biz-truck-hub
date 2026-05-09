@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useCompanies, STATUS_META } from "@/lib/companies";
+import { DashboardSkeleton } from "@/components/PageSkeletons";
 import { Building2, PhoneCall, TrendingUp, CheckCircle2, Search } from "lucide-react";
 
 export const Route = createFileRoute("/")({ component: DashboardPage });
@@ -14,7 +15,8 @@ function DashboardPage() {
 }
 
 function Dashboard() {
-  const { companies } = useCompanies();
+  const { companies, loading } = useCompanies();
+  if (loading) return <DashboardSkeleton />;
   const today = new Date().toDateString();
   const stats = {
     total: companies.length,
