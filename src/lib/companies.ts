@@ -90,5 +90,10 @@ export function useCompanies() {
 }
 
 export async function updateStatus(id: string, status: Status) {
-  return supabase.from("companies").update({ status, last_contact: new Date().toISOString() }).eq("id", id);
+  return supabase
+    .from("companies")
+    .update({ status, last_contact: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
 }
