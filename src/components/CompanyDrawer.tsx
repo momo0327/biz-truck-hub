@@ -8,29 +8,42 @@ import { PhoneButtons } from "./PhoneButtons";
 import { VehiclesTable, type Vehicle } from "./VehiclesTable";
 import { toast } from "sonner";
 
-export function CompanyDrawer({ company, onClose }: { company: Company; onClose: () => void }) {
+export function CompanyDrawer({ company: initial, onClose }: { company: Company; onClose: () => void }) {
+  const [company, setCompany] = useState<Company>(initial);
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [note, setNote] = useState("");
-  const [notes, setNotes] = useState(company.notes ?? "");
+  const [notes, setNotes] = useState(initial.notes ?? "");
   const [researching, setResearching] = useState(false);
   const research = useServerFn(researchCompanyFn);
 
+  // Sync when parent passes a different company (e.g. realtime update arrived).
   useEffect(() => {
-    setNotes(company.notes ?? "");
+    setCompany(initial);
+    setNotes(initial.notes ?? "");
+  }, [initial]);
+
+  useEffect(() => {
     supabase
       .from("call_logs")
       .select("*")
       .eq("company_id", company.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => setCalls(data ?? []));
-  }, [company.id, company.notes]);
+  }, [company.id]);
+
+  async function refetchCompany() {
+    const { data } = await supabase.from("companies").select("*").eq("id", company.id).single();
+    if (data) setCompany(data as Company);
+  }
 
   async function doResearch() {
     setResearching(true);
     try {
       const res = await research({ data: { companyId: company.id } });
-      if (res.ok) toast.success("Research complete");
-      else toast.error(res.error ?? "Research failed");
+      if (res.ok) {
+        toast.success("Research complete");
+        await refetchCompany();
+      } else toast.error(res.error ?? "Research failed");
     } catch (e: any) {
       toast.error(e.message ?? "Research failed");
     } finally {
