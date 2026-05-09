@@ -89,7 +89,17 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
     if (error) return toast.error(error.message);
     setCalls((c) => [data, ...c]);
     setNote("");
-    await supabase.from("companies").update({ last_contact: new Date().toISOString() }).eq("id", company.id);
+    const { data: updated } = await supabase
+      .from("companies")
+      .update({ last_contact: new Date().toISOString() })
+      .eq("id", company.id)
+      .select()
+      .single();
+    if (updated) {
+      const row = updated as Company;
+      setCompany(row);
+      onCompanyChange?.(row);
+    }
   }
 
   async function deleteCompany() {
