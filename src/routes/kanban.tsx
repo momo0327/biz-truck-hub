@@ -8,14 +8,15 @@ import { useCompanies, updateStatus, STATUS_META, STATUS_ORDER, type Company, ty
 export const Route = createFileRoute("/kanban")({ component: () => <AppShell><KanbanPage /></AppShell> });
 
 function KanbanPage() {
-  const { companies } = useCompanies();
+  const { companies, upsertCompany, removeCompanies } = useCompanies();
   const [selected, setSelected] = useState<Company | null>(null);
 
   async function onDragEnd(r: DropResult) {
     if (!r.destination) return;
     const newStatus = r.destination.droppableId as Status;
     if (r.source.droppableId === newStatus) return;
-    await updateStatus(r.draggableId, newStatus);
+    const { data } = await updateStatus(r.draggableId, newStatus);
+    if (data) upsertCompany(data as Company);
   }
 
   return (
@@ -87,7 +88,17 @@ function KanbanPage() {
         </div>
       </DragDropContext>
 
-      {selected && <CompanyDrawer company={companies.find((c) => c.id === selected.id) ?? selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <CompanyDrawer
+          company={companies.find((c) => c.id === selected.id) ?? selected}
+          onClose={() => setSelected(null)}
+          onCompanyChange={(company) => {
+            upsertCompany(company);
+            setSelected(company);
+          }}
+          onCompanyDeleted={(id) => removeCompanies([id])}
+        />
+      )}
     </div>
   );
 }
