@@ -47,9 +47,23 @@ export function useCompanies() {
 
   useEffect(() => {
     refresh();
+    // Apply realtime changes incrementally so we don't re-download the entire
+    // table on every row update (research, status changes, etc.).
     const channel = supabase
       .channel("companies-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "companies" }, () => refresh())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "companies" }, (payload) => {
+        const row = payload.new as Company;
+        setCompanies((prev) => (prev.some((c) => c.id === row.id) ? prev : [row, ...prev]));
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "companies" }, (payload) => {
+        const row = payload.new as Company;
+        setCompanies((prev) => prev.map((c) => (c.id === row.id ? row : c)));
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "companies" }, (payload) => {
+        const oldRow = payload.old as { id?: string };
+        if (!oldRow?.id) return;
+        setCompanies((prev) => prev.filter((c) => c.id !== oldRow.id));
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [refresh]);
