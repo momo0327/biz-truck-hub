@@ -14,6 +14,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as KanbanRouteImport } from './routes/kanban'
 import { Route as CompaniesRouteImport } from './routes/companies'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicElksVoiceStartRouteImport } from './routes/api/public/elks-voice-start'
+import { Route as ApiPublicElksStatusRouteImport } from './routes/api/public/elks-status'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -40,6 +42,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicElksVoiceStartRoute = ApiPublicElksVoiceStartRouteImport.update({
+  id: '/api/public/elks-voice-start',
+  path: '/api/public/elks-voice-start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicElksStatusRoute = ApiPublicElksStatusRouteImport.update({
+  id: '/api/public/elks-status',
+  path: '/api/public/elks-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +59,8 @@ export interface FileRoutesByFullPath {
   '/kanban': typeof KanbanRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/api/public/elks-status': typeof ApiPublicElksStatusRoute
+  '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +68,8 @@ export interface FileRoutesByTo {
   '/kanban': typeof KanbanRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/api/public/elks-status': typeof ApiPublicElksStatusRoute
+  '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +78,37 @@ export interface FileRoutesById {
   '/kanban': typeof KanbanRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/api/public/elks-status': typeof ApiPublicElksStatusRoute
+  '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/companies' | '/kanban' | '/login' | '/settings'
+  fullPaths:
+    | '/'
+    | '/companies'
+    | '/kanban'
+    | '/login'
+    | '/settings'
+    | '/api/public/elks-status'
+    | '/api/public/elks-voice-start'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/companies' | '/kanban' | '/login' | '/settings'
-  id: '__root__' | '/' | '/companies' | '/kanban' | '/login' | '/settings'
+  to:
+    | '/'
+    | '/companies'
+    | '/kanban'
+    | '/login'
+    | '/settings'
+    | '/api/public/elks-status'
+    | '/api/public/elks-voice-start'
+  id:
+    | '__root__'
+    | '/'
+    | '/companies'
+    | '/kanban'
+    | '/login'
+    | '/settings'
+    | '/api/public/elks-status'
+    | '/api/public/elks-voice-start'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +117,8 @@ export interface RootRouteChildren {
   KanbanRoute: typeof KanbanRoute
   LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
+  ApiPublicElksStatusRoute: typeof ApiPublicElksStatusRoute
+  ApiPublicElksVoiceStartRoute: typeof ApiPublicElksVoiceStartRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +158,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/elks-voice-start': {
+      id: '/api/public/elks-voice-start'
+      path: '/api/public/elks-voice-start'
+      fullPath: '/api/public/elks-voice-start'
+      preLoaderRoute: typeof ApiPublicElksVoiceStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/elks-status': {
+      id: '/api/public/elks-status'
+      path: '/api/public/elks-status'
+      fullPath: '/api/public/elks-status'
+      preLoaderRoute: typeof ApiPublicElksStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,7 +181,18 @@ const rootRouteChildren: RootRouteChildren = {
   KanbanRoute: KanbanRoute,
   LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
+  ApiPublicElksStatusRoute: ApiPublicElksStatusRoute,
+  ApiPublicElksVoiceStartRoute: ApiPublicElksVoiceStartRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
