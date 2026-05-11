@@ -21,7 +21,7 @@ export const Route = createFileRoute("/api/public/elks-status")({
         const duration = payload.duration ? parseInt(payload.duration, 10) : null;
 
         if (callId) {
-          const update: Record<string, unknown> = { status: state ?? null };
+          const update: { status: string | null; duration?: number } = { status: state ?? null };
           if (duration !== null && !Number.isNaN(duration)) update.duration = duration;
           await supabaseAdmin
             .from("call_logs")
