@@ -224,8 +224,12 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
             <ul className="space-y-2">
               {calls.map((c) => (
                 <li key={c.id} className="text-sm border-l-2 border-primary/30 pl-3">
-                  <div>{c.note}</div>
-                  <div className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleString()}</div>
+                  <div>{c.note || (c.to_number ? `Call to ${c.to_number}` : "Call")}</div>
+                  <div className="text-xs text-muted-foreground flex gap-2">
+                    <span>{new Date(c.created_at).toLocaleString()}</span>
+                    {c.status && <span className="uppercase tracking-wide">· {c.status}</span>}
+                    {typeof c.duration === "number" && c.duration > 0 && <span>· {c.duration}s</span>}
+                  </div>
                 </li>
               ))}
               {calls.length === 0 && <li className="text-sm text-muted-foreground italic">No calls logged.</li>}
