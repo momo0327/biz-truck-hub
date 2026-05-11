@@ -146,7 +146,7 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
                 {company.researched_at ? "Re-research" : "Research with AI"}
               </button>
             </div>
-            <PhoneButtons phones={company.phones ?? []} />
+            <PhoneButtons phones={company.phones ?? []} companyId={company.id} />
             {company.website && (
               <a href={company.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-info hover:underline">
                 <ExternalLink className="size-3" /> {company.website}
