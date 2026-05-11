@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Phone, PhoneOff, Mic, MicOff, X, Minus, Delete } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Phone, PhoneOff, Mic, MicOff, X, Minus, Delete, GripHorizontal } from "lucide-react";
 import { useSoftphone, type CallState } from "./SoftphoneProvider";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +32,9 @@ export function SoftphonePanel() {
   const [showKeypad, setShowKeypad] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [dtmfTrail, setDtmfTrail] = useState("");
+  const PANEL_W = 340;
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ dx: number; dy: number } | null>(null);
 
   useEffect(() => {
     if (state === "idle") {
@@ -41,6 +44,22 @@ export function SoftphonePanel() {
     }
   }, [state]);
 
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!dragRef.current) return;
+      const x = Math.max(8, Math.min(window.innerWidth - PANEL_W - 8, e.clientX - dragRef.current.dx));
+      const y = Math.max(8, Math.min(window.innerHeight - 60, e.clientY - dragRef.current.dy));
+      setPos({ x, y });
+    };
+    const onUp = () => { dragRef.current = null; };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, []);
+
   if (!open || !call) return null;
 
   const press = (k: string) => {
@@ -48,15 +67,32 @@ export function SoftphonePanel() {
     setDtmfTrail((t) => (t + k).slice(-12));
   };
 
+  const onHeaderPointerDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+    dragRef.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+    if (!pos) setPos({ x: rect.left, y: rect.top });
+  };
+
+  const style: React.CSSProperties = pos
+    ? { left: pos.x, top: pos.y, right: "auto", bottom: "auto" }
+    : {};
+
   return (
     <div
+      style={style}
       className={cn(
-        "fixed z-50 bottom-4 right-4 w-[340px] rounded-xl border bg-card shadow-2xl overflow-hidden",
+        "fixed z-50 w-[340px] rounded-xl border bg-card shadow-2xl overflow-hidden",
+        !pos && "bottom-4 right-4",
         "animate-in slide-in-from-bottom-4 fade-in duration-200",
       )}
     >
-      <div className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-primary/10 to-transparent border-b">
+      <div
+        onPointerDown={onHeaderPointerDown}
+        className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-primary/10 to-transparent border-b cursor-grab active:cursor-grabbing select-none"
+      >
         <div className="flex items-center gap-2 min-w-0">
+          <GripHorizontal className="size-3.5 text-muted-foreground/60" />
           <span className={cn("size-2 rounded-full shrink-0", STATE_DOT[state])} />
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {STATE_LABEL[state]}
