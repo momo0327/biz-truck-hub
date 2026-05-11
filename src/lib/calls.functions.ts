@@ -12,6 +12,11 @@ function normalize(num: string) {
   return num.replace(/[^\d+]/g, "");
 }
 
+function normalizeE164(num: string) {
+  const cleaned = normalize(num.trim());
+  return cleaned.startsWith("+") ? `+${cleaned.slice(1).replace(/\D/g, "")}` : cleaned;
+}
+
 export const placeCallFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => inputSchema.parse(d))
@@ -20,9 +25,12 @@ export const placeCallFn = createServerFn({ method: "POST" })
 
     const username = process.env.ELKS_API_USERNAME;
     const password = process.env.ELKS_API_PASSWORD;
-    const fromNumber = process.env.ELKS_FROM_NUMBER;
+    const fromNumber = process.env.ELKS_FROM_NUMBER ? normalizeE164(process.env.ELKS_FROM_NUMBER) : "";
     if (!username || !password || !fromNumber) {
       return { ok: false, error: "46elks credentials not configured" };
+    }
+    if (!/^\+\d{8,15}$/.test(fromNumber)) {
+      return { ok: false, error: "46elks from number must be the full number in +4610XXXXXXX format" };
     }
 
     // Get user's phone number from profile
@@ -51,7 +59,7 @@ export const placeCallFn = createServerFn({ method: "POST" })
     });
 
     const auth = Buffer.from(`${username}:${password}`).toString("base64");
-    const res = await fetch("https://api.46elks.com/a1/Calls", {
+    const res = await fetch("https://api.46elks.com/a1/calls", {
       method: "POST",
       headers: {
         Authorization: `Basic ${auth}`,
