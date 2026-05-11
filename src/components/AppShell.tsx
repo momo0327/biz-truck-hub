@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { useAuth, signOut } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
+import { SoftphoneProvider } from "@/components/softphone/SoftphoneProvider";
+import { SoftphonePanel } from "@/components/softphone/SoftphonePanel";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
