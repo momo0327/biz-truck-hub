@@ -8,6 +8,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { deleteAllCompaniesFn } from "@/server/research.functions";
 import { toast } from "sonner";
 import { Download, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/settings")({ component: () => <AppShell><SettingsPage /></AppShell> });
 
@@ -15,6 +16,24 @@ function SettingsPage() {
   const { user } = useAuth();
   const { companies, loading, refresh } = useCompanies();
   const deleteAll = useServerFn(deleteAllCompaniesFn);
+  const [phone, setPhone] = useState("");
+  const [savingPhone, setSavingPhone] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("profiles").select("phone_number").eq("user_id", user.id).single()
+      .then(({ data }) => { if (data?.phone_number) setPhone(data.phone_number); });
+  }, [user]);
+
+  async function savePhone() {
+    if (!user) return;
+    setSavingPhone(true);
+    const { error } = await supabase.from("profiles").update({ phone_number: phone }).eq("user_id", user.id);
+    setSavingPhone(false);
+    if (error) return toast.error(error.message);
+    toast.success("Phone saved");
+  }
+
   function exportCsv() {
     const rows = [
       ["Name", "Org Number", "Status", "Phones", "Website", "Contact", "Trucks", "Last Contact", "Notes"],
@@ -81,6 +100,21 @@ function SettingsPage() {
       <section className="rounded-lg border bg-card p-6 space-y-3">
         <h2 className="font-display text-lg">Account</h2>
         <div className="text-sm"><span className="text-muted-foreground">Email:</span> {user?.email}</div>
+        <div className="space-y-1.5">
+          <label className="text-sm text-muted-foreground">Your phone number (used for outbound calls via 46elks)</label>
+          <div className="flex gap-2">
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+46701234567"
+              className="flex-1 px-3 py-2 rounded-md border bg-background text-sm"
+            />
+            <button onClick={savePhone} disabled={savingPhone} className="px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50">
+              Save
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">When you click Call on a company, 46elks rings your phone first, then connects you to them.</p>
+        </div>
       </section>
 
       <section className="rounded-lg border bg-card p-6 space-y-4">
