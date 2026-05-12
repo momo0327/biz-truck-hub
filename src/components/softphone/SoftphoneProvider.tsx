@@ -11,6 +11,7 @@ export interface ActiveCall {
   contactName?: string;
   companyId?: string;
   startedAt: number;
+  direction: "outbound" | "inbound";
 }
 
 interface SoftphoneCtx {
@@ -29,6 +30,14 @@ interface SoftphoneCtx {
   notes: string;
   setNotes: (v: string) => void;
 }
+
+type SessionMedia = Session & {
+  bye?: () => void | Promise<void>;
+  sessionDescriptionHandler?: {
+    peerConnection?: RTCPeerConnection;
+    sendDtmf?: (digit: string) => void;
+  };
+};
 
 const Ctx = createContext<SoftphoneCtx | null>(null);
 
@@ -61,18 +70,18 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const tickRef = useRef<number | null>(null);
   const fetchCreds = useServerFn(getWebrtcCredentials);
 
-  const stopTick = () => {
+  const stopTick = useCallback(() => {
     if (tickRef.current) {
       window.clearInterval(tickRef.current);
       tickRef.current = null;
     }
-  };
+  }, []);
 
-  const startTick = () => {
+  const startTick = useCallback(() => {
     stopTick();
     setDurationSec(0);
     tickRef.current = window.setInterval(() => setDurationSec((d) => d + 1), 1000);
-  };
+  }, [stopTick]);
 
   // Lazy-init the audio element
   useEffect(() => {
@@ -85,7 +94,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       a.remove();
       audioRef.current = null;
     };
-  }, []);
+  }, [stopTick]);
 
   // Connect & register with 46elks once on mount
   useEffect(() => {
@@ -109,12 +118,25 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           transportOptions: { server: creds.wsUrl, traceSip: true },
           delegate: {
             onInvite: (invitation) => {
+              console.log("[softphone] incoming INVITE", {
+                from: invitation.remoteIdentity.uri.user,
+                displayName: invitation.remoteIdentity.displayName,
+                currentState: sessionRef.current?.state,
+              });
+              if (sessionRef.current && sessionRef.current.state !== SessionState.Terminated) {
+                console.warn(
+                  "[softphone] rejecting incoming INVITE because another call is active",
+                );
+                invitation.reject().catch((err) => console.error("INVITE reject failed", err));
+                return;
+              }
               // Inbound — auto-attach handlers but don't auto-answer
               sessionRef.current = invitation;
               setCall({
                 number: invitation.remoteIdentity.uri.user ?? "Unknown",
                 contactName: invitation.remoteIdentity.displayName,
                 startedAt: Date.now(),
+                direction: "inbound",
               });
               setOpen(true);
               setState("ringing");
@@ -149,86 +171,108 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       cancelled = true;
-      try { registererRef.current?.unregister(); } catch {}
-      try { uaRef.current?.stop(); } catch {}
+      try {
+        registererRef.current?.unregister();
+      } catch (e) {
+        console.error("SIP unregister failed", e);
+      }
+      try {
+        uaRef.current?.stop();
+      } catch (e) {
+        console.error("SIP stop failed", e);
+      }
       stopTick();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const attachSessionHandlers = useCallback((session: Session) => {
-    session.stateChange.addListener((s) => {
-      if (s === SessionState.Establishing) {
-        setState("ringing");
-      } else if (s === SessionState.Established) {
-        setState("in-call");
-        setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-        startTick();
-        // Pipe remote audio into the audio element
-        const pc = (session as any).sessionDescriptionHandler?.peerConnection as RTCPeerConnection | undefined;
-        if (pc && audioRef.current) {
-          const remote = new MediaStream();
-          pc.getReceivers().forEach((r) => { if (r.track) remote.addTrack(r.track); });
-          audioRef.current.srcObject = remote;
-          audioRef.current.play().catch(() => {});
+  const attachSessionHandlers = useCallback(
+    (session: Session) => {
+      session.stateChange.addListener((s) => {
+        if (s === SessionState.Establishing) {
+          setState("ringing");
+        } else if (s === SessionState.Established) {
+          setState("in-call");
+          setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+          startTick();
+          // Pipe remote audio into the audio element
+          const pc = (session as SessionMedia).sessionDescriptionHandler?.peerConnection;
+          if (pc && audioRef.current) {
+            const remote = new MediaStream();
+            pc.getReceivers().forEach((r) => {
+              if (r.track) remote.addTrack(r.track);
+            });
+            audioRef.current.srcObject = remote;
+            audioRef.current.play().catch(() => {});
+          }
+        } else if (s === SessionState.Terminated) {
+          stopTick();
+          setState("ended");
+          sessionRef.current = null;
+          if (audioRef.current) audioRef.current.srcObject = null;
+          window.setTimeout(() => {
+            setState((cur) => (cur === "ended" ? "idle" : cur));
+            setCall((c) => (state === "ended" ? null : c));
+          }, 1500);
         }
-      } else if (s === SessionState.Terminated) {
-        stopTick();
-        setState("ended");
-        sessionRef.current = null;
-        if (audioRef.current) audioRef.current.srcObject = null;
+      });
+    },
+    [startTick, state, stopTick],
+  );
+
+  const startCall: SoftphoneCtx["startCall"] = useCallback(
+    (opts) => {
+      setMuted(false);
+      setDurationSec(0);
+      setNotes("");
+      setOpen(true);
+      setCall({ ...opts, startedAt: Date.now(), direction: "outbound" });
+
+      const ua = uaRef.current;
+      if (!ua || sipStatus !== "registered") {
+        // Fallback: mock progression so the UI is still usable
+        setState("dialing");
+        window.setTimeout(() => setState("ringing"), 1200);
         window.setTimeout(() => {
-          setState((cur) => (cur === "ended" ? "idle" : cur));
-          setCall((c) => (state === "ended" ? null : c));
-        }, 1500);
+          setState("in-call");
+          setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+          startTick();
+        }, 3000);
+        return;
       }
-    });
-  }, [state]);
 
-  const startCall: SoftphoneCtx["startCall"] = useCallback((opts) => {
-    setMuted(false);
-    setDurationSec(0);
-    setNotes("");
-    setOpen(true);
-    setCall({ ...opts, startedAt: Date.now() });
-
-    const ua = uaRef.current;
-    if (!ua || sipStatus !== "registered") {
-      // Fallback: mock progression so the UI is still usable
       setState("dialing");
-      window.setTimeout(() => setState("ringing"), 1200);
-      window.setTimeout(() => {
-        setState("in-call");
-        setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-        startTick();
-      }, 3000);
-      return;
-    }
-
-    setState("dialing");
-    const normalized = normalizeForSip(opts.number);
-    const sipUri = `sip:${normalized}@voip.46elks.com`;
-    console.log("[softphone] startCall", { rawNumber: opts.number, normalized, sipUri, contactName: opts.contactName, companyId: opts.companyId });
-    const target = UserAgent.makeURI(sipUri);
-    if (!target) {
-      console.error("[softphone] invalid SIP URI", sipUri);
-      setSipError("Invalid target URI");
-      setState("ended");
-      return;
-    }
-    const inviter = new Inviter(ua, target, {
-      sessionDescriptionHandlerOptions: {
-        constraints: { audio: true, video: false },
-      },
-    });
-    sessionRef.current = inviter;
-    attachSessionHandlers(inviter);
-    inviter.invite().catch((err) => {
-      console.error("INVITE failed", err);
-      setSipError(err instanceof Error ? err.message : String(err));
-      setState("ended");
-    });
-  }, [sipStatus, attachSessionHandlers]);
+      const normalized = normalizeForSip(opts.number);
+      const sipUri = `sip:${normalized}@voip.46elks.com`;
+      console.log("[softphone] startCall", {
+        rawNumber: opts.number,
+        normalized,
+        sipUri,
+        contactName: opts.contactName,
+        companyId: opts.companyId,
+      });
+      const target = UserAgent.makeURI(sipUri);
+      if (!target) {
+        console.error("[softphone] invalid SIP URI", sipUri);
+        setSipError("Invalid target URI");
+        setState("ended");
+        return;
+      }
+      const inviter = new Inviter(ua, target, {
+        sessionDescriptionHandlerOptions: {
+          constraints: { audio: true, video: false },
+        },
+      });
+      sessionRef.current = inviter;
+      attachSessionHandlers(inviter);
+      inviter.invite().catch((err) => {
+        console.error("INVITE failed", err);
+        setSipError(err instanceof Error ? err.message : String(err));
+        setState("ended");
+      });
+    },
+    [sipStatus, attachSessionHandlers, startTick],
+  );
 
   const hangup = useCallback(() => {
     const session = sessionRef.current;
@@ -240,7 +284,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             if (session instanceof Inviter) session.cancel();
             break;
           case SessionState.Established:
-            (session as any).bye?.();
+            (session as SessionMedia).bye?.();
             break;
         }
       } catch (e) {
@@ -254,13 +298,13 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       setCall(null);
       sessionRef.current = null;
     }, 1200);
-  }, []);
+  }, [stopTick]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
       const next = !m;
       const session = sessionRef.current;
-      const pc = (session as any)?.sessionDescriptionHandler?.peerConnection as RTCPeerConnection | undefined;
+      const pc = (session as SessionMedia | null)?.sessionDescriptionHandler?.peerConnection;
       pc?.getSenders().forEach((sender) => {
         if (sender.track && sender.track.kind === "audio") sender.track.enabled = !next;
       });
@@ -272,7 +316,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     const session = sessionRef.current;
     if (!session || session.state !== SessionState.Established) return;
     try {
-      const sdh: any = (session as any).sessionDescriptionHandler;
+      const sdh = (session as SessionMedia).sessionDescriptionHandler;
       sdh?.sendDtmf?.(digit);
     } catch (e) {
       console.error("DTMF failed", e);
@@ -281,7 +325,22 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ state, call, open, muted, durationSec, sipStatus, sipError, startCall, hangup, toggleMute, sendDtmf, setOpen, notes, setNotes }}
+      value={{
+        state,
+        call,
+        open,
+        muted,
+        durationSec,
+        sipStatus,
+        sipError,
+        startCall,
+        hangup,
+        toggleMute,
+        sendDtmf,
+        setOpen,
+        notes,
+        setNotes,
+      }}
     >
       {children}
     </Ctx.Provider>
