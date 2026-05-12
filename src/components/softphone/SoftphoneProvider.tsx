@@ -49,8 +49,15 @@ export function useSoftphone() {
 
 function normalizeForSip(num: string) {
   // Strip everything except digits and leading +
-  const cleaned = num.trim().replace(/[^\d+]/g, "");
-  return cleaned.startsWith("+") ? cleaned : `+${cleaned.replace(/^\++/, "")}`;
+  let cleaned = num.trim().replace(/[^\d+]/g, "");
+  if (cleaned.startsWith("+")) return cleaned;
+  // 00xx international prefix → +xx
+  if (cleaned.startsWith("00")) return `+${cleaned.slice(2)}`;
+  // Swedish national format starting with 0 → +46
+  if (cleaned.startsWith("0")) return `+46${cleaned.slice(1)}`;
+  // Bare digits already in country-code form (e.g. 46723…)
+  cleaned = cleaned.replace(/^\++/, "");
+  return `+${cleaned}`;
 }
 
 export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
