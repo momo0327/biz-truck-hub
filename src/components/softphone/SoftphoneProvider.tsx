@@ -1,12 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Inviter, Registerer, SessionState, UserAgent, type Session } from "sip.js";
+import { getWebrtcCredentials } from "@/lib/webrtc.functions";
 
 export type CallState = "idle" | "dialing" | "ringing" | "in-call" | "ended";
+export type SipStatus = "disconnected" | "connecting" | "registered" | "failed";
 
 export interface ActiveCall {
   number: string;
   contactName?: string;
   companyId?: string;
-  startedAt: number; // ms epoch when state became in-call
+  startedAt: number;
 }
 
 interface SoftphoneCtx {
@@ -15,6 +19,8 @@ interface SoftphoneCtx {
   open: boolean;
   muted: boolean;
   durationSec: number;
+  sipStatus: SipStatus;
+  sipError: string | null;
   startCall: (opts: { number: string; contactName?: string; companyId?: string }) => void;
   hangup: () => void;
   toggleMute: () => void;
@@ -32,6 +38,12 @@ export function useSoftphone() {
   return v;
 }
 
+function normalizeForSip(num: string) {
+  // Strip everything except digits and leading +
+  const cleaned = num.trim().replace(/[^\d+]/g, "");
+  return cleaned.startsWith("+") ? cleaned : `+${cleaned.replace(/^\++/, "")}`;
+}
+
 export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<CallState>("idle");
   const [call, setCall] = useState<ActiveCall | null>(null);
@@ -39,60 +51,232 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [muted, setMuted] = useState(false);
   const [durationSec, setDurationSec] = useState(0);
   const [notes, setNotes] = useState("");
-  const timers = useRef<number[]>([]);
-  const tickRef = useRef<number | null>(null);
+  const [sipStatus, setSipStatus] = useState<SipStatus>("disconnected");
+  const [sipError, setSipError] = useState<string | null>(null);
 
-  const clearTimers = () => {
-    timers.current.forEach((t) => window.clearTimeout(t));
-    timers.current = [];
+  const uaRef = useRef<UserAgent | null>(null);
+  const registererRef = useRef<Registerer | null>(null);
+  const sessionRef = useRef<Session | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const tickRef = useRef<number | null>(null);
+  const fetchCreds = useServerFn(getWebrtcCredentials);
+
+  const stopTick = () => {
     if (tickRef.current) {
       window.clearInterval(tickRef.current);
       tickRef.current = null;
     }
   };
 
+  const startTick = () => {
+    stopTick();
+    setDurationSec(0);
+    tickRef.current = window.setInterval(() => setDurationSec((d) => d + 1), 1000);
+  };
+
+  // Lazy-init the audio element
+  useEffect(() => {
+    const a = document.createElement("audio");
+    a.autoplay = true;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    audioRef.current = a;
+    return () => {
+      a.remove();
+      audioRef.current = null;
+    };
+  }, []);
+
+  // Connect & register with 46elks once on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setSipStatus("connecting");
+      try {
+        const creds = await fetchCreds();
+        if (cancelled) return;
+        if (!creds.ok) {
+          setSipStatus("failed");
+          setSipError(creds.error);
+          return;
+        }
+
+        const ua = new UserAgent({
+          uri: UserAgent.makeURI(`sip:${creds.uri}`)!,
+          authorizationUsername: creds.username,
+          authorizationPassword: creds.password,
+          transportOptions: { server: creds.wsUrl },
+          delegate: {
+            onInvite: (invitation) => {
+              // Inbound — auto-attach handlers but don't auto-answer
+              sessionRef.current = invitation;
+              setCall({
+                number: invitation.remoteIdentity.uri.user ?? "Unknown",
+                contactName: invitation.remoteIdentity.displayName,
+                startedAt: Date.now(),
+              });
+              setOpen(true);
+              setState("ringing");
+              attachSessionHandlers(invitation);
+            },
+          },
+        });
+
+        uaRef.current = ua;
+        await ua.start();
+        if (cancelled) return;
+
+        const registerer = new Registerer(ua);
+        registererRef.current = registerer;
+        registerer.stateChange.addListener((s) => {
+          if (cancelled) return;
+          if (s === "Registered") {
+            setSipStatus("registered");
+            setSipError(null);
+          } else if (s === "Unregistered" || s === "Terminated") {
+            setSipStatus("disconnected");
+          }
+        });
+        await registerer.register();
+      } catch (e) {
+        if (cancelled) return;
+        console.error("SIP register failed", e);
+        setSipStatus("failed");
+        setSipError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      try { registererRef.current?.unregister(); } catch {}
+      try { uaRef.current?.stop(); } catch {}
+      stopTick();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const attachSessionHandlers = useCallback((session: Session) => {
+    session.stateChange.addListener((s) => {
+      if (s === SessionState.Establishing) {
+        setState("ringing");
+      } else if (s === SessionState.Established) {
+        setState("in-call");
+        setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+        startTick();
+        // Pipe remote audio into the audio element
+        const pc = (session as any).sessionDescriptionHandler?.peerConnection as RTCPeerConnection | undefined;
+        if (pc && audioRef.current) {
+          const remote = new MediaStream();
+          pc.getReceivers().forEach((r) => { if (r.track) remote.addTrack(r.track); });
+          audioRef.current.srcObject = remote;
+          audioRef.current.play().catch(() => {});
+        }
+      } else if (s === SessionState.Terminated) {
+        stopTick();
+        setState("ended");
+        sessionRef.current = null;
+        if (audioRef.current) audioRef.current.srcObject = null;
+        window.setTimeout(() => {
+          setState((cur) => (cur === "ended" ? "idle" : cur));
+          setCall((c) => (state === "ended" ? null : c));
+        }, 1500);
+      }
+    });
+  }, [state]);
+
   const startCall: SoftphoneCtx["startCall"] = useCallback((opts) => {
-    clearTimers();
     setMuted(false);
     setDurationSec(0);
     setNotes("");
     setOpen(true);
     setCall({ ...opts, startedAt: Date.now() });
-    setState("dialing");
-    // mock progression — replace with real SIP/WebRTC events later
-    timers.current.push(window.setTimeout(() => setState("ringing"), 1500));
-    timers.current.push(
+
+    const ua = uaRef.current;
+    if (!ua || sipStatus !== "registered") {
+      // Fallback: mock progression so the UI is still usable
+      setState("dialing");
+      window.setTimeout(() => setState("ringing"), 1200);
       window.setTimeout(() => {
         setState("in-call");
         setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-        tickRef.current = window.setInterval(() => {
-          setDurationSec((d) => d + 1);
-        }, 1000);
-      }, 4000),
-    );
-  }, []);
+        startTick();
+      }, 3000);
+      return;
+    }
+
+    setState("dialing");
+    const target = UserAgent.makeURI(`sip:${normalizeForSip(opts.number)}@voip.46elks.com`);
+    if (!target) {
+      setSipError("Invalid target URI");
+      setState("ended");
+      return;
+    }
+    const inviter = new Inviter(ua, target, {
+      sessionDescriptionHandlerOptions: {
+        constraints: { audio: true, video: false },
+      },
+    });
+    sessionRef.current = inviter;
+    attachSessionHandlers(inviter);
+    inviter.invite().catch((err) => {
+      console.error("INVITE failed", err);
+      setSipError(err instanceof Error ? err.message : String(err));
+      setState("ended");
+    });
+  }, [sipStatus, attachSessionHandlers]);
 
   const hangup = useCallback(() => {
-    clearTimers();
+    const session = sessionRef.current;
+    if (session) {
+      try {
+        switch (session.state) {
+          case SessionState.Initial:
+          case SessionState.Establishing:
+            if (session instanceof Inviter) session.cancel();
+            break;
+          case SessionState.Established:
+            (session as any).bye?.();
+            break;
+        }
+      } catch (e) {
+        console.error("hangup error", e);
+      }
+    }
+    stopTick();
     setState("ended");
-    timers.current.push(
-      window.setTimeout(() => {
-        setState("idle");
-        setCall(null);
-      }, 1500),
-    );
+    window.setTimeout(() => {
+      setState("idle");
+      setCall(null);
+      sessionRef.current = null;
+    }, 1200);
   }, []);
 
-  const toggleMute = useCallback(() => setMuted((m) => !m), []);
-  const sendDtmf = useCallback((_digit: string) => {
-    // stub — will pipe to SIP session later
+  const toggleMute = useCallback(() => {
+    setMuted((m) => {
+      const next = !m;
+      const session = sessionRef.current;
+      const pc = (session as any)?.sessionDescriptionHandler?.peerConnection as RTCPeerConnection | undefined;
+      pc?.getSenders().forEach((sender) => {
+        if (sender.track && sender.track.kind === "audio") sender.track.enabled = !next;
+      });
+      return next;
+    });
   }, []);
 
-  useEffect(() => () => clearTimers(), []);
+  const sendDtmf = useCallback((digit: string) => {
+    const session = sessionRef.current;
+    if (!session || session.state !== SessionState.Established) return;
+    try {
+      const sdh: any = (session as any).sessionDescriptionHandler;
+      sdh?.sendDtmf?.(digit);
+    } catch (e) {
+      console.error("DTMF failed", e);
+    }
+  }, []);
 
   return (
     <Ctx.Provider
-      value={{ state, call, open, muted, durationSec, startCall, hangup, toggleMute, sendDtmf, setOpen, notes, setNotes }}
+      value={{ state, call, open, muted, durationSec, sipStatus, sipError, startCall, hangup, toggleMute, sendDtmf, setOpen, notes, setNotes }}
     >
       {children}
     </Ctx.Provider>

@@ -28,7 +28,7 @@ function fmt(sec: number) {
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
 
 export function SoftphonePanel() {
-  const { state, call, open, muted, durationSec, hangup, toggleMute, sendDtmf, setOpen, notes, setNotes } = useSoftphone();
+  const { state, call, open, muted, durationSec, sipStatus, sipError, hangup, toggleMute, sendDtmf, setOpen, notes, setNotes } = useSoftphone();
   const [showKeypad, setShowKeypad] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [dtmfTrail, setDtmfTrail] = useState("");
@@ -205,7 +205,10 @@ export function SoftphonePanel() {
           </div>
 
           <div className="text-[10px] text-muted-foreground text-center italic">
-            Demo mode · WebRTC not yet connected
+            {sipStatus === "registered" && "Connected · 46elks WebRTC"}
+            {sipStatus === "connecting" && "Connecting to 46elks…"}
+            {sipStatus === "disconnected" && "WebRTC disconnected"}
+            {sipStatus === "failed" && (sipError ? `WebRTC failed: ${sipError}` : "WebRTC failed")}
           </div>
         </div>
       )}
