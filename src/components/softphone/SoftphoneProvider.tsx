@@ -101,6 +101,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        console.log("[softphone] SIP connect →", { uri: creds.uri, wsUrl: creds.wsUrl });
         const ua = new UserAgent({
           uri: UserAgent.makeURI(`sip:${creds.uri}`)!,
           authorizationUsername: creds.username,
