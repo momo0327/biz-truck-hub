@@ -25,7 +25,9 @@ const STATE_DOT: Record<CallState, string> = {
 };
 
 function fmt(sec: number) {
-  const m = Math.floor(sec / 60).toString().padStart(2, "0");
+  const m = Math.floor(sec / 60)
+    .toString()
+    .padStart(2, "0");
   const s = (sec % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
 }
@@ -33,7 +35,21 @@ function fmt(sec: number) {
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
 
 export function SoftphonePanel() {
-  const { state, call, open, muted, durationSec, sipStatus, sipError, hangup, toggleMute, sendDtmf, setOpen, notes, setNotes } = useSoftphone();
+  const {
+    state,
+    call,
+    open,
+    muted,
+    durationSec,
+    sipStatus,
+    sipError,
+    hangup,
+    toggleMute,
+    sendDtmf,
+    setOpen,
+    notes,
+    setNotes,
+  } = useSoftphone();
   const [showKeypad, setShowKeypad] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [dtmfTrail, setDtmfTrail] = useState("");
@@ -52,11 +68,16 @@ export function SoftphonePanel() {
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       if (!dragRef.current) return;
-      const x = Math.max(8, Math.min(window.innerWidth - PANEL_W - 8, e.clientX - dragRef.current.dx));
+      const x = Math.max(
+        8,
+        Math.min(window.innerWidth - PANEL_W - 8, e.clientX - dragRef.current.dx),
+      );
       const y = Math.max(8, Math.min(window.innerHeight - 60, e.clientY - dragRef.current.dy));
       setPos({ x, y });
     };
-    const onUp = () => { dragRef.current = null; };
+    const onUp = () => {
+      dragRef.current = null;
+    };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     return () => {
@@ -128,7 +149,9 @@ export function SoftphonePanel() {
         <div className="p-5 space-y-4">
           <div className="text-center space-y-1">
             <div className="size-16 mx-auto rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
-              <Phone className={cn("size-7 text-primary", state === "ringing" && "animate-pulse")} />
+              <Phone
+                className={cn("size-7 text-primary", state === "ringing" && "animate-pulse")}
+              />
             </div>
             <div className="font-display text-lg leading-tight pt-2 truncate">
               {call.contactName ?? call.number}
@@ -136,14 +159,14 @@ export function SoftphonePanel() {
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {DIRECTION_LABEL[call.direction]}
             </div>
-            {call.contactName && (
-              <div className="text-xs text-muted-foreground">{call.number}</div>
-            )}
+            {call.contactName && <div className="text-xs text-muted-foreground">{call.number}</div>}
             <div className="text-2xl font-mono tabular-nums pt-1">
               {state === "in-call" ? fmt(durationSec) : "—:—"}
             </div>
             {dtmfTrail && (
-              <div className="text-xs text-muted-foreground font-mono tracking-widest">{dtmfTrail}</div>
+              <div className="text-xs text-muted-foreground font-mono tracking-widest">
+                {dtmfTrail}
+              </div>
             )}
           </div>
 
@@ -178,7 +201,9 @@ export function SoftphonePanel() {
                 )}
               >
                 {muted ? <MicOff className="size-5" /> : <Mic className="size-5" />}
-                <span className="text-[10px] uppercase tracking-wide">{muted ? "Muted" : "Mute"}</span>
+                <span className="text-[10px] uppercase tracking-wide">
+                  {muted ? "Muted" : "Mute"}
+                </span>
               </button>
               <button
                 onClick={() => setShowKeypad(true)}
