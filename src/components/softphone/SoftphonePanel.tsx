@@ -11,6 +11,11 @@ const STATE_LABEL: Record<CallState, string> = {
   ended: "Call ended",
 };
 
+const DIRECTION_LABEL = {
+  outbound: "Outbound call",
+  inbound: "Incoming call",
+};
+
 const STATE_DOT: Record<CallState, string> = {
   idle: "bg-muted-foreground",
   dialing: "bg-warning animate-pulse",
@@ -95,7 +100,7 @@ export function SoftphonePanel() {
           <GripHorizontal className="size-3.5 text-muted-foreground/60" />
           <span className={cn("size-2 rounded-full shrink-0", STATE_DOT[state])} />
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {STATE_LABEL[state]}
+            {call.direction === "outbound" && state === "ringing" ? "Calling…" : STATE_LABEL[state]}
           </span>
         </div>
         <div className="flex items-center gap-0.5">
@@ -127,6 +132,9 @@ export function SoftphonePanel() {
             </div>
             <div className="font-display text-lg leading-tight pt-2 truncate">
               {call.contactName ?? call.number}
+            </div>
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {DIRECTION_LABEL[call.direction]}
             </div>
             {call.contactName && (
               <div className="text-xs text-muted-foreground">{call.number}</div>
