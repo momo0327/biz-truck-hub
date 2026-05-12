@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/public/elks-cancel-ongoing")({
           const r = await fetch(`https://api.46elks.com/a1/calls/${c.id}`, {
             method: "POST",
             headers: { Authorization: auth, "Content-Type": "application/x-www-form-urlencoded" },
-            body: "next=hangup",
+            body: "state=hangup",
           });
           results.push({ id: c.id, status: r.status, body: (await r.text()).slice(0, 120) });
         }
