@@ -130,9 +130,9 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
                 displayName: invitation.remoteIdentity.displayName,
                 currentState: sessionRef.current?.state,
               });
-              if (sessionRef.current && sessionRef.current.state !== SessionState.Terminated) {
+              if (sessionRef.current) {
                 console.warn(
-                  "[softphone] rejecting incoming INVITE because another call is active",
+                  "[softphone] rejecting incoming INVITE — another call exists (loopback?)",
                 );
                 invitation.reject().catch((err) => console.error("INVITE reject failed", err));
                 return;
