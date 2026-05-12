@@ -75,6 +75,8 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const sessionRef = useRef<Session | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const tickRef = useRef<number | null>(null);
+  const outboundActiveRef = useRef(false);
+  const trunkNumberRef = useRef<string | null>(null);
   const fetchCreds = useServerFn(getWebrtcCredentials);
 
   const stopTick = useCallback(() => {
@@ -118,6 +120,8 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         }
 
         console.log("[softphone] SIP connect →", { uri: creds.uri, wsUrl: creds.wsUrl });
+        // Capture the trunk number (digits only) so we can detect loopback INVITEs
+        trunkNumberRef.current = creds.uri.split("@")[0].replace(/[^\d]/g, "");
         const ua = new UserAgent({
           uri: UserAgent.makeURI(`sip:${creds.uri}`)!,
           authorizationUsername: creds.username,
@@ -125,22 +129,29 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           transportOptions: { server: creds.wsUrl, traceSip: true },
           delegate: {
             onInvite: (invitation) => {
+              const fromUser = invitation.remoteIdentity.uri.user ?? "";
+              const fromDigits = fromUser.replace(/[^\d]/g, "");
               console.log("[softphone] incoming INVITE", {
-                from: invitation.remoteIdentity.uri.user,
+                from: fromUser,
                 displayName: invitation.remoteIdentity.displayName,
-                currentState: sessionRef.current?.state,
+                outboundActive: outboundActiveRef.current,
+                trunk: trunkNumberRef.current,
               });
-              if (sessionRef.current) {
-                console.warn(
-                  "[softphone] rejecting incoming INVITE — another call exists (loopback?)",
-                );
+              // Reject if an outbound call is in progress (this is the bridge leg)
+              // or if the INVITE comes from our own trunk number (loopback).
+              if (
+                outboundActiveRef.current ||
+                sessionRef.current ||
+                (trunkNumberRef.current && fromDigits === trunkNumberRef.current)
+              ) {
+                console.warn("[softphone] rejecting INVITE — outbound active or loopback");
                 invitation.reject().catch((err) => console.error("INVITE reject failed", err));
                 return;
               }
               // Inbound — auto-attach handlers but don't auto-answer
               sessionRef.current = invitation;
               setCall({
-                number: invitation.remoteIdentity.uri.user ?? "Unknown",
+                number: fromUser || "Unknown",
                 contactName: invitation.remoteIdentity.displayName,
                 startedAt: Date.now(),
                 direction: "inbound",
@@ -216,6 +227,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           stopTick();
           setState("ended");
           sessionRef.current = null;
+          outboundActiveRef.current = false;
           if (audioRef.current) audioRef.current.srcObject = null;
           window.setTimeout(() => {
             setState((cur) => (cur === "ended" ? "idle" : cur));
@@ -229,6 +241,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
   const startCall: SoftphoneCtx["startCall"] = useCallback(
     (opts) => {
+      outboundActiveRef.current = true;
       setMuted(false);
       setDurationSec(0);
       setNotes("");
@@ -304,6 +317,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       setState("idle");
       setCall(null);
       sessionRef.current = null;
+      outboundActiveRef.current = false;
     }, 1200);
   }, [stopTick]);
 
