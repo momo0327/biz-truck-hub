@@ -227,6 +227,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           stopTick();
           setState("ended");
           sessionRef.current = null;
+          outboundActiveRef.current = false;
           if (audioRef.current) audioRef.current.srcObject = null;
           window.setTimeout(() => {
             setState((cur) => (cur === "ended" ? "idle" : cur));
