@@ -271,7 +271,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         setState("ended");
       });
     },
-    [sipStatus, attachSessionHandlers],
+    [sipStatus, attachSessionHandlers, startTick],
   );
 
   const hangup = useCallback(() => {
@@ -284,7 +284,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             if (session instanceof Inviter) session.cancel();
             break;
           case SessionState.Established:
-            (session as any).bye?.();
+            (session as SessionMedia).bye?.();
             break;
         }
       } catch (e) {
@@ -304,9 +304,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     setMuted((m) => {
       const next = !m;
       const session = sessionRef.current;
-      const pc = (session as any)?.sessionDescriptionHandler?.peerConnection as
-        | RTCPeerConnection
-        | undefined;
+      const pc = (session as SessionMedia | null)?.sessionDescriptionHandler?.peerConnection;
       pc?.getSenders().forEach((sender) => {
         if (sender.track && sender.track.kind === "audio") sender.track.enabled = !next;
       });
@@ -318,7 +316,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     const session = sessionRef.current;
     if (!session || session.state !== SessionState.Established) return;
     try {
-      const sdh: any = (session as any).sessionDescriptionHandler;
+      const sdh = (session as SessionMedia).sessionDescriptionHandler;
       sdh?.sendDtmf?.(digit);
     } catch (e) {
       console.error("DTMF failed", e);
