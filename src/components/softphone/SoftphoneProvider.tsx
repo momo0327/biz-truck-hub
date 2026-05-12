@@ -316,6 +316,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       setState("idle");
       setCall(null);
       sessionRef.current = null;
+      outboundActiveRef.current = false;
     }, 1200);
   }, [stopTick]);
 
