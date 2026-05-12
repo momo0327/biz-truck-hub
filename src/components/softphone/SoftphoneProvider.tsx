@@ -75,6 +75,8 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const sessionRef = useRef<Session | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const tickRef = useRef<number | null>(null);
+  const outboundActiveRef = useRef(false);
+  const trunkNumberRef = useRef<string | null>(null);
   const fetchCreds = useServerFn(getWebrtcCredentials);
 
   const stopTick = useCallback(() => {
