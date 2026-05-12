@@ -75,7 +75,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       window.clearInterval(tickRef.current);
       tickRef.current = null;
     }
-  }, []);
+  }, [stopTick]);
 
   const startTick = useCallback(() => {
     stopTick();
