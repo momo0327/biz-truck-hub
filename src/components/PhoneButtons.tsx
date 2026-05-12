@@ -17,6 +17,7 @@ export function PhoneButtons({ phones, companyId, contactName }: { phones: strin
           <button
             onClick={(e) => {
               e.stopPropagation();
+              console.log("[PhoneButtons] click", { raw: p, companyId, contactName });
               startCall({ number: p, contactName, companyId });
             }}
             className="px-2 py-1 hover:bg-success/20 border-l border-success/20"
