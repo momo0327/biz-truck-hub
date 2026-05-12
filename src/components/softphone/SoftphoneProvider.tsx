@@ -105,7 +105,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           uri: UserAgent.makeURI(`sip:${creds.uri}`)!,
           authorizationUsername: creds.username,
           authorizationPassword: creds.password,
-          transportOptions: { server: creds.wsUrl },
+          transportOptions: { server: creds.wsUrl, traceSip: true },
           delegate: {
             onInvite: (invitation) => {
               // Inbound — auto-attach handlers but don't auto-answer
