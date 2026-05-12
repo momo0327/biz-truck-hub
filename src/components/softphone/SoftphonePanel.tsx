@@ -205,7 +205,10 @@ export function SoftphonePanel() {
           </div>
 
           <div className="text-[10px] text-muted-foreground text-center italic">
-            Demo mode · WebRTC not yet connected
+            {sipStatus === "registered" && "Connected · 46elks WebRTC"}
+            {sipStatus === "connecting" && "Connecting to 46elks…"}
+            {sipStatus === "disconnected" && "WebRTC disconnected"}
+            {sipStatus === "failed" && (sipError ? `WebRTC failed: ${sipError}` : "WebRTC failed")}
           </div>
         </div>
       )}
