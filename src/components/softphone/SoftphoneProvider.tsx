@@ -143,7 +143,9 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
               // then connects the real target after we answer it.
               if (
                 sessionRef.current ||
-                (!outboundActiveRef.current && trunkNumberRef.current && fromDigits === trunkNumberRef.current)
+                (!outboundActiveRef.current &&
+                  trunkNumberRef.current &&
+                  fromDigits === trunkNumberRef.current)
               ) {
                 console.warn("[softphone] rejecting INVITE — busy or loopback");
                 invitation.reject().catch((err) => console.error("INVITE reject failed", err));
@@ -153,7 +155,11 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
                 sessionRef.current = invitation;
                 attachSessionHandlers(invitation);
                 invitation
-                  .accept({ sessionDescriptionHandlerOptions: { constraints: { audio: true, video: false } } })
+                  .accept({
+                    sessionDescriptionHandlerOptions: {
+                      constraints: { audio: true, video: false },
+                    },
+                  })
                   .catch((err) => console.error("Outbound bridge accept failed", err));
                 return;
               }
@@ -278,17 +284,19 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         contactName: opts.contactName,
         companyId: opts.companyId,
       });
-      placeCall({ data: { toNumber: normalized, companyId: opts.companyId } }).then((res) => {
-        if (!res.ok) throw new Error(res.error);
-        console.log("[softphone] 46elks outbound bridge started", { callId: res.callId });
-      }).catch((err) => {
-        console.error("46elks outbound bridge failed", err);
-        setSipError(err instanceof Error ? err.message : String(err));
-        setState("ended");
-        outboundActiveRef.current = false;
-      });
+      placeCall({ data: { toNumber: normalized, companyId: opts.companyId } })
+        .then((res) => {
+          if (!res.ok) throw new Error(res.error);
+          console.log("[softphone] 46elks outbound bridge started", { callId: res.callId });
+        })
+        .catch((err) => {
+          console.error("46elks outbound bridge failed", err);
+          setSipError(err instanceof Error ? err.message : String(err));
+          setState("ended");
+          outboundActiveRef.current = false;
+        });
     },
-    [sipStatus, attachSessionHandlers, startTick, placeCall],
+    [sipStatus, startTick, placeCall],
   );
 
   const hangup = useCallback(async () => {
