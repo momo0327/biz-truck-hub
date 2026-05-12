@@ -206,8 +206,12 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     }
 
     setState("dialing");
-    const target = UserAgent.makeURI(`sip:${normalizeForSip(opts.number)}@voip.46elks.com`);
+    const normalized = normalizeForSip(opts.number);
+    const sipUri = `sip:${normalized}@voip.46elks.com`;
+    console.log("[softphone] startCall", { rawNumber: opts.number, normalized, sipUri, contactName: opts.contactName, companyId: opts.companyId });
+    const target = UserAgent.makeURI(sipUri);
     if (!target) {
+      console.error("[softphone] invalid SIP URI", sipUri);
       setSipError("Invalid target URI");
       setState("ended");
       return;
