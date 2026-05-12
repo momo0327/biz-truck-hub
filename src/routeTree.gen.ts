@@ -15,6 +15,7 @@ import { Route as KanbanRouteImport } from './routes/kanban'
 import { Route as CompaniesRouteImport } from './routes/companies'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicElksVoiceStartRouteImport } from './routes/api/public/elks-voice-start'
+import { Route as ApiPublicElksTestRouteImport } from './routes/api/public/elks-test'
 import { Route as ApiPublicElksStatusRouteImport } from './routes/api/public/elks-status'
 import { Route as ApiPublicElksCancelOngoingRouteImport } from './routes/api/public/elks-cancel-ongoing'
 
@@ -48,6 +49,11 @@ const ApiPublicElksVoiceStartRoute = ApiPublicElksVoiceStartRouteImport.update({
   path: '/api/public/elks-voice-start',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicElksTestRoute = ApiPublicElksTestRouteImport.update({
+  id: '/api/public/elks-test',
+  path: '/api/public/elks-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicElksStatusRoute = ApiPublicElksStatusRouteImport.update({
   id: '/api/public/elks-status',
   path: '/api/public/elks-status',
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/api/public/elks-cancel-ongoing': typeof ApiPublicElksCancelOngoingRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
+  '/api/public/elks-test': typeof ApiPublicElksTestRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
 }
 export interface FileRoutesByTo {
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/api/public/elks-cancel-ongoing': typeof ApiPublicElksCancelOngoingRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
+  '/api/public/elks-test': typeof ApiPublicElksTestRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
 }
 export interface FileRoutesById {
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/api/public/elks-cancel-ongoing': typeof ApiPublicElksCancelOngoingRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
+  '/api/public/elks-test': typeof ApiPublicElksTestRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
 }
 export interface FileRouteTypes {
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/public/elks-cancel-ongoing'
     | '/api/public/elks-status'
+    | '/api/public/elks-test'
     | '/api/public/elks-voice-start'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/public/elks-cancel-ongoing'
     | '/api/public/elks-status'
+    | '/api/public/elks-test'
     | '/api/public/elks-voice-start'
   id:
     | '__root__'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/public/elks-cancel-ongoing'
     | '/api/public/elks-status'
+    | '/api/public/elks-test'
     | '/api/public/elks-voice-start'
   fileRoutesById: FileRoutesById
 }
@@ -132,6 +144,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   ApiPublicElksCancelOngoingRoute: typeof ApiPublicElksCancelOngoingRoute
   ApiPublicElksStatusRoute: typeof ApiPublicElksStatusRoute
+  ApiPublicElksTestRoute: typeof ApiPublicElksTestRoute
   ApiPublicElksVoiceStartRoute: typeof ApiPublicElksVoiceStartRoute
 }
 
@@ -179,6 +192,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicElksVoiceStartRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/elks-test': {
+      id: '/api/public/elks-test'
+      path: '/api/public/elks-test'
+      fullPath: '/api/public/elks-test'
+      preLoaderRoute: typeof ApiPublicElksTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/elks-status': {
       id: '/api/public/elks-status'
       path: '/api/public/elks-status'
@@ -204,8 +224,18 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   ApiPublicElksCancelOngoingRoute: ApiPublicElksCancelOngoingRoute,
   ApiPublicElksStatusRoute: ApiPublicElksStatusRoute,
+  ApiPublicElksTestRoute: ApiPublicElksTestRoute,
   ApiPublicElksVoiceStartRoute: ApiPublicElksVoiceStartRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
