@@ -173,10 +173,14 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
       try {
         registererRef.current?.unregister();
-      } catch {}
+      } catch (e) {
+        console.error("SIP unregister failed", e);
+      }
       try {
         uaRef.current?.stop();
-      } catch {}
+      } catch (e) {
+        console.error("SIP stop failed", e);
+      }
       stopTick();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -192,9 +196,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
           startTick();
           // Pipe remote audio into the audio element
-          const pc = (session as any).sessionDescriptionHandler?.peerConnection as
-            | RTCPeerConnection
-            | undefined;
+          const pc = (session as SessionMedia).sessionDescriptionHandler?.peerConnection;
           if (pc && audioRef.current) {
             const remote = new MediaStream();
             pc.getReceivers().forEach((r) => {
@@ -215,7 +217,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         }
       });
     },
-    [state],
+    [startTick, state, stopTick],
   );
 
   const startCall: SoftphoneCtx["startCall"] = useCallback(
