@@ -75,7 +75,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       window.clearInterval(tickRef.current);
       tickRef.current = null;
     }
-  }, [stopTick]);
+  }, []);
 
   const startTick = useCallback(() => {
     stopTick();
@@ -94,7 +94,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       a.remove();
       audioRef.current = null;
     };
-  }, []);
+  }, [stopTick]);
 
   // Connect & register with 46elks once on mount
   useEffect(() => {
