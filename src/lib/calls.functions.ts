@@ -62,10 +62,12 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const base = `${proto}://${host}`;
     const statusUrl = `${base}/api/public/elks-status`;
 
+    // Per 46elks docs: `to` = the destination, `from` = your virtual number (caller ID).
+    // We bridge the answered leg back to the browser's WebRTC client via voice_start.connect.
     const body = new URLSearchParams({
       from: fromNumber,
-      to: webrtcNumber,
-      voice_start: JSON.stringify({ connect: target, callerid: fromNumber }),
+      to: target,
+      voice_start: JSON.stringify({ connect: webrtcNumber }),
       whenhangup: statusUrl,
     });
 
