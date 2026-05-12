@@ -4,17 +4,22 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const getWebrtcCredentials = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
-    const username = process.env.ELKS_WEBRTC_USERNAME;
-    const password = process.env.ELKS_WEBRTC_PASSWORD;
-    const uri = process.env.ELKS_WEBRTC_URI;
-    const wsUrl = process.env.ELKS_WEBRTC_WS_URL;
+    const username = process.env.ELKS_WEBRTC_USERNAME?.trim();
+    const password = process.env.ELKS_WEBRTC_PASSWORD?.trim();
+    const uri = process.env.ELKS_WEBRTC_URI?.trim();
+    const wsRaw = process.env.ELKS_WEBRTC_WS_URL?.trim();
 
-    if (!username || !password || !uri || !wsUrl) {
+    if (!username || !password || !uri || !wsRaw) {
       return { ok: false as const, error: "WebRTC credentials not configured" };
     }
 
-    // Normalize wss:// — 46elks shows it as https://, sip.js wants wss://
-    const ws = wsUrl.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
+    // 46elks shows the websocket as https://... — sip.js needs wss://
+    let ws = wsRaw;
+    if (ws.startsWith("https://")) ws = "wss://" + ws.slice("https://".length);
+    else if (ws.startsWith("http://")) ws = "ws://" + ws.slice("http://".length);
+    else if (!ws.startsWith("wss://") && !ws.startsWith("ws://")) ws = "wss://" + ws.replace(/^\/+/, "");
+
+    console.log("[webrtc] returning ws url:", ws);
 
     return { ok: true as const, username, password, uri, wsUrl: ws };
   });
