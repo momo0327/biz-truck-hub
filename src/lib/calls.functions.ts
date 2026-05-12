@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const inputSchema = z.object({
-  companyId: z.string().uuid(),
+  companyId: z.string().uuid().optional(),
   toNumber: z.string().min(4),
 });
 
@@ -14,7 +14,16 @@ function normalize(num: string) {
 
 function normalizeE164(num: string) {
   const cleaned = normalize(num.trim());
-  return cleaned.startsWith("+") ? `+${cleaned.slice(1).replace(/\D/g, "")}` : cleaned;
+  const digits = cleaned.replace(/\D/g, "");
+  if (!digits) return "";
+  if (cleaned.startsWith("+")) return `+${digits}`;
+  if (digits.startsWith("00")) return `+${digits.slice(2)}`;
+  if (digits.startsWith("0")) return `+46${digits.slice(1)}`;
+  return `+${digits}`;
+}
+
+function numberFromWebrtcUri(uri: string) {
+  return normalizeE164(uri.split("@")[0]);
 }
 
 export const placeCallFn = createServerFn({ method: "POST" })
@@ -25,36 +34,38 @@ export const placeCallFn = createServerFn({ method: "POST" })
 
     const username = process.env.ELKS_API_USERNAME;
     const password = process.env.ELKS_API_PASSWORD;
-    const fromNumber = process.env.ELKS_FROM_NUMBER ? normalizeE164(process.env.ELKS_FROM_NUMBER) : "";
-    if (!username || !password || !fromNumber) {
+    const fromNumber = process.env.ELKS_FROM_NUMBER
+      ? normalizeE164(process.env.ELKS_FROM_NUMBER)
+      : "";
+    const webrtcNumber = process.env.ELKS_WEBRTC_URI
+      ? numberFromWebrtcUri(process.env.ELKS_WEBRTC_URI)
+      : "";
+    if (!username || !password || !fromNumber || !webrtcNumber) {
       return { ok: false, error: "46elks credentials not configured" };
     }
     if (!/^\+\d{8,15}$/.test(fromNumber)) {
-      return { ok: false, error: "46elks from number must be the full number in +4610XXXXXXX format" };
+      return {
+        ok: false,
+        error: "46elks from number must be the full number in +4610XXXXXXX format",
+      };
+    }
+    if (!/^\+\d{8,15}$/.test(webrtcNumber)) {
+      return { ok: false, error: "46elks WebRTC URI must contain the full client number" };
     }
 
-    // Get user's phone number from profile
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("phone_number")
-      .eq("user_id", userId)
-      .single();
-    const myNumber = profile?.phone_number ? normalize(profile.phone_number) : null;
-    if (!myNumber) {
-      return { ok: false, error: "Add your phone number in Settings first" };
+    const target = normalizeE164(data.toNumber);
+    if (!/^\+\d{8,15}$/.test(target)) {
+      return { ok: false, error: "Target number must be a valid phone number" };
     }
-
-    const target = normalize(data.toNumber);
     const host = getRequestHost();
     const proto = getRequestHeader("x-forwarded-proto") || "https";
     const base = `${proto}://${host}`;
-    const voiceStartUrl = `${base}/api/public/elks-voice-start?to=${encodeURIComponent(target)}`;
     const statusUrl = `${base}/api/public/elks-status`;
 
     const body = new URLSearchParams({
       from: fromNumber,
-      to: myNumber,
-      voice_start: voiceStartUrl,
+      to: webrtcNumber,
+      voice_start: JSON.stringify({ connect: target, callerid: fromNumber }),
       whenhangup: statusUrl,
     });
 
@@ -72,26 +83,34 @@ export const placeCallFn = createServerFn({ method: "POST" })
       console.error("46elks call failed", res.status, text);
       return { ok: false, error: `46elks: ${res.status} ${text.slice(0, 200)}` };
     }
-    let elksData: any = {};
-    try { elksData = JSON.parse(text); } catch {}
-    const callId: string | undefined = elksData?.id;
+    let elksData: { id?: string; state?: string } = {};
+    try {
+      const parsed = JSON.parse(text) as { id?: unknown; state?: unknown };
+      elksData = {
+        id: typeof parsed.id === "string" ? parsed.id : undefined,
+        state: typeof parsed.state === "string" ? parsed.state : undefined,
+      };
+    } catch (err) {
+      console.warn("46elks call response was not JSON", err);
+    }
+    const callId = elksData.id;
 
-    // Insert call log
-    await supabase.from("call_logs").insert({
-      company_id: data.companyId,
-      user_id: userId,
-      note: `Outbound call to ${target}`,
-      elks_call_id: callId ?? null,
-      status: elksData?.state ?? "initiating",
-      to_number: target,
-      direction: "outbound",
-    });
+    if (data.companyId) {
+      await supabase.from("call_logs").insert({
+        company_id: data.companyId,
+        user_id: userId,
+        note: `Outbound call to ${target}`,
+        elks_call_id: callId ?? null,
+        status: elksData?.state ?? "initiating",
+        to_number: target,
+        direction: "outbound",
+      });
 
-    // Update last_contact
-    await supabase
-      .from("companies")
-      .update({ last_contact: new Date().toISOString() })
-      .eq("id", data.companyId);
+      await supabase
+        .from("companies")
+        .update({ last_contact: new Date().toISOString() })
+        .eq("id", data.companyId);
+    }
 
     return { ok: true, callId };
   });

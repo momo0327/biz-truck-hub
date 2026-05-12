@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useServerFn } from "@tanstack/react-start";
 import { Inviter, Registerer, SessionState, UserAgent, type Session } from "sip.js";
 import { getWebrtcCredentials } from "@/lib/webrtc.functions";
+import { placeCallFn } from "@/lib/calls.functions";
 
 export type CallState = "idle" | "dialing" | "ringing" | "in-call" | "ended";
 export type SipStatus = "disconnected" | "connecting" | "registered" | "failed";
@@ -69,6 +70,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [notes, setNotes] = useState("");
   const [sipStatus, setSipStatus] = useState<SipStatus>("disconnected");
   const [sipError, setSipError] = useState<string | null>(null);
+  const placeCall = useServerFn(placeCallFn);
 
   const uaRef = useRef<UserAgent | null>(null);
   const registererRef = useRef<Registerer | null>(null);
@@ -137,15 +139,28 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
                 outboundActive: outboundActiveRef.current,
                 trunk: trunkNumberRef.current,
               });
-              // Reject if an outbound call is in progress (this is the bridge leg)
-              // or if the INVITE comes from our own trunk number (loopback).
+              // 46elks' WebRTC flow starts as an API-created call to this browser,
+              // then connects the real target after we answer it.
               if (
-                outboundActiveRef.current ||
                 sessionRef.current ||
-                (trunkNumberRef.current && fromDigits === trunkNumberRef.current)
+                (!outboundActiveRef.current &&
+                  trunkNumberRef.current &&
+                  fromDigits === trunkNumberRef.current)
               ) {
-                console.warn("[softphone] rejecting INVITE — outbound active or loopback");
+                console.warn("[softphone] rejecting INVITE — busy or loopback");
                 invitation.reject().catch((err) => console.error("INVITE reject failed", err));
+                return;
+              }
+              if (outboundActiveRef.current) {
+                sessionRef.current = invitation;
+                attachSessionHandlers(invitation);
+                invitation
+                  .accept({
+                    sessionDescriptionHandlerOptions: {
+                      constraints: { audio: true, video: false },
+                    },
+                  })
+                  .catch((err) => console.error("Outbound bridge accept failed", err));
                 return;
               }
               // Inbound — auto-attach handlers but don't auto-answer
@@ -263,35 +278,25 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
       setState("dialing");
       const normalized = normalizeForSip(opts.number);
-      const sipUri = `sip:${normalized}@voip.46elks.com`;
       console.log("[softphone] startCall", {
         rawNumber: opts.number,
         normalized,
-        sipUri,
         contactName: opts.contactName,
         companyId: opts.companyId,
       });
-      const target = UserAgent.makeURI(sipUri);
-      if (!target) {
-        console.error("[softphone] invalid SIP URI", sipUri);
-        setSipError("Invalid target URI");
-        setState("ended");
-        return;
-      }
-      const inviter = new Inviter(ua, target, {
-        sessionDescriptionHandlerOptions: {
-          constraints: { audio: true, video: false },
-        },
-      });
-      sessionRef.current = inviter;
-      attachSessionHandlers(inviter);
-      inviter.invite().catch((err) => {
-        console.error("INVITE failed", err);
-        setSipError(err instanceof Error ? err.message : String(err));
-        setState("ended");
-      });
+      placeCall({ data: { toNumber: normalized, companyId: opts.companyId } })
+        .then((res) => {
+          if (!res.ok) throw new Error(res.error);
+          console.log("[softphone] 46elks outbound bridge started", { callId: res.callId });
+        })
+        .catch((err) => {
+          console.error("46elks outbound bridge failed", err);
+          setSipError(err instanceof Error ? err.message : String(err));
+          setState("ended");
+          outboundActiveRef.current = false;
+        });
     },
-    [sipStatus, attachSessionHandlers, startTick],
+    [sipStatus, startTick, placeCall],
   );
 
   const hangup = useCallback(async () => {
