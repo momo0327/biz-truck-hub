@@ -49,8 +49,15 @@ export function useSoftphone() {
 
 function normalizeForSip(num: string) {
   // Strip everything except digits and leading +
-  const cleaned = num.trim().replace(/[^\d+]/g, "");
-  return cleaned.startsWith("+") ? cleaned : `+${cleaned.replace(/^\++/, "")}`;
+  let cleaned = num.trim().replace(/[^\d+]/g, "");
+  if (cleaned.startsWith("+")) return cleaned;
+  // 00xx international prefix → +xx
+  if (cleaned.startsWith("00")) return `+${cleaned.slice(2)}`;
+  // Swedish national format starting with 0 → +46
+  if (cleaned.startsWith("0")) return `+46${cleaned.slice(1)}`;
+  // Bare digits already in country-code form (e.g. 46723…)
+  cleaned = cleaned.replace(/^\++/, "");
+  return `+${cleaned}`;
 }
 
 export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
@@ -123,9 +130,9 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
                 displayName: invitation.remoteIdentity.displayName,
                 currentState: sessionRef.current?.state,
               });
-              if (sessionRef.current && sessionRef.current.state !== SessionState.Terminated) {
+              if (sessionRef.current) {
                 console.warn(
-                  "[softphone] rejecting incoming INVITE because another call is active",
+                  "[softphone] rejecting incoming INVITE — another call exists (loopback?)",
                 );
                 invitation.reject().catch((err) => console.error("INVITE reject failed", err));
                 return;
