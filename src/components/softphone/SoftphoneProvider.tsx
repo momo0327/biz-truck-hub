@@ -11,6 +11,7 @@ export interface ActiveCall {
   contactName?: string;
   companyId?: string;
   startedAt: number;
+  direction: "outbound" | "inbound";
 }
 
 interface SoftphoneCtx {
@@ -109,12 +110,23 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           transportOptions: { server: creds.wsUrl, traceSip: true },
           delegate: {
             onInvite: (invitation) => {
+              console.log("[softphone] incoming INVITE", {
+                from: invitation.remoteIdentity.uri.user,
+                displayName: invitation.remoteIdentity.displayName,
+                currentState: sessionRef.current?.state,
+              });
+              if (sessionRef.current && sessionRef.current.state !== SessionState.Terminated) {
+                console.warn("[softphone] rejecting incoming INVITE because another call is active");
+                invitation.reject().catch((err) => console.error("INVITE reject failed", err));
+                return;
+              }
               // Inbound — auto-attach handlers but don't auto-answer
               sessionRef.current = invitation;
               setCall({
                 number: invitation.remoteIdentity.uri.user ?? "Unknown",
                 contactName: invitation.remoteIdentity.displayName,
                 startedAt: Date.now(),
+                direction: "inbound",
               });
               setOpen(true);
               setState("ringing");
@@ -190,7 +202,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     setDurationSec(0);
     setNotes("");
     setOpen(true);
-    setCall({ ...opts, startedAt: Date.now() });
+    setCall({ ...opts, startedAt: Date.now(), direction: "outbound" });
 
     const ua = uaRef.current;
     if (!ua || sipStatus !== "registered") {
