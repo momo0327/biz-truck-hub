@@ -240,6 +240,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
   const startCall: SoftphoneCtx["startCall"] = useCallback(
     (opts) => {
+      outboundActiveRef.current = true;
       setMuted(false);
       setDurationSec(0);
       setNotes("");
