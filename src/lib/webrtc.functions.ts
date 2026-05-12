@@ -13,8 +13,10 @@ export const getWebrtcCredentials = createServerFn({ method: "GET" })
       return { ok: false as const, error: "WebRTC credentials not configured" };
     }
 
-    // 46elks shows the websocket as https://... — sip.js needs wss://
-    let ws = wsRaw;
+    // 46elks shows the websocket as https://... — sip.js needs wss://.
+    // Accept pasted values with labels, e.g. "webRTCwebsocket: https://...".
+    const urlMatch = wsRaw.match(/(?:wss?|https?):\/\/[^\s"'<>]+/i);
+    let ws = urlMatch?.[0] ?? wsRaw;
     if (ws.startsWith("https://")) ws = "wss://" + ws.slice("https://".length);
     else if (ws.startsWith("http://")) ws = "ws://" + ws.slice("http://".length);
     else if (!ws.startsWith("wss://") && !ws.startsWith("ws://")) ws = "wss://" + ws.replace(/^\/+/, "");
