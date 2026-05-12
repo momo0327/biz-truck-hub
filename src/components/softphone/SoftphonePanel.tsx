@@ -28,7 +28,7 @@ function fmt(sec: number) {
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
 
 export function SoftphonePanel() {
-  const { state, call, open, muted, durationSec, hangup, toggleMute, sendDtmf, setOpen, notes, setNotes } = useSoftphone();
+  const { state, call, open, muted, durationSec, sipStatus, sipError, hangup, toggleMute, sendDtmf, setOpen, notes, setNotes } = useSoftphone();
   const [showKeypad, setShowKeypad] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [dtmfTrail, setDtmfTrail] = useState("");
