@@ -31,6 +31,14 @@ interface SoftphoneCtx {
   setNotes: (v: string) => void;
 }
 
+type SessionMedia = Session & {
+  bye?: () => void | Promise<void>;
+  sessionDescriptionHandler?: {
+    peerConnection?: RTCPeerConnection;
+    sendDtmf?: (digit: string) => void;
+  };
+};
+
 const Ctx = createContext<SoftphoneCtx | null>(null);
 
 export function useSoftphone() {
@@ -62,18 +70,18 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const tickRef = useRef<number | null>(null);
   const fetchCreds = useServerFn(getWebrtcCredentials);
 
-  const stopTick = () => {
+  const stopTick = useCallback(() => {
     if (tickRef.current) {
       window.clearInterval(tickRef.current);
       tickRef.current = null;
     }
-  };
+  }, []);
 
-  const startTick = () => {
+  const startTick = useCallback(() => {
     stopTick();
     setDurationSec(0);
     tickRef.current = window.setInterval(() => setDurationSec((d) => d + 1), 1000);
-  };
+  }, [stopTick]);
 
   // Lazy-init the audio element
   useEffect(() => {
