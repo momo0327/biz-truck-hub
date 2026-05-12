@@ -75,7 +75,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       window.clearInterval(tickRef.current);
       tickRef.current = null;
     }
-  }, [stopTick]);
+  }, []);
 
   const startTick = useCallback(() => {
     stopTick();
@@ -298,7 +298,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       setCall(null);
       sessionRef.current = null;
     }, 1200);
-  }, []);
+  }, [stopTick]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
