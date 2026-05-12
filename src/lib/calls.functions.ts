@@ -34,13 +34,20 @@ export const placeCallFn = createServerFn({ method: "POST" })
 
     const username = process.env.ELKS_API_USERNAME;
     const password = process.env.ELKS_API_PASSWORD;
-    const fromNumber = process.env.ELKS_FROM_NUMBER ? normalizeE164(process.env.ELKS_FROM_NUMBER) : "";
-    const webrtcNumber = process.env.ELKS_WEBRTC_URI ? numberFromWebrtcUri(process.env.ELKS_WEBRTC_URI) : "";
+    const fromNumber = process.env.ELKS_FROM_NUMBER
+      ? normalizeE164(process.env.ELKS_FROM_NUMBER)
+      : "";
+    const webrtcNumber = process.env.ELKS_WEBRTC_URI
+      ? numberFromWebrtcUri(process.env.ELKS_WEBRTC_URI)
+      : "";
     if (!username || !password || !fromNumber || !webrtcNumber) {
       return { ok: false, error: "46elks credentials not configured" };
     }
     if (!/^\+\d{8,15}$/.test(fromNumber)) {
-      return { ok: false, error: "46elks from number must be the full number in +4610XXXXXXX format" };
+      return {
+        ok: false,
+        error: "46elks from number must be the full number in +4610XXXXXXX format",
+      };
     }
     if (!/^\+\d{8,15}$/.test(webrtcNumber)) {
       return { ok: false, error: "46elks WebRTC URI must contain the full client number" };
@@ -76,9 +83,17 @@ export const placeCallFn = createServerFn({ method: "POST" })
       console.error("46elks call failed", res.status, text);
       return { ok: false, error: `46elks: ${res.status} ${text.slice(0, 200)}` };
     }
-    let elksData: any = {};
-    try { elksData = JSON.parse(text); } catch {}
-    const callId: string | undefined = elksData?.id;
+    let elksData: { id?: string; state?: string } = {};
+    try {
+      const parsed = JSON.parse(text) as { id?: unknown; state?: unknown };
+      elksData = {
+        id: typeof parsed.id === "string" ? parsed.id : undefined,
+        state: typeof parsed.state === "string" ? parsed.state : undefined,
+      };
+    } catch (err) {
+      console.warn("46elks call response was not JSON", err);
+    }
+    const callId = elksData.id;
 
     if (data.companyId) {
       await supabase.from("call_logs").insert({
