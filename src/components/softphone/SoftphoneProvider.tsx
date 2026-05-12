@@ -294,21 +294,36 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     [sipStatus, attachSessionHandlers, startTick],
   );
 
-  const hangup = useCallback(() => {
+  const hangup = useCallback(async () => {
     const session = sessionRef.current;
+    console.log("[softphone] hangup", { state: session?.state, kind: session?.constructor?.name });
     if (session) {
       try {
         switch (session.state) {
           case SessionState.Initial:
           case SessionState.Establishing:
-            if (session instanceof Inviter) session.cancel();
+            if (session instanceof Inviter) {
+              await session.cancel();
+            } else {
+              // Inbound invitation that hasn't been answered yet
+              const inv = session as unknown as { reject?: () => Promise<void> };
+              await inv.reject?.();
+            }
             break;
-          case SessionState.Established:
-            (session as SessionMedia).bye?.();
+          case SessionState.Established: {
+            const bye = (session as SessionMedia).bye;
+            if (typeof bye === "function") {
+              await bye.call(session);
+            }
+            break;
+          }
+          case SessionState.Terminating:
+          case SessionState.Terminated:
+            // already going away
             break;
         }
       } catch (e) {
-        console.error("hangup error", e);
+        console.error("[softphone] hangup error", e);
       }
     }
     stopTick();
