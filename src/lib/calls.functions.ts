@@ -34,9 +34,20 @@ export const placeCallFn = createServerFn({ method: "POST" })
 
     const username = process.env.ELKS_API_USERNAME;
     const password = process.env.ELKS_API_PASSWORD;
-    const fromNumber = process.env.ELKS_FROM_NUMBER
+
+    // Prefer the user's own caller ID from their profile; fall back to the global env number.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("phone_number")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const profileNumber = profile?.phone_number ? normalizeE164(profile.phone_number) : "";
+    const envFromNumber = process.env.ELKS_FROM_NUMBER
       ? normalizeE164(process.env.ELKS_FROM_NUMBER)
       : "";
+    const fromNumber = profileNumber || envFromNumber;
+
     const webrtcNumber = process.env.ELKS_WEBRTC_URI
       ? numberFromWebrtcUri(process.env.ELKS_WEBRTC_URI)
       : "";
