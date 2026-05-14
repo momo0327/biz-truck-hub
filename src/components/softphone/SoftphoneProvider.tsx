@@ -157,7 +157,17 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
                 invitation
                   .accept({
                     sessionDescriptionHandlerOptions: {
-                      constraints: { audio: true, video: false },
+                      constraints: {
+                        audio: {
+                          echoCancellation: false,
+                          noiseSuppression: false,
+                          autoGainControl: false,
+                          channelCount: 1,
+                          sampleRate: 48000,
+                          sampleSize: 16,
+                        },
+                        video: false,
+                      },
                     },
                   })
                   .catch((err) => console.error("Outbound bridge accept failed", err));
