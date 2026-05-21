@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { LayoutDashboard, Building2, KanbanSquare, Settings, LogOut } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth, signOut } from "@/lib/auth";
+import { useUserRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
 import { SoftphoneProvider } from "@/components/softphone/SoftphoneProvider";
@@ -16,6 +17,7 @@ const nav = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
   const loc = useLocation();
 
@@ -23,7 +25,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!loading && !user) navigate({ to: "/login" });
   }, [loading, user, navigate]);
 
-  if (loading || !user) {
+  // Admins use the admin shell only — bounce them out of the employee app.
+  useEffect(() => {
+    if (!roleLoading && user && isAdmin) navigate({ to: "/admin" });
+  }, [roleLoading, user, isAdmin, navigate]);
+
+  if (loading || roleLoading || !user || isAdmin) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-muted-foreground">Loading…</div>
