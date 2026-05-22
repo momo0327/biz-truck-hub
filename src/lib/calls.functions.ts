@@ -48,8 +48,10 @@ export const placeCallFn = createServerFn({ method: "POST" })
       : "";
     const fromNumber = profileNumber || envFromNumber;
 
-    const webrtcUri = process.env.ELKS_WEBRTC_URI?.trim() ?? "";
-    if (!username || !password || !fromNumber || !webrtcUri) {
+    const webrtcNumber = process.env.ELKS_WEBRTC_URI
+      ? numberFromWebrtcUri(process.env.ELKS_WEBRTC_URI)
+      : "";
+    if (!username || !password || !fromNumber || !webrtcNumber) {
       return { ok: false, error: "46elks credentials not configured" };
     }
     if (!/^\+\d{8,15}$/.test(fromNumber)) {
@@ -58,8 +60,9 @@ export const placeCallFn = createServerFn({ method: "POST" })
         error: "46elks from number must be the full number in +4610XXXXXXX format",
       };
     }
-    // 46elks expects the WebRTC client as a sip: URI, not a phone number.
-    const webrtcSipTo = webrtcUri.startsWith("sip:") ? webrtcUri : `sip:${webrtcUri}`;
+    if (!/^\+\d{8,15}$/.test(webrtcNumber)) {
+      return { ok: false, error: "46elks WebRTC URI must contain the full client number" };
+    }
 
     const target = normalizeE164(data.toNumber);
     if (!/^\+\d{8,15}$/.test(target)) {
@@ -75,7 +78,7 @@ export const placeCallFn = createServerFn({ method: "POST" })
     // person we called doesn't hear ringback while waiting for us to pick up.
     const body = new URLSearchParams({
       from: fromNumber,
-      to: webrtcSipTo,
+      to: webrtcNumber,
       voice_start: JSON.stringify({ connect: target, callerid: fromNumber }),
       whenhangup: statusUrl,
     });
