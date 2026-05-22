@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useServerFn } from "@tanstack/react-start";
 import { Inviter, Registerer, SessionState, UserAgent, type Session } from "sip.js";
 import { getWebrtcCredentials } from "@/lib/webrtc.functions";
-import { placeCallFn } from "@/lib/calls.functions";
+import { placeCallFn, hangupCallFn } from "@/lib/calls.functions";
 
 export type CallState = "idle" | "dialing" | "ringing" | "in-call" | "ended";
 export type SipStatus = "disconnected" | "connecting" | "registered" | "failed";

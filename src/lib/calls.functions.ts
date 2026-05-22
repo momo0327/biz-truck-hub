@@ -35,7 +35,6 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const username = process.env.ELKS_API_USERNAME;
     const password = process.env.ELKS_API_PASSWORD;
 
-    // Prefer the user's own caller ID from their profile; fall back to the global env number.
     const { data: profile } = await supabase
       .from("profiles")
       .select("phone_number")
@@ -52,21 +51,21 @@ export const placeCallFn = createServerFn({ method: "POST" })
       ? numberFromWebrtcUri(process.env.ELKS_WEBRTC_URI)
       : "";
     if (!username || !password || !fromNumber || !webrtcNumber) {
-      return { ok: false, error: "46elks credentials not configured" };
+      return { ok: false as const, error: "46elks credentials not configured" };
     }
     if (!/^\+\d{8,15}$/.test(fromNumber)) {
       return {
-        ok: false,
+        ok: false as const,
         error: "46elks from number must be the full number in +4610XXXXXXX format",
       };
     }
     if (!/^\+\d{8,15}$/.test(webrtcNumber)) {
-      return { ok: false, error: "46elks WebRTC URI must contain the full client number" };
+      return { ok: false as const, error: "46elks WebRTC URI must contain the full client number" };
     }
 
     const target = normalizeE164(data.toNumber);
     if (!/^\+\d{8,15}$/.test(target)) {
-      return { ok: false, error: "Target number must be a valid phone number" };
+      return { ok: false as const, error: "Target number must be a valid phone number" };
     }
     const host = getRequestHost();
     const proto = getRequestHeader("x-forwarded-proto") || "https";
@@ -95,7 +94,7 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const text = await res.text();
     if (!res.ok) {
       console.error("46elks call failed", res.status, text);
-      return { ok: false, error: `46elks: ${res.status} ${text.slice(0, 200)}` };
+      return { ok: false as const, error: `46elks: ${res.status} ${text.slice(0, 200)}` };
     }
     let elksData: { id?: string; state?: string } = {};
     try {
@@ -126,5 +125,34 @@ export const placeCallFn = createServerFn({ method: "POST" })
         .eq("id", data.companyId);
     }
 
-    return { ok: true, callId };
+    return { ok: true as const, callId };
+  });
+
+const hangupSchema = z.object({ callId: z.string().min(1) });
+
+export const hangupCallFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => hangupSchema.parse(d))
+  .handler(async ({ data }) => {
+    const username = process.env.ELKS_API_USERNAME;
+    const password = process.env.ELKS_API_PASSWORD;
+    if (!username || !password) return { ok: false as const, error: "no creds" };
+
+    const auth = Buffer.from(`${username}:${password}`).toString("base64");
+    // Override the call's next action with an immediate hangup. 46elks accepts
+    // POST /a1/calls/{id} with `next` set to a JSON action — empty/hangup ends the call.
+    const res = await fetch(`https://api.46elks.com/a1/calls/${encodeURIComponent(data.callId)}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ next: JSON.stringify({ hangup: "reject" }) }).toString(),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      console.error("46elks hangup failed", res.status, text);
+      return { ok: false as const, error: `46elks: ${res.status}` };
+    }
+    return { ok: true as const };
   });
