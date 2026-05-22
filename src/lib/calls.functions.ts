@@ -116,7 +116,10 @@ export const placeCallFn = createServerFn({ method: "POST" })
         user_id: userId,
         note: `Outbound call to ${target}`,
         elks_call_id: callId ?? null,
-        status: elksData?.state ?? "initiating",
+        // Always start as "initiating" — 46elks reports "ongoing" the moment
+        // the API call is created, before the customer has actually answered.
+        // The /api/public/elks-status webhook updates this to success/busy/etc.
+        status: "initiating",
         to_number: target,
         direction: "outbound",
       });
