@@ -232,16 +232,23 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const stopRemoteAudioPoll = useCallback(() => {
+    if (remoteAudioPollRef.current) {
+      window.clearInterval(remoteAudioPollRef.current);
+      remoteAudioPollRef.current = null;
+    }
+  }, []);
+
   const attachSessionHandlers = useCallback(
     (session: Session) => {
       session.stateChange.addListener((s) => {
         if (s === SessionState.Establishing) {
           setState("ringing");
         } else if (s === SessionState.Established) {
-          setState("in-call");
-          setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-          startTick();
-          // Pipe remote audio into the audio element
+          // Browser SIP leg is up, but the *target's* phone is still ringing
+          // (46elks now starts dialing them). Keep state as "ringing" until
+          // we actually receive remote audio packets — that's when they picked up.
+          setState("ringing");
           const pc = (session as SessionMedia).sessionDescriptionHandler?.peerConnection;
           if (pc && audioRef.current) {
             const remote = new MediaStream();
@@ -251,11 +258,45 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             audioRef.current.srcObject = remote;
             audioRef.current.play().catch(() => {});
           }
+
+          // Poll inbound RTP stats; flip to in-call when audio actually flows.
+          stopRemoteAudioPoll();
+          let lastPackets = 0;
+          let stableTicks = 0;
+          remoteAudioPollRef.current = window.setInterval(async () => {
+            if (!pc) return;
+            try {
+              const stats = await pc.getStats();
+              let packets = 0;
+              stats.forEach((report) => {
+                if (
+                  report.type === "inbound-rtp" &&
+                  (report as RTCInboundRtpStreamStats).kind === "audio"
+                ) {
+                  packets += (report as RTCInboundRtpStreamStats).packetsReceived ?? 0;
+                }
+              });
+              if (packets > lastPackets) {
+                stableTicks += 1;
+                lastPackets = packets;
+                if (stableTicks >= 2) {
+                  stopRemoteAudioPoll();
+                  setState("in-call");
+                  setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+                  startTick();
+                }
+              }
+            } catch {
+              /* ignore */
+            }
+          }, 400);
         } else if (s === SessionState.Terminated) {
           stopTick();
+          stopRemoteAudioPoll();
           setState("ended");
           sessionRef.current = null;
           outboundActiveRef.current = false;
+          elksCallIdRef.current = null;
           if (audioRef.current) audioRef.current.srcObject = null;
           window.setTimeout(() => {
             setState((cur) => (cur === "ended" ? "idle" : cur));
@@ -264,7 +305,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         }
       });
     },
-    [startTick, state, stopTick],
+    [startTick, state, stopTick, stopRemoteAudioPoll],
   );
 
   const startCall: SoftphoneCtx["startCall"] = useCallback(
