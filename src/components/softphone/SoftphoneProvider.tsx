@@ -299,6 +299,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       placeCall({ data: { toNumber: normalized, companyId: opts.companyId } })
         .then((res) => {
           if (!res.ok) throw new Error(res.error);
+          elksCallIdRef.current = res.callId ?? null;
           console.log("[softphone] 46elks outbound bridge started", { callId: res.callId });
         })
         .catch((err) => {
