@@ -75,7 +75,7 @@ export const placeCallFn = createServerFn({ method: "POST" })
     // person we called doesn't hear ringback while waiting for us to pick up.
     const body = new URLSearchParams({
       from: fromNumber,
-      to: webrtcNumber,
+      to: webrtcSipTo,
       voice_start: JSON.stringify({ connect: target, callerid: fromNumber }),
       whenhangup: statusUrl,
     });
