@@ -356,7 +356,22 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
   const hangup = useCallback(async () => {
     const session = sessionRef.current;
-    console.log("[softphone] hangup", { state: session?.state, kind: session?.constructor?.name });
+    const elksId = elksCallIdRef.current;
+    console.log("[softphone] hangup", {
+      state: session?.state,
+      kind: session?.constructor?.name,
+      elksId,
+    });
+
+    // Always tell 46elks to tear down the call — this kills the target leg
+    // even when our SIP session hasn't been established yet (so the client's
+    // phone stops ringing immediately).
+    if (elksId) {
+      hangupCall({ data: { callId: elksId } }).catch((err) =>
+        console.error("[softphone] elks hangup failed", err),
+      );
+    }
+
     if (session) {
       try {
         switch (session.state) {
@@ -365,7 +380,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             if (session instanceof Inviter) {
               await session.cancel();
             } else {
-              // Inbound invitation that hasn't been answered yet
               const inv = session as unknown as { reject?: () => Promise<void> };
               await inv.reject?.();
             }
@@ -379,7 +393,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           }
           case SessionState.Terminating:
           case SessionState.Terminated:
-            // already going away
             break;
         }
       } catch (e) {
@@ -387,14 +400,16 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       }
     }
     stopTick();
+    stopRemoteAudioPoll();
     setState("ended");
     window.setTimeout(() => {
       setState("idle");
       setCall(null);
       sessionRef.current = null;
       outboundActiveRef.current = false;
+      elksCallIdRef.current = null;
     }, 1200);
-  }, [stopTick]);
+  }, [stopTick, stopRemoteAudioPoll, hangupCall]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
