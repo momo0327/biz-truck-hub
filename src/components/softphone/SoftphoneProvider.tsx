@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useServerFn } from "@tanstack/react-start";
 import { Inviter, Registerer, SessionState, UserAgent, type Session } from "sip.js";
 import { getWebrtcCredentials } from "@/lib/webrtc.functions";
-import { placeCallFn, hangupCallFn } from "@/lib/calls.functions";
+import { placeCallFn } from "@/lib/calls.functions";
 
 export type CallState = "idle" | "dialing" | "ringing" | "in-call" | "ended";
 export type SipStatus = "disconnected" | "connecting" | "registered" | "failed";
@@ -71,7 +71,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [sipStatus, setSipStatus] = useState<SipStatus>("disconnected");
   const [sipError, setSipError] = useState<string | null>(null);
   const placeCall = useServerFn(placeCallFn);
-  const hangupCall = useServerFn(hangupCallFn);
 
   const uaRef = useRef<UserAgent | null>(null);
   const registererRef = useRef<Registerer | null>(null);
@@ -80,8 +79,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const tickRef = useRef<number | null>(null);
   const outboundActiveRef = useRef(false);
   const trunkNumberRef = useRef<string | null>(null);
-  const elksCallIdRef = useRef<string | null>(null);
-  const remoteAudioPollRef = useRef<number | null>(null);
   const fetchCreds = useServerFn(getWebrtcCredentials);
 
   const stopTick = useCallback(() => {
@@ -232,23 +229,16 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const stopRemoteAudioPoll = useCallback(() => {
-    if (remoteAudioPollRef.current) {
-      window.clearInterval(remoteAudioPollRef.current);
-      remoteAudioPollRef.current = null;
-    }
-  }, []);
-
   const attachSessionHandlers = useCallback(
     (session: Session) => {
       session.stateChange.addListener((s) => {
         if (s === SessionState.Establishing) {
           setState("ringing");
         } else if (s === SessionState.Established) {
-          // Browser SIP leg is up, but the *target's* phone is still ringing
-          // (46elks now starts dialing them). Keep state as "ringing" until
-          // we actually receive remote audio packets — that's when they picked up.
-          setState("ringing");
+          setState("in-call");
+          setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+          startTick();
+          // Pipe remote audio into the audio element
           const pc = (session as SessionMedia).sessionDescriptionHandler?.peerConnection;
           if (pc && audioRef.current) {
             const remote = new MediaStream();
@@ -258,45 +248,11 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             audioRef.current.srcObject = remote;
             audioRef.current.play().catch(() => {});
           }
-
-          // Poll inbound RTP stats; flip to in-call when audio actually flows.
-          stopRemoteAudioPoll();
-          let lastPackets = 0;
-          let stableTicks = 0;
-          remoteAudioPollRef.current = window.setInterval(async () => {
-            if (!pc) return;
-            try {
-              const stats = await pc.getStats();
-              let packets = 0;
-              stats.forEach((report) => {
-                if (
-                  report.type === "inbound-rtp" &&
-                  (report as RTCInboundRtpStreamStats).kind === "audio"
-                ) {
-                  packets += (report as RTCInboundRtpStreamStats).packetsReceived ?? 0;
-                }
-              });
-              if (packets > lastPackets) {
-                stableTicks += 1;
-                lastPackets = packets;
-                if (stableTicks >= 2) {
-                  stopRemoteAudioPoll();
-                  setState("in-call");
-                  setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-                  startTick();
-                }
-              }
-            } catch {
-              /* ignore */
-            }
-          }, 400);
         } else if (s === SessionState.Terminated) {
           stopTick();
-          stopRemoteAudioPoll();
           setState("ended");
           sessionRef.current = null;
           outboundActiveRef.current = false;
-          elksCallIdRef.current = null;
           if (audioRef.current) audioRef.current.srcObject = null;
           window.setTimeout(() => {
             setState((cur) => (cur === "ended" ? "idle" : cur));
@@ -305,7 +261,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         }
       });
     },
-    [startTick, state, stopTick, stopRemoteAudioPoll],
+    [startTick, state, stopTick],
   );
 
   const startCall: SoftphoneCtx["startCall"] = useCallback(
@@ -341,7 +297,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       placeCall({ data: { toNumber: normalized, companyId: opts.companyId } })
         .then((res) => {
           if (!res.ok) throw new Error(res.error);
-          elksCallIdRef.current = res.callId ?? null;
           console.log("[softphone] 46elks outbound bridge started", { callId: res.callId });
         })
         .catch((err) => {
@@ -356,22 +311,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
   const hangup = useCallback(async () => {
     const session = sessionRef.current;
-    const elksId = elksCallIdRef.current;
-    console.log("[softphone] hangup", {
-      state: session?.state,
-      kind: session?.constructor?.name,
-      elksId,
-    });
-
-    // Always tell 46elks to tear down the call — this kills the target leg
-    // even when our SIP session hasn't been established yet (so the client's
-    // phone stops ringing immediately).
-    if (elksId) {
-      hangupCall({ data: { callId: elksId } }).catch((err) =>
-        console.error("[softphone] elks hangup failed", err),
-      );
-    }
-
+    console.log("[softphone] hangup", { state: session?.state, kind: session?.constructor?.name });
     if (session) {
       try {
         switch (session.state) {
@@ -380,6 +320,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             if (session instanceof Inviter) {
               await session.cancel();
             } else {
+              // Inbound invitation that hasn't been answered yet
               const inv = session as unknown as { reject?: () => Promise<void> };
               await inv.reject?.();
             }
@@ -393,6 +334,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           }
           case SessionState.Terminating:
           case SessionState.Terminated:
+            // already going away
             break;
         }
       } catch (e) {
@@ -400,16 +342,14 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       }
     }
     stopTick();
-    stopRemoteAudioPoll();
     setState("ended");
     window.setTimeout(() => {
       setState("idle");
       setCall(null);
       sessionRef.current = null;
       outboundActiveRef.current = false;
-      elksCallIdRef.current = null;
     }, 1200);
-  }, [stopTick, stopRemoteAudioPoll, hangupCall]);
+  }, [stopTick]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
