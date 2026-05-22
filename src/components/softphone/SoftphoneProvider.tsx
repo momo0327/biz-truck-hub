@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useServerFn } from "@tanstack/react-start";
 import { Inviter, Registerer, SessionState, UserAgent, type Session } from "sip.js";
 import { getWebrtcCredentials } from "@/lib/webrtc.functions";
-import { placeCallFn } from "@/lib/calls.functions";
+import { placeCallFn, hangupCallFn } from "@/lib/calls.functions";
 
 export type CallState = "idle" | "dialing" | "ringing" | "in-call" | "ended";
 export type SipStatus = "disconnected" | "connecting" | "registered" | "failed";
@@ -71,6 +71,8 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [sipStatus, setSipStatus] = useState<SipStatus>("disconnected");
   const [sipError, setSipError] = useState<string | null>(null);
   const placeCall = useServerFn(placeCallFn);
+  const hangupServerCall = useServerFn(hangupCallFn);
+  const elksCallIdRef = useRef<string | null>(null);
 
   const uaRef = useRef<UserAgent | null>(null);
   const registererRef = useRef<Registerer | null>(null);
@@ -297,6 +299,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       placeCall({ data: { toNumber: normalized, companyId: opts.companyId } })
         .then((res) => {
           if (!res.ok) throw new Error(res.error);
+          elksCallIdRef.current = res.callId ?? null;
           console.log("[softphone] 46elks outbound bridge started", { callId: res.callId });
         })
         .catch((err) => {
@@ -311,7 +314,17 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
   const hangup = useCallback(async () => {
     const session = sessionRef.current;
-    console.log("[softphone] hangup", { state: session?.state, kind: session?.constructor?.name });
+    const callId = elksCallIdRef.current;
+    console.log("[softphone] hangup", { state: session?.state, kind: session?.constructor?.name, callId });
+
+    // Tell 46elks to terminate the whole call (both legs) — without this the
+    // customer's phone keeps ringing if we hang up before they answer.
+    if (callId) {
+      hangupServerCall({ data: { callId } }).catch((err) => {
+        console.error("[softphone] 46elks hangup failed", err);
+      });
+    }
+
     if (session) {
       try {
         switch (session.state) {
@@ -320,7 +333,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             if (session instanceof Inviter) {
               await session.cancel();
             } else {
-              // Inbound invitation that hasn't been answered yet
               const inv = session as unknown as { reject?: () => Promise<void> };
               await inv.reject?.();
             }
@@ -334,7 +346,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           }
           case SessionState.Terminating:
           case SessionState.Terminated:
-            // already going away
             break;
         }
       } catch (e) {
@@ -348,8 +359,9 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       setCall(null);
       sessionRef.current = null;
       outboundActiveRef.current = false;
+      elksCallIdRef.current = null;
     }, 1200);
-  }, [stopTick]);
+  }, [stopTick, hangupServerCall]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {

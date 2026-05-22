@@ -116,7 +116,10 @@ export const placeCallFn = createServerFn({ method: "POST" })
         user_id: userId,
         note: `Outbound call to ${target}`,
         elks_call_id: callId ?? null,
-        status: elksData?.state ?? "initiating",
+        // Always start as "initiating" — 46elks reports "ongoing" the moment
+        // the API call is created, before the customer has actually answered.
+        // The /api/public/elks-status webhook updates this to success/busy/etc.
+        status: "initiating",
         to_number: target,
         direction: "outbound",
       });
@@ -128,4 +131,32 @@ export const placeCallFn = createServerFn({ method: "POST" })
     }
 
     return { ok: true, callId };
+  });
+
+// Tell 46elks to hang up an in-progress call. Used when the user hangs up the
+// browser leg before (or after) the customer answers — without this the
+// customer's phone keeps ringing because 46elks already dispatched the call.
+export const hangupCallFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ callId: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const username = process.env.ELKS_API_USERNAME;
+    const password = process.env.ELKS_API_PASSWORD;
+    if (!username || !password) return { ok: false, error: "46elks not configured" };
+
+    const auth = Buffer.from(`${username}:${password}`).toString("base64");
+    const res = await fetch(`https://api.46elks.com/a1/calls/${encodeURIComponent(data.callId)}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ state: "hangup" }).toString(),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      console.error("46elks hangup failed", res.status, text);
+      return { ok: false, error: `46elks: ${res.status} ${text.slice(0, 200)}` };
+    }
+    return { ok: true };
   });
