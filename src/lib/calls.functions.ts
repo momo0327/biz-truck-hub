@@ -73,15 +73,12 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const base = `${proto}://${host}`;
     const statusUrl = `${base}/api/public/elks-status`;
 
-    // Originate from the browser (WebRTC client) directly to the target.
-    // The softphone auto-answers its own outbound leg, 46elks dials the target,
-    // and bridges instantly when they pick up — no ringback on either end.
-    // `from` is the user's caller ID shown to the target; the WebRTC leg is
-    // identified by 46elks via the account credentials.
+    // Per 46elks docs: `to` = the destination, `from` = your virtual number (caller ID).
+    // We bridge the answered leg back to the browser's WebRTC client via voice_start.connect.
     const body = new URLSearchParams({
       from: fromNumber,
       to: target,
-      voice_start: JSON.stringify({ connect: webrtcNumber, callerid: fromNumber }),
+      voice_start: JSON.stringify({ connect: webrtcNumber }),
       whenhangup: statusUrl,
     });
 
