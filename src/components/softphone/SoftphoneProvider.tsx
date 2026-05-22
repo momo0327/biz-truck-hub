@@ -71,6 +71,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [sipStatus, setSipStatus] = useState<SipStatus>("disconnected");
   const [sipError, setSipError] = useState<string | null>(null);
   const placeCall = useServerFn(placeCallFn);
+  const hangupCall = useServerFn(hangupCallFn);
 
   const uaRef = useRef<UserAgent | null>(null);
   const registererRef = useRef<Registerer | null>(null);
@@ -79,6 +80,8 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const tickRef = useRef<number | null>(null);
   const outboundActiveRef = useRef(false);
   const trunkNumberRef = useRef<string | null>(null);
+  const elksCallIdRef = useRef<string | null>(null);
+  const remoteAudioPollRef = useRef<number | null>(null);
   const fetchCreds = useServerFn(getWebrtcCredentials);
 
   const stopTick = useCallback(() => {
