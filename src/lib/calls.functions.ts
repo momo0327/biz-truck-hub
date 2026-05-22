@@ -78,7 +78,7 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const body = new URLSearchParams({
       from: fromNumber,
       to: webrtcNumber,
-      voice_start: JSON.stringify({ connect: target, callerid: fromNumber }),
+      voice_start: JSON.stringify({ connect: target }),
       whenhangup: statusUrl,
     });
 
