@@ -45,10 +45,7 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const envFromNumber = process.env.ELKS_FROM_NUMBER
       ? normalizeE164(process.env.ELKS_FROM_NUMBER)
       : "";
-    // 46elks only allows caller IDs that are active/unlocked on the account.
-    // Prefer the configured 46elks number so employees' profile numbers don't
-    // accidentally make the API reject and end the call immediately.
-    const fromNumber = envFromNumber || profileNumber;
+    const fromNumber = profileNumber || envFromNumber;
 
     const webrtcNumber = process.env.ELKS_WEBRTC_URI
       ? numberFromWebrtcUri(process.env.ELKS_WEBRTC_URI)
@@ -81,7 +78,7 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const body = new URLSearchParams({
       from: fromNumber,
       to: webrtcNumber,
-      voice_start: JSON.stringify({ connect: target }),
+      voice_start: JSON.stringify({ connect: target, callerid: fromNumber }),
       whenhangup: statusUrl,
     });
 
