@@ -314,7 +314,17 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
   const hangup = useCallback(async () => {
     const session = sessionRef.current;
-    console.log("[softphone] hangup", { state: session?.state, kind: session?.constructor?.name });
+    const callId = elksCallIdRef.current;
+    console.log("[softphone] hangup", { state: session?.state, kind: session?.constructor?.name, callId });
+
+    // Tell 46elks to terminate the whole call (both legs) — without this the
+    // customer's phone keeps ringing if we hang up before they answer.
+    if (callId) {
+      hangupServerCall({ data: { callId } }).catch((err) => {
+        console.error("[softphone] 46elks hangup failed", err);
+      });
+    }
+
     if (session) {
       try {
         switch (session.state) {
@@ -323,7 +333,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             if (session instanceof Inviter) {
               await session.cancel();
             } else {
-              // Inbound invitation that hasn't been answered yet
               const inv = session as unknown as { reject?: () => Promise<void> };
               await inv.reject?.();
             }
@@ -337,7 +346,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           }
           case SessionState.Terminating:
           case SessionState.Terminated:
-            // already going away
             break;
         }
       } catch (e) {
@@ -351,8 +359,9 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       setCall(null);
       sessionRef.current = null;
       outboundActiveRef.current = false;
+      elksCallIdRef.current = null;
     }, 1200);
-  }, [stopTick]);
+  }, [stopTick, hangupServerCall]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
