@@ -5,7 +5,7 @@ import { DashboardSkeleton } from "@/components/PageSkeletons";
 import { CallsChart } from "@/components/CallsChart";
 import { Building2, PhoneCall, TrendingUp, CheckCircle2, Search } from "lucide-react";
 
-export const Route = createFileRoute("/")({ component: DashboardPage });
+export const Route = createFileRoute("/_app/")({ component: DashboardPage });
 
 function DashboardPage() {
   return (
