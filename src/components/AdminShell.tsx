@@ -32,7 +32,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className="w-60 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col">
+      <aside className="w-60 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col sticky top-0 h-screen">
         <div className="px-5 py-6">
           <img src={logo} alt="Auto Wahab Export" className="h-8 w-auto brightness-0 invert" />
           <div className="mt-3 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] uppercase tracking-wider font-medium">

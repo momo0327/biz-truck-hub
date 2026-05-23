@@ -1,4 +1,4 @@
-import { createContext, createElement, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
@@ -46,7 +46,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
     isAdmin: roles.includes("admin"),
   }), [authLoading, loading, roles]);
 
-  return createElement(UserRoleContext.Provider, { value }, children);
+  return <UserRoleContext.Provider value={value}>{children}</UserRoleContext.Provider>;
 }
 
 export function useUserRole() {
