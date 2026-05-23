@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { AppShell } from "@/components/AppShell";
 import { ImportDialog } from "@/components/ImportDialog";
 import { AddCompanyDialog } from "@/components/AddCompanyDialog";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
@@ -13,7 +12,7 @@ import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2 } from "lucide-react"
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/_app/companies")({ component: () => <AppShell><CompaniesPage /></AppShell> });
+export const Route = createFileRoute("/_app/companies")({ component: CompaniesPage });
 
 function CompaniesPage() {
   const { companies, loading, refresh, upsertCompany, refetchCompany, removeCompanies } = useCompanies();

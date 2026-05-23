@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell } from "@/components/AppShell";
 import { useCompanies, STATUS_META } from "@/lib/companies";
 import { SettingsSkeleton } from "@/components/PageSkeletons";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +9,7 @@ import { toast } from "sonner";
 import { Download, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-export const Route = createFileRoute("/_app/settings")({ component: () => <AppShell><SettingsPage /></AppShell> });
+export const Route = createFileRoute("/_app/settings")({ component: SettingsPage });
 
 function SettingsPage() {
   const { user } = useAuth();
