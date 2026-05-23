@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -19,7 +19,18 @@ export const STATUS_ORDER: Status[] = [
   "new", "called_no_answer", "follow_up", "in_negotiation", "deal_made", "not_interested",
 ];
 
-export function useCompanies() {
+type CompaniesContextValue = {
+  companies: Company[];
+  loading: boolean;
+  refresh: () => Promise<void>;
+  upsertCompany: (row: Company) => void;
+  removeCompanies: (ids: string[]) => void;
+  refetchCompany: (id: string) => Promise<Company | null>;
+};
+
+const CompaniesContext = createContext<CompaniesContextValue | null>(null);
+
+export function CompaniesProvider({ children }: { children: ReactNode }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -86,7 +97,18 @@ export function useCompanies() {
     return () => { supabase.removeChannel(channel); };
   }, [refresh, removeCompanies, upsertCompany]);
 
-  return { companies, loading, refresh, upsertCompany, removeCompanies, refetchCompany };
+  const value = useMemo(
+    () => ({ companies, loading, refresh, upsertCompany, removeCompanies, refetchCompany }),
+    [companies, loading, refresh, upsertCompany, removeCompanies, refetchCompany],
+  );
+
+  return createElement(CompaniesContext.Provider, { value }, children);
+}
+
+export function useCompanies() {
+  const context = useContext(CompaniesContext);
+  if (!context) throw new Error("useCompanies must be used within CompaniesProvider");
+  return context;
 }
 
 export async function updateStatus(id: string, status: Status) {
