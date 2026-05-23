@@ -1,17 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { AdminShell } from "@/components/AdminShell";
 import { getEmployeeDetailFn } from "@/lib/admin.functions";
 import { STATUS_META, type Status } from "@/lib/companies";
 import { ArrowLeft, Mail, Phone, Building2, PhoneCall } from "lucide-react";
 
-export const Route = createFileRoute("/admin/$employeeId")({
-  component: () => (
-    <AdminShell>
-      <EmployeeDetail />
-    </AdminShell>
-  ),
+export const Route = createFileRoute("/_admin/admin/$employeeId")({
+  component: EmployeeDetail,
 });
 
 function EmployeeDetail() {

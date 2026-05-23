@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
-import { AppShell } from "@/components/AppShell";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { useCompanies, updateStatus, STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
 import { KanbanSkeleton } from "@/components/PageSkeletons";
 
-export const Route = createFileRoute("/kanban")({ component: () => <AppShell><KanbanPage /></AppShell> });
+export const Route = createFileRoute("/_app/kanban")({ component: KanbanPage });
 
 function KanbanPage() {
   const { companies, loading, upsertCompany, removeCompanies } = useCompanies();
