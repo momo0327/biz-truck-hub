@@ -6,7 +6,7 @@ import { getEmployeeDetailFn } from "@/lib/admin.functions";
 import { STATUS_META, type Status } from "@/lib/companies";
 import { ArrowLeft, Mail, Phone, Building2, PhoneCall } from "lucide-react";
 
-export const Route = createFileRoute("/admin/$employeeId")({
+export const Route = createFileRoute("/_admin/admin/$employeeId")({
   component: () => (
     <AdminShell>
       <EmployeeDetail />

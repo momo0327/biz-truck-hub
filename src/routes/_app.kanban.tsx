@@ -6,7 +6,7 @@ import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { useCompanies, updateStatus, STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
 import { KanbanSkeleton } from "@/components/PageSkeletons";
 
-export const Route = createFileRoute("/kanban")({ component: () => <AppShell><KanbanPage /></AppShell> });
+export const Route = createFileRoute("/_app/kanban")({ component: () => <AppShell><KanbanPage /></AppShell> });
 
 function KanbanPage() {
   const { companies, loading, upsertCompany, removeCompanies } = useCompanies();

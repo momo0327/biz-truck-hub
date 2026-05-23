@@ -9,49 +9,54 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as KanbanRouteImport } from './routes/kanban'
-import { Route as CompaniesRouteImport } from './routes/companies'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminEmployeeIdRouteImport } from './routes/admin.$employeeId'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AdminRouteImport } from './routes/_admin'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppKanbanRouteImport } from './routes/_app.kanban'
+import { Route as AppCompaniesRouteImport } from './routes/_app.companies'
+import { Route as AdminAdminRouteImport } from './routes/_admin.admin'
 import { Route as ApiPublicElksVoiceStartRouteImport } from './routes/api/public/elks-voice-start'
 import { Route as ApiPublicElksStatusRouteImport } from './routes/api/public/elks-status'
+import { Route as AdminAdminEmployeeIdRouteImport } from './routes/_admin.admin.$employeeId'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const KanbanRoute = KanbanRouteImport.update({
-  id: '/kanban',
-  path: '/kanban',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CompaniesRoute = CompaniesRouteImport.update({
-  id: '/companies',
-  path: '/companies',
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+  id: '/_admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const AdminEmployeeIdRoute = AdminEmployeeIdRouteImport.update({
-  id: '/$employeeId',
-  path: '/$employeeId',
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppKanbanRoute = AppKanbanRouteImport.update({
+  id: '/kanban',
+  path: '/kanban',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCompaniesRoute = AppCompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
+  getParentRoute: () => AppRoute,
+} as any)
+const AdminAdminRoute = AdminAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AdminRoute,
 } as any)
 const ApiPublicElksVoiceStartRoute = ApiPublicElksVoiceStartRouteImport.update({
@@ -64,38 +69,45 @@ const ApiPublicElksStatusRoute = ApiPublicElksStatusRouteImport.update({
   path: '/api/public/elks-status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAdminEmployeeIdRoute = AdminAdminEmployeeIdRouteImport.update({
+  id: '/$employeeId',
+  path: '/$employeeId',
+  getParentRoute: () => AdminAdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/companies': typeof CompaniesRoute
-  '/kanban': typeof KanbanRoute
+  '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
-  '/settings': typeof SettingsRoute
-  '/admin/$employeeId': typeof AdminEmployeeIdRoute
+  '/admin': typeof AdminAdminRouteWithChildren
+  '/companies': typeof AppCompaniesRoute
+  '/kanban': typeof AppKanbanRoute
+  '/settings': typeof AppSettingsRoute
+  '/admin/$employeeId': typeof AdminAdminEmployeeIdRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/companies': typeof CompaniesRoute
-  '/kanban': typeof KanbanRoute
+  '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
-  '/settings': typeof SettingsRoute
-  '/admin/$employeeId': typeof AdminEmployeeIdRoute
+  '/admin': typeof AdminAdminRouteWithChildren
+  '/companies': typeof AppCompaniesRoute
+  '/kanban': typeof AppKanbanRoute
+  '/settings': typeof AppSettingsRoute
+  '/admin/$employeeId': typeof AdminAdminEmployeeIdRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/companies': typeof CompaniesRoute
-  '/kanban': typeof KanbanRoute
+  '/_admin': typeof AdminRouteWithChildren
+  '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
-  '/settings': typeof SettingsRoute
-  '/admin/$employeeId': typeof AdminEmployeeIdRoute
+  '/_admin/admin': typeof AdminAdminRouteWithChildren
+  '/_app/companies': typeof AppCompaniesRoute
+  '/_app/kanban': typeof AppKanbanRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/': typeof AppIndexRoute
+  '/_admin/admin/$employeeId': typeof AdminAdminEmployeeIdRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
 }
@@ -103,10 +115,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
     | '/admin'
     | '/companies'
     | '/kanban'
-    | '/login'
     | '/settings'
     | '/admin/$employeeId'
     | '/api/public/elks-status'
@@ -114,47 +126,39 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
     | '/admin'
     | '/companies'
     | '/kanban'
-    | '/login'
     | '/settings'
     | '/admin/$employeeId'
     | '/api/public/elks-status'
     | '/api/public/elks-voice-start'
   id:
     | '__root__'
-    | '/'
-    | '/admin'
-    | '/companies'
-    | '/kanban'
+    | '/_admin'
+    | '/_app'
     | '/login'
-    | '/settings'
-    | '/admin/$employeeId'
+    | '/_admin/admin'
+    | '/_app/companies'
+    | '/_app/kanban'
+    | '/_app/settings'
+    | '/_app/'
+    | '/_admin/admin/$employeeId'
     | '/api/public/elks-status'
     | '/api/public/elks-voice-start'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
-  CompaniesRoute: typeof CompaniesRoute
-  KanbanRoute: typeof KanbanRoute
+  AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
-  SettingsRoute: typeof SettingsRoute
   ApiPublicElksStatusRoute: typeof ApiPublicElksStatusRoute
   ApiPublicElksVoiceStartRoute: typeof ApiPublicElksVoiceStartRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -162,39 +166,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/kanban': {
-      id: '/kanban'
-      path: '/kanban'
-      fullPath: '/kanban'
-      preLoaderRoute: typeof KanbanRouteImport
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/companies': {
-      id: '/companies'
-      path: '/companies'
-      fullPath: '/companies'
-      preLoaderRoute: typeof CompaniesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
+    '/_admin': {
+      id: '/_admin'
+      path: ''
+      fullPath: '/'
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/admin/$employeeId': {
-      id: '/admin/$employeeId'
-      path: '/$employeeId'
-      fullPath: '/admin/$employeeId'
-      preLoaderRoute: typeof AdminEmployeeIdRouteImport
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/kanban': {
+      id: '/_app/kanban'
+      path: '/kanban'
+      fullPath: '/kanban'
+      preLoaderRoute: typeof AppKanbanRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/companies': {
+      id: '/_app/companies'
+      path: '/companies'
+      fullPath: '/companies'
+      preLoaderRoute: typeof AppCompaniesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_admin/admin': {
+      id: '/_admin/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminAdminRouteImport
       parentRoute: typeof AdminRoute
     }
     '/api/public/elks-voice-start': {
@@ -211,26 +229,58 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicElksStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_admin/admin/$employeeId': {
+      id: '/_admin/admin/$employeeId'
+      path: '/$employeeId'
+      fullPath: '/admin/$employeeId'
+      preLoaderRoute: typeof AdminAdminEmployeeIdRouteImport
+      parentRoute: typeof AdminAdminRoute
+    }
   }
 }
 
+interface AdminAdminRouteChildren {
+  AdminAdminEmployeeIdRoute: typeof AdminAdminEmployeeIdRoute
+}
+
+const AdminAdminRouteChildren: AdminAdminRouteChildren = {
+  AdminAdminEmployeeIdRoute: AdminAdminEmployeeIdRoute,
+}
+
+const AdminAdminRouteWithChildren = AdminAdminRoute._addFileChildren(
+  AdminAdminRouteChildren,
+)
+
 interface AdminRouteChildren {
-  AdminEmployeeIdRoute: typeof AdminEmployeeIdRoute
+  AdminAdminRoute: typeof AdminAdminRouteWithChildren
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminEmployeeIdRoute: AdminEmployeeIdRoute,
+  AdminAdminRoute: AdminAdminRouteWithChildren,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface AppRouteChildren {
+  AppCompaniesRoute: typeof AppCompaniesRoute
+  AppKanbanRoute: typeof AppKanbanRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppCompaniesRoute: AppCompaniesRoute,
+  AppKanbanRoute: AppKanbanRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
-  CompaniesRoute: CompaniesRoute,
-  KanbanRoute: KanbanRoute,
+  AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
-  SettingsRoute: SettingsRoute,
   ApiPublicElksStatusRoute: ApiPublicElksStatusRoute,
   ApiPublicElksVoiceStartRoute: ApiPublicElksVoiceStartRoute,
 }

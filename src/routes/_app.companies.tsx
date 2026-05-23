@@ -13,7 +13,7 @@ import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2 } from "lucide-react"
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/companies")({ component: () => <AppShell><CompaniesPage /></AppShell> });
+export const Route = createFileRoute("/_app/companies")({ component: () => <AppShell><CompaniesPage /></AppShell> });
 
 function CompaniesPage() {
   const { companies, loading, refresh, upsertCompany, refetchCompany, removeCompanies } = useCompanies();

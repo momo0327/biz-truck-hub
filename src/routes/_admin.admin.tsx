@@ -8,7 +8,7 @@ import { getEmployeesOverviewFn, inviteEmployeeFn } from "@/lib/admin.functions"
 import { STATUS_META } from "@/lib/companies";
 import { Mail, UserPlus, ShieldCheck, Phone, Building2, CheckCircle2, Clock } from "lucide-react";
 
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute("/_admin/admin")({
   component: () => (
     <AdminShell>
       <AdminOverview />

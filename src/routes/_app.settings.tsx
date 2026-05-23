@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { Download, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-export const Route = createFileRoute("/settings")({ component: () => <AppShell><SettingsPage /></AppShell> });
+export const Route = createFileRoute("/_app/settings")({ component: () => <AppShell><SettingsPage /></AppShell> });
 
 function SettingsPage() {
   const { user } = useAuth();
