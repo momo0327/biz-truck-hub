@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SoftphoneProvider>
       <div className="flex min-h-screen bg-background">
-        <aside className="w-60 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col">
+        <aside className="w-60 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col sticky top-0 h-screen">
           <div className="px-5 py-6">
             <img src={logo} alt="Auto Wahab Export" className="h-8 w-auto brightness-0 invert" />
           </div>

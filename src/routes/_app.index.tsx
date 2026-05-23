@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCompanies, STATUS_META } from "@/lib/companies";
 import { DashboardSkeleton } from "@/components/PageSkeletons";
-import { CallsChart } from "@/components/CallsChart";
 import { Building2, PhoneCall, TrendingUp, CheckCircle2, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_app/")({ component: Dashboard });
@@ -51,8 +50,6 @@ function Dashboard() {
           );
         })}
       </div>
-
-      <CallsChart companies={companies} />
 
       <section>
         <h2 className="font-display text-lg mb-3">Recent activity</h2>

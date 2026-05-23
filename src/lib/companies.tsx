@@ -1,4 +1,4 @@
-import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -102,7 +102,7 @@ export function CompaniesProvider({ children }: { children: ReactNode }) {
     [companies, loading, refresh, upsertCompany, removeCompanies, refetchCompany],
   );
 
-  return createElement(CompaniesContext.Provider, { value }, children);
+  return <CompaniesContext.Provider value={value}>{children}</CompaniesContext.Provider>;
 }
 
 export function useCompanies() {
