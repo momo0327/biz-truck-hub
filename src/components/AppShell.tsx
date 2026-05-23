@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
 import { SoftphoneProvider } from "@/components/softphone/SoftphoneProvider";
 import { SoftphonePanel } from "@/components/softphone/SoftphonePanel";
+import { CompaniesProvider } from "@/lib/companies";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -88,7 +89,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </aside>
-        <main className="flex-1 min-w-0">{children}</main>
+        <main className="flex-1 min-w-0">
+          <CompaniesProvider>{children}</CompaniesProvider>
+        </main>
         <SoftphonePanel />
       </div>
     </SoftphoneProvider>
