@@ -75,15 +75,40 @@ export async function listAllAuthUsers() {
   return allUsers;
 }
 
+async function fetchAll<T>(
+  builder: () => any,
+): Promise<T[]> {
+  const pageSize = 1000;
+  const all: T[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await builder().range(from, from + pageSize - 1);
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) break;
+    all.push(...(data as T[]));
+    if (data.length < pageSize) break;
+  }
+  return all;
+}
+
 export async function fetchOverviewData(userIds: string[]) {
-  const [{ data: profiles }, { data: roles }, { data: companies }, { data: calls }] =
-    await Promise.all([
+  if (userIds.length === 0) {
+    return { profiles: [], roles: [], companies: [], calls: [] };
+  }
+  const [profiles, roles, companies, calls] = await Promise.all([
+    fetchAll<{ user_id: string; display_name: string | null; phone_number: string | null }>(() =>
       supabaseAdmin.from("profiles").select("user_id, display_name, phone_number").in("user_id", userIds),
+    ),
+    fetchAll<{ user_id: string; role: string }>(() =>
       supabaseAdmin.from("user_roles").select("user_id, role").in("user_id", userIds),
+    ),
+    fetchAll<{ user_id: string; status: string; last_contact: string | null }>(() =>
       supabaseAdmin.from("companies").select("user_id, status, last_contact").in("user_id", userIds),
+    ),
+    fetchAll<{ user_id: string; duration: number | null; created_at: string }>(() =>
       supabaseAdmin.from("call_logs").select("user_id, duration, created_at").in("user_id", userIds),
-    ]);
-  return { profiles: profiles ?? [], roles: roles ?? [], companies: companies ?? [], calls: calls ?? [] };
+    ),
+  ]);
+  return { profiles, roles, companies, calls };
 }
 
 export async function fetchEmployeeDetail(employeeId: string) {
