@@ -1,12 +1,17 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Users, ShieldCheck, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, UserPlus, Settings, ShieldCheck, LogOut } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth, signOut } from "@/lib/auth";
 import { useUserRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
 
-const nav = [{ to: "/admin", label: "Employees", icon: Users }];
+const nav = [
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { to: "/admin/employees", label: "Employees", icon: Users, exact: false },
+  { to: "/admin/invite", label: "Invite employee", icon: UserPlus, exact: false },
+  { to: "/admin/settings", label: "Settings", icon: Settings, exact: false },
+] as const;
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -41,7 +46,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
         <nav className="px-3 flex-1 space-y-0.5">
           {nav.map((n) => {
-            const active = loc.pathname.startsWith(n.to);
+            const active = n.exact ? loc.pathname === n.to : loc.pathname.startsWith(n.to);
             const Icon = n.icon;
             return (
               <Link
