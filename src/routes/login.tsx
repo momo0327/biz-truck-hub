@@ -49,12 +49,8 @@ function LoginPage() {
       <div className="flex items-center justify-center p-8">
         <form onSubmit={submit} className="w-full max-w-sm space-y-5">
           <div>
-            <h2 className="font-display text-2xl">
-              {mode === "signin" ? "Welcome back" : "Create your account"}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              {mode === "signin" ? "Sign in to your CRM" : "Start tracking your fleet leads"}
-            </p>
+            <h2 className="font-display text-2xl">Welcome back</h2>
+            <p className="text-sm text-muted-foreground mt-1">Sign in to your CRM</p>
           </div>
           <div className="space-y-3">
             <input
@@ -80,15 +76,11 @@ function LoginPage() {
             disabled={busy}
             className="w-full bg-primary text-primary-foreground rounded-md py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
           >
-            {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+            {busy ? "Please wait…" : "Sign in"}
           </button>
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="w-full text-sm text-muted-foreground hover:text-foreground"
-          >
-            {mode === "signin" ? "Need an account? Sign up" : "Have an account? Sign in"}
-          </button>
+          <p className="text-xs text-muted-foreground text-center">
+            New accounts are created by invitation only.
+          </p>
         </form>
       </div>
     </div>
