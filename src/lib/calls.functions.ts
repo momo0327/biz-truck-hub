@@ -73,16 +73,38 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const base = `${proto}://${host}`;
     const statusUrl = `${base}/api/public/elks-status`;
 
+    // 46elks rejects whenhangup if it isn't a valid public URL. In local/dev
+    // previews host can be localhost or otherwise unreachable — in that case
+    // omit the webhook (the call still goes through, we just don't get the
+    // status callback) instead of failing the whole call with "Invalid value
+    // for whenhangup, not a URL".
+    let validStatusUrl: string | null = null;
+    try {
+      const u = new URL(statusUrl);
+      const isHttps = u.protocol === "https:";
+      const hostname = u.hostname;
+      const isPublic =
+        hostname.includes(".") &&
+        !hostname.endsWith(".local") &&
+        hostname !== "localhost" &&
+        hostname !== "127.0.0.1" &&
+        hostname !== "0.0.0.0";
+      if (isHttps && isPublic) validStatusUrl = u.toString();
+    } catch {
+      validStatusUrl = null;
+    }
+
     // Call the browser (WebRTC) leg FIRST. As soon as the user picks up in the
     // softphone, 46elks dials the target. The target's phone then rings like a
     // normal incoming call and connects instantly on answer — no awkward
     // "ringing then connecting" pause on their end.
-    const body = new URLSearchParams({
+    const bodyParams: Record<string, string> = {
       from: fromNumber,
       to: webrtcNumber,
       voice_start: JSON.stringify({ connect: target }),
-      whenhangup: statusUrl,
-    });
+    };
+    if (validStatusUrl) bodyParams.whenhangup = validStatusUrl;
+    const body = new URLSearchParams(bodyParams);
 
     const auth = Buffer.from(`${username}:${password}`).toString("base64");
     const res = await fetch("https://api.46elks.com/a1/calls", {
