@@ -46,7 +46,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
         <nav className="px-3 flex-1 space-y-0.5">
           {nav.map((n) => {
-            const active = loc.pathname.startsWith(n.to);
+            const active = n.exact ? loc.pathname === n.to : loc.pathname.startsWith(n.to);
             const Icon = n.icon;
             return (
               <Link
