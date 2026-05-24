@@ -17,6 +17,7 @@ import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppKanbanRouteImport } from './routes/_app.kanban'
 import { Route as AppCompaniesRouteImport } from './routes/_app.companies'
+import { Route as AdminAdminRouteImport } from './routes/_admin.admin'
 import { Route as AdminAdminIndexRouteImport } from './routes/_admin.admin.index'
 import { Route as ApiPublicElksVoiceStartRouteImport } from './routes/api/public/elks-voice-start'
 import { Route as ApiPublicElksStatusRouteImport } from './routes/api/public/elks-status'
@@ -60,10 +61,15 @@ const AppCompaniesRoute = AppCompaniesRouteImport.update({
   path: '/companies',
   getParentRoute: () => AppRoute,
 } as any)
-const AdminAdminIndexRoute = AdminAdminIndexRouteImport.update({
-  id: '/admin/',
-  path: '/admin/',
+const AdminAdminRoute = AdminAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminIndexRoute = AdminAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminAdminRoute,
 } as any)
 const ApiPublicElksVoiceStartRoute = ApiPublicElksVoiceStartRouteImport.update({
   id: '/api/public/elks-voice-start',
@@ -76,15 +82,16 @@ const ApiPublicElksStatusRoute = ApiPublicElksStatusRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAdminEmployeeIdRoute = AdminAdminEmployeeIdRouteImport.update({
-  id: '/admin/$employeeId',
-  path: '/admin/$employeeId',
-  getParentRoute: () => AdminRoute,
+  id: '/$employeeId',
+  path: '/$employeeId',
+  getParentRoute: () => AdminAdminRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/login': typeof LoginRoute
+  '/admin': typeof AdminAdminRouteWithChildren
   '/companies': typeof AppCompaniesRoute
   '/kanban': typeof AppKanbanRoute
   '/settings': typeof AppSettingsRoute
@@ -111,6 +118,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/accept-invite': typeof AcceptInviteRoute
   '/login': typeof LoginRoute
+  '/_admin/admin': typeof AdminAdminRouteWithChildren
   '/_app/companies': typeof AppCompaniesRoute
   '/_app/kanban': typeof AppKanbanRoute
   '/_app/settings': typeof AppSettingsRoute
@@ -126,6 +134,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accept-invite'
     | '/login'
+    | '/admin'
     | '/companies'
     | '/kanban'
     | '/settings'
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/accept-invite'
     | '/login'
+    | '/_admin/admin'
     | '/_app/companies'
     | '/_app/kanban'
     | '/_app/settings'
@@ -228,12 +238,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCompaniesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_admin/admin': {
+      id: '/_admin/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminAdminRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/admin/': {
       id: '/_admin/admin/'
-      path: '/admin'
+      path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminAdminIndexRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminAdminRoute
     }
     '/api/public/elks-voice-start': {
       id: '/api/public/elks-voice-start'
@@ -251,22 +268,34 @@ declare module '@tanstack/react-router' {
     }
     '/_admin/admin/$employeeId': {
       id: '/_admin/admin/$employeeId'
-      path: '/admin/$employeeId'
+      path: '/$employeeId'
       fullPath: '/admin/$employeeId'
       preLoaderRoute: typeof AdminAdminEmployeeIdRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminAdminRoute
     }
   }
 }
 
-interface AdminRouteChildren {
+interface AdminAdminRouteChildren {
   AdminAdminEmployeeIdRoute: typeof AdminAdminEmployeeIdRoute
   AdminAdminIndexRoute: typeof AdminAdminIndexRoute
 }
 
-const AdminRouteChildren: AdminRouteChildren = {
+const AdminAdminRouteChildren: AdminAdminRouteChildren = {
   AdminAdminEmployeeIdRoute: AdminAdminEmployeeIdRoute,
   AdminAdminIndexRoute: AdminAdminIndexRoute,
+}
+
+const AdminAdminRouteWithChildren = AdminAdminRoute._addFileChildren(
+  AdminAdminRouteChildren,
+)
+
+interface AdminRouteChildren {
+  AdminAdminRoute: typeof AdminAdminRouteWithChildren
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAdminRoute: AdminAdminRouteWithChildren,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
