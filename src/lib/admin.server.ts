@@ -75,7 +75,7 @@ export async function fetchEmployeeDetail(employeeId: string) {
 export async function inviteUser(email: string) {
   const host = getRequestHost();
   const proto = getRequestHeader("x-forwarded-proto") || "https";
-  const redirectTo = `${proto}://${host}/login`;
+  const redirectTo = `${proto}://${host}/accept-invite`;
 
   const { data: invite, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
     redirectTo,
