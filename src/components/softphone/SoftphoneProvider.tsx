@@ -436,7 +436,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       outboundActiveRef.current = false;
       elksCallIdRef.current = null;
     }, 1200);
-  }, [stopTick, hangupServerCall]);
+  }, [stopTick, hangupServerCall, call, notes]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
