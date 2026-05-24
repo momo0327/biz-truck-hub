@@ -53,7 +53,8 @@ function AdminDashboard() {
   }, [refetch]);
 
   const totals = data?.totals ?? { calls: 0, answered: 0, leads: 0 };
-  const weekly = data?.weekly?.length ? data.weekly : mockWeeklyData();
+  const hasRealWeekly = (data?.weekly ?? []).some((d) => d.calls > 0 || d.answered > 0);
+  const weekly = hasRealWeekly ? data!.weekly : mockWeeklyData();
   const answerRate = totals.calls > 0 ? Math.round((totals.answered / totals.calls) * 100) : 0;
   const topEmployees = (data?.employees ?? [])
     .slice()
