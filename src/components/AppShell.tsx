@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Building2, KanbanSquare, Phone, Settings, LogOut } from "lucide-react";
-import { useEffect } from "react";
+import { LayoutDashboard, Building2, KanbanSquare, Phone, Settings, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useAuth, signOut } from "@/lib/auth";
 import { useUserRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
   const loc = useLocation();
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("appshell:collapsed") === "1";
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("appshell:collapsed", collapsed ? "1" : "0");
+    }
+  }, [collapsed]);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
@@ -43,9 +53,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SoftphoneProvider>
       <div className="flex min-h-screen bg-background">
-        <aside className="w-60 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col sticky top-0 h-screen">
-          <div className="px-5 py-6">
-            <img src={logo} alt="Auto Wahab Export" className="h-8 w-auto brightness-0 invert" />
+        <aside
+          className={cn(
+            "shrink-0 bg-sidebar text-sidebar-foreground flex flex-col sticky top-0 h-screen transition-[width] duration-200",
+            collapsed ? "w-16" : "w-60",
+          )}
+        >
+          <div
+            className={cn(
+              "flex items-center py-6",
+              collapsed ? "justify-center px-2" : "justify-between px-5",
+            )}
+          >
+            {!collapsed && (
+              <img src={logo} alt="Auto Wahab Export" className="h-8 w-auto brightness-0 invert" />
+            )}
+            <button
+              onClick={() => setCollapsed((c) => !c)}
+              className="p-1.5 rounded-md hover:bg-sidebar-accent/40 text-sidebar-foreground"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+            </button>
           </div>
           <nav className="px-3 flex-1 space-y-0.5">
             {nav.map((n) => {
@@ -55,6 +85,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={n.to}
                   to={n.to}
+                  title={collapsed ? n.label : undefined}
                   onClick={(e) => {
                     const target = e.currentTarget;
                     const rect = target.getBoundingClientRect();
@@ -68,25 +99,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     setTimeout(() => span.remove(), 600);
                   }}
                   className={cn(
-                    "relative overflow-hidden flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                    "relative overflow-hidden flex items-center gap-3 py-2 rounded-md text-sm transition-colors",
+                    collapsed ? "justify-center px-0" : "px-3",
                     active
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "hover:bg-sidebar-accent/40"
+                      : "hover:bg-sidebar-accent/40",
                   )}
                 >
                   <Icon className="size-4" />
-                  {n.label}
+                  {!collapsed && n.label}
                 </Link>
               );
             })}
           </nav>
           <div className="p-3 border-t border-sidebar-border">
-            <div className="px-3 py-2 text-xs opacity-60 truncate">{user.email}</div>
+            {!collapsed && (
+              <div className="px-3 py-2 text-xs opacity-60 truncate">{user.email}</div>
+            )}
             <button
               onClick={() => signOut().then(() => navigate({ to: "/login" }))}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-sidebar-accent/40"
+              title={collapsed ? "Sign out" : undefined}
+              className={cn(
+                "w-full flex items-center gap-2 py-2 rounded-md text-sm hover:bg-sidebar-accent/40",
+                collapsed ? "justify-center px-0" : "px-3",
+              )}
             >
-              <LogOut className="size-4" /> Sign out
+              <LogOut className="size-4" /> {!collapsed && "Sign out"}
             </button>
           </div>
         </aside>
