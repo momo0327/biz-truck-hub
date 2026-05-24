@@ -74,6 +74,16 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  if (typeof window !== "undefined") {
+    const hash = window.location.hash;
+    const path = window.location.pathname;
+    if (
+      path !== "/accept-invite" &&
+      (hash.includes("type=invite") || hash.includes("type=recovery") || hash.includes("type=signup"))
+    ) {
+      window.location.replace(`/accept-invite${window.location.search}${hash}`);
+    }
+  }
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
