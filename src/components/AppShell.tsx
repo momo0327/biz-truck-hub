@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Building2, KanbanSquare, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, KanbanSquare, Phone, Settings, LogOut } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth, signOut } from "@/lib/auth";
 import { useUserRole } from "@/lib/roles";
@@ -13,6 +13,7 @@ const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/kanban", label: "Kanban", icon: KanbanSquare },
+  { to: "/calls", label: "Call history", icon: Phone },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
