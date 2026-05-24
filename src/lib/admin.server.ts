@@ -1,6 +1,49 @@
 // Server-only helpers — must never be imported by client modules.
 import { getRequestHost, getRequestHeader } from "@tanstack/react-start/server";
+import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+export async function deleteEmployee(adminUserId: string, employeeId: string, password: string) {
+  if (adminUserId === employeeId) {
+    return { ok: false as const, error: "You cannot delete your own account." };
+  }
+
+  // Re-verify the admin's password before destructive action.
+  const { data: adminUser, error: adminLookupErr } =
+    await supabaseAdmin.auth.admin.getUserById(adminUserId);
+  if (adminLookupErr || !adminUser?.user?.email) {
+    return { ok: false as const, error: "Could not verify admin account." };
+  }
+
+  const url = process.env.SUPABASE_URL!;
+  const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY!;
+  const verifier = createClient(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { error: pwErr } = await verifier.auth.signInWithPassword({
+    email: adminUser.user.email,
+    password,
+  });
+  if (pwErr) {
+    return { ok: false as const, error: "Incorrect password." };
+  }
+  await verifier.auth.signOut();
+
+  // Clean app data, then remove the auth user.
+  await Promise.all([
+    supabaseAdmin.from("call_logs").delete().eq("user_id", employeeId),
+    supabaseAdmin.from("companies").delete().eq("user_id", employeeId),
+    supabaseAdmin.from("user_roles").delete().eq("user_id", employeeId),
+    supabaseAdmin.from("profiles").delete().eq("user_id", employeeId),
+  ]);
+
+  const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(employeeId);
+  if (delErr) {
+    return { ok: false as const, error: delErr.message };
+  }
+  return { ok: true as const };
+}
+
 
 export async function assertAdmin(supabase: any, userId: string) {
   const { data, error } = await supabase
