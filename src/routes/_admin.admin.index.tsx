@@ -72,22 +72,28 @@ function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
           label="Total calls"
-          value={totals.calls}
+          value={totals.calls.toLocaleString()}
           icon={Phone}
-          accent="border-l-4 border-l-primary"
+          iconColor="text-primary"
+          iconBorder="border-primary/40"
+          iconBg="bg-primary/10"
         />
         <StatCard
           label="Answered"
-          value={totals.answered}
+          value={totals.answered.toLocaleString()}
           icon={PhoneCall}
           subtitle={`${answerRate}% answer rate`}
-          accent="border-l-4 border-l-success"
+          iconColor="text-success"
+          iconBorder="border-success/40"
+          iconBg="bg-success/10"
         />
         <StatCard
           label="Total leads"
-          value={totals.leads}
+          value={totals.leads.toLocaleString()}
           icon={Users}
-          accent="border-l-4 border-l-info"
+          iconColor="text-info"
+          iconBorder="border-info/40"
+          iconBg="bg-info/10"
         />
       </div>
 
@@ -198,25 +204,31 @@ function StatCard({
   value,
   icon: Icon,
   subtitle,
-  accent,
+  iconColor,
+  iconBorder,
+  iconBg,
 }: {
   label: string;
-  value: number;
+  value: string;
   icon: React.ComponentType<{ className?: string }>;
   subtitle?: string;
-  accent: string;
+  iconColor: string;
+  iconBorder: string;
+  iconBg: string;
 }) {
   return (
-    <div className={`rounded-xl border bg-card p-6 ${accent}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{label}</span>
-        <span className="inline-flex items-center justify-center size-9 rounded-lg bg-muted border">
-          <Icon className="size-4 text-foreground" />
+    <div className="rounded-xl border bg-card p-6">
+      <div className="flex items-start justify-between gap-4">
+        <span
+          className={`inline-flex items-center justify-center size-11 rounded-lg border ${iconBorder} ${iconBg}`}
+        >
+          <Icon className={`size-5 ${iconColor}`} />
         </span>
+        <div className="font-display text-4xl font-semibold tracking-tight leading-none">
+          {value}
+        </div>
       </div>
-      <div className="mt-4 font-display text-4xl font-semibold tracking-tight">
-        {value.toLocaleString()}
-      </div>
+      <div className="mt-6 text-sm text-muted-foreground">{label}</div>
       {subtitle && (
         <div className="mt-1 text-xs text-muted-foreground">{subtitle}</div>
       )}
