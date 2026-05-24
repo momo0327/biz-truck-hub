@@ -68,14 +68,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {!collapsed && (
               <img src={logo} alt="Auto Wahab Export" className="h-8 w-auto brightness-0 invert" />
             )}
-            <button
-              onClick={() => setCollapsed((c) => !c)}
-              className="p-1.5 rounded-md hover:bg-sidebar-accent/40 text-sidebar-foreground"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-            </button>
           </div>
           <nav className="px-3 flex-1 space-y-0.5">
             {nav.map((n) => {
