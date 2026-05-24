@@ -1,20 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getEmployeesOverviewFn, inviteEmployeeFn } from "@/lib/admin.functions";
-import { STATUS_META } from "@/lib/companies";
-import { Mail, UserPlus, ShieldCheck, Phone, Building2, CheckCircle2, Clock } from "lucide-react";
+import { getEmployeesOverviewFn } from "@/lib/admin.functions";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { Phone, PhoneCall, Users, ArrowUpRight } from "lucide-react";
 
 export const Route = createFileRoute("/_admin/admin/")({
-  component: AdminOverview,
+  component: AdminDashboard,
 });
 
-function AdminOverview() {
+function AdminDashboard() {
   const fetchOverview = useServerFn(getEmployeesOverviewFn);
-  const invite = useServerFn(inviteEmployeeFn);
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin-employees"],
     queryFn: () => fetchOverview({}),
@@ -24,7 +31,7 @@ function AdminOverview() {
 
   useEffect(() => {
     const channel = supabase
-      .channel("admin-overview")
+      .channel("admin-dashboard")
       .on("postgres_changes", { event: "*", schema: "public", table: "call_logs" }, () => refetch())
       .on("postgres_changes", { event: "*", schema: "public", table: "companies" }, () => refetch())
       .subscribe();
@@ -33,189 +40,177 @@ function AdminOverview() {
     };
   }, [refetch]);
 
-
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviting, setInviting] = useState(false);
-
-  async function submitInvite(e: React.FormEvent) {
-    e.preventDefault();
-    setInviting(true);
-    try {
-      const res = await invite({ data: { email: inviteEmail } });
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success(`Invitation sent to ${inviteEmail}`);
-      setInviteEmail("");
-      setInviteOpen(false);
-      refetch();
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to send invite");
-    } finally {
-      setInviting(false);
-    }
-  }
+  const totals = data?.totals ?? { calls: 0, answered: 0, leads: 0 };
+  const weekly = data?.weekly ?? [];
+  const answerRate = totals.calls > 0 ? Math.round((totals.answered / totals.calls) * 100) : 0;
+  const topEmployees = (data?.employees ?? [])
+    .slice()
+    .sort((a, b) => b.stats.calls - a.stats.calls)
+    .slice(0, 6);
 
   return (
     <div className="p-8 max-w-7xl space-y-8">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl">Employees</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Overview of every account, their activity, and pipeline.
-          </p>
-        </div>
-        <button
-          onClick={() => setInviteOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
-        >
-          <UserPlus className="size-4" /> Invite employee
-        </button>
+      <header>
+        <h1 className="font-display text-3xl">Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Live overview of all team activity.
+        </p>
       </header>
 
-      {isLoading ? (
-        <div className="text-muted-foreground text-sm">Loading employees…</div>
-      ) : (
-        <div className="grid gap-3">
-          {data?.employees
-            .sort((a, b) => (b.lastActivity ?? "").localeCompare(a.lastActivity ?? ""))
-            .map((e) => {
-              const isAdmin = e.roles.includes("admin");
-              return (
-                <Link
-                  key={e.id}
-                  to="/admin/$employeeId"
-                  params={{ employeeId: e.id }}
-                  className="block rounded-lg border bg-card hover:border-primary/40 transition-colors p-5"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="font-display text-lg truncate">
-                          {e.displayName || e.email || "—"}
-                        </div>
-                        {isAdmin && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] uppercase tracking-wider font-medium">
-                            <ShieldCheck className="size-3" /> Admin
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-3 flex-wrap">
-                        <span className="inline-flex items-center gap-1">
-                          <Mail className="size-3" /> {e.email}
-                        </span>
-                        {e.phoneNumber && (
-                          <span className="inline-flex items-center gap-1">
-                            <Phone className="size-3" /> {e.phoneNumber}
-                          </span>
-                        )}
-                        <span>
-                          Last active:{" "}
-                          {e.lastActivity
-                            ? new Date(e.lastActivity).toLocaleDateString()
-                            : "never"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
-                    <Stat label="Companies" value={e.stats.companies} icon={Building2} />
-                    <Stat label="Calls" value={e.stats.calls} icon={Phone} />
-                    <Stat label="Call minutes" value={e.stats.callMinutes} icon={Clock} />
-                    <Stat
-                      label="Deals closed"
-                      value={e.stats.dealsClosed}
-                      icon={CheckCircle2}
-                      tone="success"
-                    />
-                    <Stat label="In negotiation" value={e.stats.inNegotiation} icon={Phone} />
-                  </div>
-                </Link>
-              );
-            })}
-          {data?.employees.length === 0 && (
-            <div className="rounded-lg border bg-card p-12 text-center text-sm text-muted-foreground">
-              No employees yet. Invite one to get started.
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard
+          label="Total calls"
+          value={totals.calls}
+          icon={Phone}
+          accent="from-primary/20 to-primary/0"
+        />
+        <StatCard
+          label="Answered"
+          value={totals.answered}
+          icon={PhoneCall}
+          subtitle={`${answerRate}% answer rate`}
+          accent="from-success/25 to-success/0"
+        />
+        <StatCard
+          label="Total leads"
+          value={totals.leads}
+          icon={Users}
+          accent="from-info/20 to-info/0"
+        />
+      </div>
+
+      <section className="rounded-lg border bg-card p-5">
+        <div className="flex items-baseline justify-between mb-4">
+          <div>
+            <h2 className="font-display text-lg">Calls this week</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Daily call volume vs answered calls.
+            </p>
+          </div>
+          <div className="flex items-center gap-4 text-xs">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-primary" /> Calls
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-info" /> Answered
+            </span>
+          </div>
+        </div>
+        <div className="h-72">
+          {isLoading ? (
+            <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+              Loading…
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={weekly} margin={{ top: 8, right: 12, left: -16, bottom: 0 }} barGap={6}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="day" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis allowDecimals={false} stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip
+                  cursor={{ fill: "color-mix(in oklab, var(--muted) 40%, transparent)" }}
+                  contentStyle={{
+                    background: "var(--popover)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                />
+                <Legend wrapperStyle={{ display: "none" }} />
+                <Bar dataKey="calls" name="Calls" fill="var(--primary)" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                <Bar dataKey="answered" name="Answered" fill="var(--info)" radius={[6, 6, 0, 0]} maxBarSize={36} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-lg border bg-card p-5">
+        <div className="flex items-baseline justify-between mb-4">
+          <div>
+            <h2 className="font-display text-lg">Top employees</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Sorted by total calls made.
+            </p>
+          </div>
+          <Link
+            to="/admin/employees"
+            className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
+          >
+            View all <ArrowUpRight className="size-3" />
+          </Link>
+        </div>
+        <div className="grid gap-2">
+          {topEmployees.map((e) => (
+            <Link
+              key={e.id}
+              to="/admin/$employeeId"
+              params={{ employeeId: e.id }}
+              className="flex items-center justify-between gap-4 rounded-md border bg-background/40 px-4 py-3 hover:border-primary/40 transition-colors"
+            >
+              <div className="min-w-0">
+                <div className="font-medium text-sm truncate">
+                  {e.displayName || e.email || "—"}
+                </div>
+                <div className="text-xs text-muted-foreground truncate">{e.email}</div>
+              </div>
+              <div className="flex items-center gap-5 text-sm">
+                <div className="text-right">
+                  <div className="font-display font-semibold">{e.stats.calls}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Calls</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-display font-semibold">{e.stats.companies}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Leads</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-display font-semibold text-success">{e.stats.dealsClosed}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Deals</div>
+                </div>
+              </div>
+            </Link>
+          ))}
+          {topEmployees.length === 0 && !isLoading && (
+            <div className="rounded-md border bg-background/40 p-8 text-center text-sm text-muted-foreground">
+              No employees yet.
             </div>
           )}
         </div>
-      )}
-
-      {inviteOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-background/80 backdrop-blur flex items-center justify-center p-4"
-          onClick={() => setInviteOpen(false)}
-        >
-          <form
-            onSubmit={submitInvite}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-card border rounded-lg p-6 w-full max-w-md space-y-4"
-          >
-            <div>
-              <h2 className="font-display text-xl">Invite employee</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                They'll receive an email with a link to set a password and sign in.
-              </p>
-            </div>
-            <input
-              type="email"
-              required
-              autoFocus
-              placeholder="employee@example.com"
-              value={inviteEmail}
-              onChange={(ev) => setInviteEmail(ev.target.value)}
-              className="w-full px-3 py-2.5 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setInviteOpen(false)}
-                className="px-3 py-2 rounded-md border text-sm hover:bg-muted"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={inviting}
-                className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50"
-              >
-                {inviting ? "Sending…" : "Send invite"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      </section>
     </div>
   );
 }
 
-function Stat({
+function StatCard({
   label,
   value,
   icon: Icon,
-  tone,
+  subtitle,
+  accent,
 }: {
   label: string;
   value: number;
   icon: React.ComponentType<{ className?: string }>;
-  tone?: "success";
+  subtitle?: string;
+  accent: string;
 }) {
   return (
-    <div className="rounded-md border bg-background/40 p-3">
-      <div
-        className={`inline-flex items-center justify-center size-7 rounded-md mb-2 ${
-          tone === "success" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"
-        }`}
-      >
-        <Icon className="size-3.5" />
+    <div className={`relative overflow-hidden rounded-xl border bg-card p-6`}>
+      <div className={`absolute inset-0 bg-gradient-to-br ${accent} pointer-events-none`} />
+      <div className="relative">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">{label}</span>
+          <span className="inline-flex items-center justify-center size-9 rounded-lg bg-background/70 border">
+            <Icon className="size-4 text-foreground" />
+          </span>
+        </div>
+        <div className="mt-4 font-display text-4xl font-semibold tracking-tight">
+          {value.toLocaleString()}
+        </div>
+        {subtitle && (
+          <div className="mt-1 text-xs text-muted-foreground">{subtitle}</div>
+        )}
       </div>
-      <div className="text-xl font-display font-semibold">{value}</div>
-      <div className="text-[11px] text-muted-foreground mt-0.5">{label}</div>
     </div>
   );
 }
-
-// Re-export STATUS_META so it's bundled; not used directly here.
-void STATUS_META;
