@@ -133,16 +133,10 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const callId = elksData.id;
 
     if (data.companyId) {
-      const { data: company } = await supabase
-        .from("companies")
-        .select("name")
-        .eq("id", data.companyId)
-        .maybeSingle();
-      const noteLabel = company?.name ? `${company.name} — ${target}` : `Call to ${target}`;
       await supabase.from("call_logs").insert({
         company_id: data.companyId,
         user_id: userId,
-        note: noteLabel,
+        note: `Outbound call to ${target}`,
         elks_call_id: callId ?? null,
         // Always start as "initiating" — 46elks reports "ongoing" the moment
         // the API call is created, before the customer has actually answered.

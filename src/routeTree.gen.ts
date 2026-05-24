@@ -17,6 +17,7 @@ import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppKanbanRouteImport } from './routes/_app.kanban'
 import { Route as AppCompaniesRouteImport } from './routes/_app.companies'
+import { Route as AppCallsRouteImport } from './routes/_app.calls'
 import { Route as AdminAdminRouteImport } from './routes/_admin.admin'
 import { Route as AdminAdminIndexRouteImport } from './routes/_admin.admin.index'
 import { Route as ApiPublicElksVoiceStartRouteImport } from './routes/api/public/elks-voice-start'
@@ -62,6 +63,11 @@ const AppKanbanRoute = AppKanbanRouteImport.update({
 const AppCompaniesRoute = AppCompaniesRouteImport.update({
   id: '/companies',
   path: '/companies',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCallsRoute = AppCallsRouteImport.update({
+  id: '/calls',
+  path: '/calls',
   getParentRoute: () => AppRoute,
 } as any)
 const AdminAdminRoute = AdminAdminRouteImport.update({
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/accept-invite': typeof AcceptInviteRoute
   '/login': typeof LoginRoute
   '/admin': typeof AdminAdminRouteWithChildren
+  '/calls': typeof AppCallsRoute
   '/companies': typeof AppCompaniesRoute
   '/kanban': typeof AppKanbanRoute
   '/settings': typeof AppSettingsRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/login': typeof LoginRoute
+  '/calls': typeof AppCallsRoute
   '/companies': typeof AppCompaniesRoute
   '/kanban': typeof AppKanbanRoute
   '/settings': typeof AppSettingsRoute
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/accept-invite': typeof AcceptInviteRoute
   '/login': typeof LoginRoute
   '/_admin/admin': typeof AdminAdminRouteWithChildren
+  '/_app/calls': typeof AppCallsRoute
   '/_app/companies': typeof AppCompaniesRoute
   '/_app/kanban': typeof AppKanbanRoute
   '/_app/settings': typeof AppSettingsRoute
@@ -162,6 +171,7 @@ export interface FileRouteTypes {
     | '/accept-invite'
     | '/login'
     | '/admin'
+    | '/calls'
     | '/companies'
     | '/kanban'
     | '/settings'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accept-invite'
     | '/login'
+    | '/calls'
     | '/companies'
     | '/kanban'
     | '/settings'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | '/accept-invite'
     | '/login'
     | '/_admin/admin'
+    | '/_app/calls'
     | '/_app/companies'
     | '/_app/kanban'
     | '/_app/settings'
@@ -272,6 +284,13 @@ declare module '@tanstack/react-router' {
       path: '/companies'
       fullPath: '/companies'
       preLoaderRoute: typeof AppCompaniesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/calls': {
+      id: '/_app/calls'
+      path: '/calls'
+      fullPath: '/calls'
+      preLoaderRoute: typeof AppCallsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_admin/admin': {
@@ -364,6 +383,7 @@ const AdminRouteChildren: AdminRouteChildren = {
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface AppRouteChildren {
+  AppCallsRoute: typeof AppCallsRoute
   AppCompaniesRoute: typeof AppCompaniesRoute
   AppKanbanRoute: typeof AppKanbanRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -371,6 +391,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppCallsRoute: AppCallsRoute,
   AppCompaniesRoute: AppCompaniesRoute,
   AppKanbanRoute: AppKanbanRoute,
   AppSettingsRoute: AppSettingsRoute,

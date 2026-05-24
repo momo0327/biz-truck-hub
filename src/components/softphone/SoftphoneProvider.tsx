@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Inviter, Registerer, SessionState, UserAgent, type Session } from "sip.js";
 import { getWebrtcCredentials } from "@/lib/webrtc.functions";
 import { placeCallFn, hangupCallFn } from "@/lib/calls.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export type CallState = "idle" | "dialing" | "ringing" | "in-call" | "ended";
 export type SipStatus = "disconnected" | "connecting" | "registered" | "failed";
@@ -371,7 +372,25 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const hangup = useCallback(async () => {
     const session = sessionRef.current;
     const callId = elksCallIdRef.current;
+    const activeCall = call;
+    const trimmedNotes = notes.trim();
     console.log("[softphone] hangup", { state: session?.state, kind: session?.constructor?.name, callId });
+
+    // Persist softphone notes into the company's internal notes (append).
+    if (activeCall?.companyId && trimmedNotes) {
+      (async () => {
+        const { data: existing } = await supabase
+          .from("companies")
+          .select("notes")
+          .eq("id", activeCall.companyId!)
+          .maybeSingle();
+        const stamp = new Date().toLocaleString();
+        const header = `[${stamp} — Call ${activeCall.number}]`;
+        const block = `${header}\n${trimmedNotes}`;
+        const merged = existing?.notes ? `${existing.notes}\n\n${block}` : block;
+        await supabase.from("companies").update({ notes: merged }).eq("id", activeCall.companyId!);
+      })().catch((err) => console.error("[softphone] save notes failed", err));
+    }
 
     // Tell 46elks to terminate the whole call (both legs) — without this the
     // customer's phone keeps ringing if we hang up before they answer.
@@ -417,7 +436,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       outboundActiveRef.current = false;
       elksCallIdRef.current = null;
     }, 1200);
-  }, [stopTick, hangupServerCall]);
+  }, [stopTick, hangupServerCall, call, notes]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
