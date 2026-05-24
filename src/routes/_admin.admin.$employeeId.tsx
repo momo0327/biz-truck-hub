@@ -1,9 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { getEmployeeDetailFn } from "@/lib/admin.functions";
+import { useState } from "react";
+import { toast } from "sonner";
+import { getEmployeeDetailFn, deleteEmployeeFn } from "@/lib/admin.functions";
 import { STATUS_META, type Status } from "@/lib/companies";
-import { ArrowLeft, Mail, Phone, Building2, PhoneCall } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building2, PhoneCall, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_admin/admin/$employeeId")({
   component: EmployeeDetail,
@@ -11,11 +13,37 @@ export const Route = createFileRoute("/_admin/admin/$employeeId")({
 
 function EmployeeDetail() {
   const { employeeId } = Route.useParams();
+  const navigate = useNavigate();
   const fetchDetail = useServerFn(getEmployeeDetailFn);
+  const deleteEmployee = useServerFn(deleteEmployeeFn);
   const { data, isLoading } = useQuery({
     queryKey: ["admin-employee", employeeId],
     queryFn: () => fetchDetail({ data: { employeeId } }),
   });
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  async function submitDelete(e: React.FormEvent) {
+    e.preventDefault();
+    setDeleting(true);
+    try {
+      const res = await deleteEmployee({ data: { employeeId, password } });
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Employee account deleted");
+      setConfirmOpen(false);
+      setPassword("");
+      navigate({ to: "/admin" });
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to delete employee");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   if (isLoading || !data) {
     return <div className="p-8 text-muted-foreground text-sm">Loading…</div>;
@@ -34,21 +62,75 @@ function EmployeeDetail() {
         </Link>
       </div>
 
-      <header>
-        <h1 className="font-display text-3xl">
-          {employee.displayName || employee.email || "—"}
-        </h1>
-        <div className="text-sm text-muted-foreground mt-1 flex items-center gap-4 flex-wrap">
-          <span className="inline-flex items-center gap-1.5">
-            <Mail className="size-3.5" /> {employee.email}
-          </span>
-          {employee.phoneNumber && (
+      <header className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="font-display text-3xl">
+            {employee.displayName || employee.email || "—"}
+          </h1>
+          <div className="text-sm text-muted-foreground mt-1 flex items-center gap-4 flex-wrap">
             <span className="inline-flex items-center gap-1.5">
-              <Phone className="size-3.5" /> {employee.phoneNumber}
+              <Mail className="size-3.5" /> {employee.email}
             </span>
-          )}
+            {employee.phoneNumber && (
+              <span className="inline-flex items-center gap-1.5">
+                <Phone className="size-3.5" /> {employee.phoneNumber}
+              </span>
+            )}
+          </div>
         </div>
+        <button
+          onClick={() => setConfirmOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm border border-destructive/30 text-destructive hover:bg-destructive/10"
+        >
+          <Trash2 className="size-4" /> Delete account
+        </button>
       </header>
+
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <form
+            onSubmit={submitDelete}
+            className="w-full max-w-md bg-card rounded-lg border shadow-lg p-6 space-y-4"
+          >
+            <div>
+              <h3 className="font-display text-lg">Delete employee account</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                This permanently removes <strong>{employee.email}</strong> and all of
+                their companies and call logs. Enter your admin password to confirm.
+              </p>
+            </div>
+            <input
+              type="password"
+              required
+              autoFocus
+              placeholder="Your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setPassword("");
+                }}
+                className="px-3 py-2 rounded-md text-sm hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={deleting}
+                className="px-3 py-2 rounded-md text-sm bg-destructive text-destructive-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete account"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
 
       <section>
         <div className="flex items-center gap-2 mb-3">
