@@ -62,20 +62,20 @@ function AdminDashboard() {
           label="Total calls"
           value={totals.calls}
           icon={Phone}
-          accent="from-primary/20 to-primary/0"
+          accent="border-l-4 border-l-primary"
         />
         <StatCard
           label="Answered"
           value={totals.answered}
           icon={PhoneCall}
           subtitle={`${answerRate}% answer rate`}
-          accent="from-success/25 to-success/0"
+          accent="border-l-4 border-l-success"
         />
         <StatCard
           label="Total leads"
           value={totals.leads}
           icon={Users}
-          accent="from-info/20 to-info/0"
+          accent="border-l-4 border-l-info"
         />
       </div>
 
@@ -195,22 +195,19 @@ function StatCard({
   accent: string;
 }) {
   return (
-    <div className={`relative overflow-hidden rounded-xl border bg-card p-6`}>
-      <div className={`absolute inset-0 bg-gradient-to-br ${accent} pointer-events-none`} />
-      <div className="relative">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">{label}</span>
-          <span className="inline-flex items-center justify-center size-9 rounded-lg bg-background/70 border">
-            <Icon className="size-4 text-foreground" />
-          </span>
-        </div>
-        <div className="mt-4 font-display text-4xl font-semibold tracking-tight">
-          {value.toLocaleString()}
-        </div>
-        {subtitle && (
-          <div className="mt-1 text-xs text-muted-foreground">{subtitle}</div>
-        )}
+    <div className={`rounded-xl border bg-card p-6 ${accent}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">{label}</span>
+        <span className="inline-flex items-center justify-center size-9 rounded-lg bg-muted border">
+          <Icon className="size-4 text-foreground" />
+        </span>
       </div>
+      <div className="mt-4 font-display text-4xl font-semibold tracking-tight">
+        {value.toLocaleString()}
+      </div>
+      {subtitle && (
+        <div className="mt-1 text-xs text-muted-foreground">{subtitle}</div>
+      )}
     </div>
   );
 }

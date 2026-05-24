@@ -115,7 +115,7 @@ export function SoftphonePanel() {
     >
       <div
         onPointerDown={onHeaderPointerDown}
-        className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-primary/10 to-transparent border-b cursor-grab active:cursor-grabbing select-none"
+        className="flex items-center justify-between px-4 py-2.5 bg-muted/60 border-b cursor-grab active:cursor-grabbing select-none"
       >
         <div className="flex items-center gap-2 min-w-0">
           <GripHorizontal className="size-3.5 text-muted-foreground/60" />
@@ -148,7 +148,7 @@ export function SoftphonePanel() {
       {!minimized && (
         <div className="p-5 space-y-4">
           <div className="text-center space-y-1">
-            <div className="size-16 mx-auto rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+            <div className="size-16 mx-auto rounded-full bg-muted border border-primary/20 flex items-center justify-center">
               <Phone
                 className={cn("size-7 text-primary", state === "ringing" && "animate-pulse")}
               />
