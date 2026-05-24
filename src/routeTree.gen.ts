@@ -18,6 +18,7 @@ import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppKanbanRouteImport } from './routes/_app.kanban'
 import { Route as AppCompaniesRouteImport } from './routes/_app.companies'
 import { Route as AdminAdminRouteImport } from './routes/_admin.admin'
+import { Route as AdminAdminIndexRouteImport } from './routes/_admin.admin.index'
 import { Route as ApiPublicElksVoiceStartRouteImport } from './routes/api/public/elks-voice-start'
 import { Route as ApiPublicElksStatusRouteImport } from './routes/api/public/elks-status'
 import { Route as AdminAdminEmployeeIdRouteImport } from './routes/_admin.admin.$employeeId'
@@ -65,6 +66,11 @@ const AdminAdminRoute = AdminAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAdminIndexRoute = AdminAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminAdminRoute,
+} as any)
 const ApiPublicElksVoiceStartRoute = ApiPublicElksVoiceStartRouteImport.update({
   id: '/api/public/elks-voice-start',
   path: '/api/public/elks-voice-start',
@@ -92,18 +98,19 @@ export interface FileRoutesByFullPath {
   '/admin/$employeeId': typeof AdminAdminEmployeeIdRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
+  '/admin/': typeof AdminAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/login': typeof LoginRoute
-  '/admin': typeof AdminAdminRouteWithChildren
   '/companies': typeof AppCompaniesRoute
   '/kanban': typeof AppKanbanRoute
   '/settings': typeof AppSettingsRoute
   '/admin/$employeeId': typeof AdminAdminEmployeeIdRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
+  '/admin': typeof AdminAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -119,6 +126,7 @@ export interface FileRoutesById {
   '/_admin/admin/$employeeId': typeof AdminAdminEmployeeIdRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
+  '/_admin/admin/': typeof AdminAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -133,18 +141,19 @@ export interface FileRouteTypes {
     | '/admin/$employeeId'
     | '/api/public/elks-status'
     | '/api/public/elks-voice-start'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/accept-invite'
     | '/login'
-    | '/admin'
     | '/companies'
     | '/kanban'
     | '/settings'
     | '/admin/$employeeId'
     | '/api/public/elks-status'
     | '/api/public/elks-voice-start'
+    | '/admin'
   id:
     | '__root__'
     | '/_admin'
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/_admin/admin/$employeeId'
     | '/api/public/elks-status'
     | '/api/public/elks-voice-start'
+    | '/_admin/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -235,6 +245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdminRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/admin/': {
+      id: '/_admin/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminAdminIndexRouteImport
+      parentRoute: typeof AdminAdminRoute
+    }
     '/api/public/elks-voice-start': {
       id: '/api/public/elks-voice-start'
       path: '/api/public/elks-voice-start'
@@ -261,10 +278,12 @@ declare module '@tanstack/react-router' {
 
 interface AdminAdminRouteChildren {
   AdminAdminEmployeeIdRoute: typeof AdminAdminEmployeeIdRoute
+  AdminAdminIndexRoute: typeof AdminAdminIndexRoute
 }
 
 const AdminAdminRouteChildren: AdminAdminRouteChildren = {
   AdminAdminEmployeeIdRoute: AdminAdminEmployeeIdRoute,
+  AdminAdminIndexRoute: AdminAdminIndexRoute,
 }
 
 const AdminAdminRouteWithChildren = AdminAdminRoute._addFileChildren(
