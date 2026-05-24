@@ -68,14 +68,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {!collapsed && (
               <img src={logo} alt="Auto Wahab Export" className="h-8 w-auto brightness-0 invert" />
             )}
-            <button
-              onClick={() => setCollapsed((c) => !c)}
-              className="p-1.5 rounded-md hover:bg-sidebar-accent/40 text-sidebar-foreground"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-            </button>
           </div>
           <nav className="px-3 flex-1 space-y-0.5">
             {nav.map((n) => {
@@ -112,7 +104,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
-          <div className="p-3 border-t border-sidebar-border">
+          <div className="p-3 flex flex-col gap-2">
+            <button
+              onClick={() => setCollapsed((c) => !c)}
+              className={cn(
+                "flex items-center gap-2 py-2 rounded-md text-sm hover:bg-sidebar-accent/40 text-sidebar-foreground",
+                collapsed ? "justify-center px-1" : "px-3",
+              )}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+              {!collapsed && "Collapse menu"}
+            </button>
+            <div className="border-t border-sidebar-border" />
             {!collapsed && (
               <div className="px-3 py-2 text-xs opacity-60 truncate">{user.email}</div>
             )}
