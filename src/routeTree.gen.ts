@@ -21,6 +21,7 @@ import { Route as AdminAdminRouteImport } from './routes/_admin.admin'
 import { Route as AdminAdminIndexRouteImport } from './routes/_admin.admin.index'
 import { Route as ApiPublicElksVoiceStartRouteImport } from './routes/api/public/elks-voice-start'
 import { Route as ApiPublicElksStatusRouteImport } from './routes/api/public/elks-status'
+import { Route as AdminAdminInviteRouteImport } from './routes/_admin.admin.invite'
 import { Route as AdminAdminEmployeesRouteImport } from './routes/_admin.admin.employees'
 import { Route as AdminAdminEmployeeIdRouteImport } from './routes/_admin.admin.$employeeId'
 
@@ -82,6 +83,11 @@ const ApiPublicElksStatusRoute = ApiPublicElksStatusRouteImport.update({
   path: '/api/public/elks-status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAdminInviteRoute = AdminAdminInviteRouteImport.update({
+  id: '/invite',
+  path: '/invite',
+  getParentRoute: () => AdminAdminRoute,
+} as any)
 const AdminAdminEmployeesRoute = AdminAdminEmployeesRouteImport.update({
   id: '/employees',
   path: '/employees',
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppSettingsRoute
   '/admin/$employeeId': typeof AdminAdminEmployeeIdRoute
   '/admin/employees': typeof AdminAdminEmployeesRoute
+  '/admin/invite': typeof AdminAdminInviteRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
   '/admin/': typeof AdminAdminIndexRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AppSettingsRoute
   '/admin/$employeeId': typeof AdminAdminEmployeeIdRoute
   '/admin/employees': typeof AdminAdminEmployeesRoute
+  '/admin/invite': typeof AdminAdminInviteRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
   '/admin': typeof AdminAdminIndexRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_admin/admin/$employeeId': typeof AdminAdminEmployeeIdRoute
   '/_admin/admin/employees': typeof AdminAdminEmployeesRoute
+  '/_admin/admin/invite': typeof AdminAdminInviteRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
   '/_admin/admin/': typeof AdminAdminIndexRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/admin/$employeeId'
     | '/admin/employees'
+    | '/admin/invite'
     | '/api/public/elks-status'
     | '/api/public/elks-voice-start'
     | '/admin/'
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/admin/$employeeId'
     | '/admin/employees'
+    | '/admin/invite'
     | '/api/public/elks-status'
     | '/api/public/elks-voice-start'
     | '/admin'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_admin/admin/$employeeId'
     | '/_admin/admin/employees'
+    | '/_admin/admin/invite'
     | '/api/public/elks-status'
     | '/api/public/elks-voice-start'
     | '/_admin/admin/'
@@ -278,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicElksStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_admin/admin/invite': {
+      id: '/_admin/admin/invite'
+      path: '/invite'
+      fullPath: '/admin/invite'
+      preLoaderRoute: typeof AdminAdminInviteRouteImport
+      parentRoute: typeof AdminAdminRoute
+    }
     '/_admin/admin/employees': {
       id: '/_admin/admin/employees'
       path: '/employees'
@@ -298,12 +317,14 @@ declare module '@tanstack/react-router' {
 interface AdminAdminRouteChildren {
   AdminAdminEmployeeIdRoute: typeof AdminAdminEmployeeIdRoute
   AdminAdminEmployeesRoute: typeof AdminAdminEmployeesRoute
+  AdminAdminInviteRoute: typeof AdminAdminInviteRoute
   AdminAdminIndexRoute: typeof AdminAdminIndexRoute
 }
 
 const AdminAdminRouteChildren: AdminAdminRouteChildren = {
   AdminAdminEmployeeIdRoute: AdminAdminEmployeeIdRoute,
   AdminAdminEmployeesRoute: AdminAdminEmployeesRoute,
+  AdminAdminInviteRoute: AdminAdminInviteRoute,
   AdminAdminIndexRoute: AdminAdminIndexRoute,
 }
 
