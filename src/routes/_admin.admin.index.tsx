@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { getEmployeesOverviewFn, inviteEmployeeFn } from "@/lib/admin.functions";
 import { STATUS_META } from "@/lib/companies";
 import { Mail, UserPlus, ShieldCheck, Phone, Building2, CheckCircle2, Clock } from "lucide-react";
@@ -17,7 +18,21 @@ function AdminOverview() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin-employees"],
     queryFn: () => fetchOverview({}),
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-overview")
+      .on("postgres_changes", { event: "*", schema: "public", table: "call_logs" }, () => refetch())
+      .on("postgres_changes", { event: "*", schema: "public", table: "companies" }, () => refetch())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
+
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
