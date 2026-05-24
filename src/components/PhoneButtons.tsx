@@ -41,6 +41,11 @@ export function PhoneButtons({ phones, companyId, contactName, compact }: { phon
           </button>
         </div>
       ))}
+      {extra > 0 && (
+        <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded-full bg-muted">
+          +{extra}
+        </span>
+      )}
     </div>
   );
 }
