@@ -72,22 +72,28 @@ function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
           label="Total calls"
-          value={totals.calls}
+          value={totals.calls.toLocaleString()}
           icon={Phone}
-          accent="border-l-4 border-l-primary"
+          iconColor="text-primary"
+          iconBorder="border-primary/40"
+          iconBg="bg-primary/10"
         />
         <StatCard
           label="Answered"
-          value={totals.answered}
+          value={totals.answered.toLocaleString()}
           icon={PhoneCall}
           subtitle={`${answerRate}% answer rate`}
-          accent="border-l-4 border-l-success"
+          iconColor="text-success"
+          iconBorder="border-success/40"
+          iconBg="bg-success/10"
         />
         <StatCard
           label="Total leads"
-          value={totals.leads}
+          value={totals.leads.toLocaleString()}
           icon={Users}
-          accent="border-l-4 border-l-info"
+          iconColor="text-info"
+          iconBorder="border-info/40"
+          iconBg="bg-info/10"
         />
       </div>
 
