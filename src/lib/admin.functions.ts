@@ -2,6 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const ANSWERED_STATUSES = new Set([
+  "follow_up",
+  "in_negotiation",
+  "deal_made",
+  "not_interested",
+]);
+
 export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -47,7 +54,46 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
       };
     });
 
-    return { employees };
+    const contactedCompanies = companies.filter((c) => c.last_contact);
+    const totals = {
+      calls: contactedCompanies.length,
+      answered: contactedCompanies.filter((c) => ANSWERED_STATUSES.has(c.status)).length,
+      leads: companies.length,
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const byDate = new Map<string, { calls: number; answered: number }>();
+    const weekly: { day: string; calls: number; answered: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const day = d.toLocaleDateString(undefined, { weekday: "short" });
+      const bucket = { calls: 0, answered: 0 };
+      byDate.set(key, bucket);
+      weekly.push({ day, ...bucket });
+    }
+    contactedCompanies.forEach((c) => {
+      const key = new Date(c.last_contact!).toISOString().slice(0, 10);
+      const b = byDate.get(key);
+      if (!b) return;
+      b.calls++;
+      if (ANSWERED_STATUSES.has(c.status)) b.answered++;
+    });
+    // sync mutated values back into the array
+    let i = 6;
+    for (const item of weekly) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const v = byDate.get(key)!;
+      item.calls = v.calls;
+      item.answered = v.answered;
+      i--;
+    }
+
+    return { employees, totals, weekly };
   });
 
 export const getEmployeeDetailFn = createServerFn({ method: "GET" })
