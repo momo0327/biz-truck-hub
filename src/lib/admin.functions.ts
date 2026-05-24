@@ -75,3 +75,21 @@ export const inviteEmployeeFn = createServerFn({ method: "POST" })
     await assertAdmin(supabase, userId);
     return inviteUser(data.email);
   });
+
+export const deleteEmployeeFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        employeeId: z.string().uuid(),
+        password: z.string().min(1).max(256),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, deleteEmployee } = await import("./admin.server");
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    return deleteEmployee(userId, data.employeeId, data.password);
+  });
+
