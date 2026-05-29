@@ -336,7 +336,7 @@ function CallsHistoryPage() {
                     </tr>
                   );
                 })}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
