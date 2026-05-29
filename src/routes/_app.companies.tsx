@@ -63,9 +63,9 @@ function CompaniesPage() {
   return (
     <div className="p-8 space-y-6 max-w-7xl">
       <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display text-3xl">Companies</h1>
-          <p className="text-sm text-muted-foreground mt-1">{companies.length} imported</p>
+        <div className="flex items-end gap-4 flex-wrap">
+          <h1 className="font-display text-5xl leading-none tracking-tight">Companies</h1>
+          <p className="text-sm text-muted-foreground mb-1">{companies.length} imported</p>
         </div>
         <div className="flex gap-2">
           {selectedIds.size > 0 && (
