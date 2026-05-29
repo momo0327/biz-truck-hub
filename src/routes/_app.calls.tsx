@@ -254,7 +254,7 @@ function CallsHistoryPage() {
               </tr>
             )}
             {grouped.map(([day, rows]) => (
-              <>
+              <Fragment key={`g-${day}`}>
                 <tr key={`g-${day}`} className="bg-muted/40">
                   <td colSpan={8} className="px-5 py-2 text-[11px] font-medium tracking-[0.18em] uppercase text-muted-foreground">
                     {day} · {rows.length} calls
