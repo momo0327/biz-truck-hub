@@ -11,7 +11,7 @@ import {
   type Status,
 } from "@/lib/companies";
 import { KanbanSkeleton } from "@/components/PageSkeletons";
-import { Filter, Calendar, Plus } from "lucide-react";
+
 
 export const Route = createFileRoute("/_app/kanban")({ component: PipelinePage });
 
@@ -86,17 +86,6 @@ function PipelinePage() {
               Drag any card between stages to update status · changes save instantly
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md border bg-card text-sm hover:bg-muted">
-              <Filter className="size-4" /> Filter
-            </button>
-            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md border bg-card text-sm hover:bg-muted">
-              <Calendar className="size-4" /> This quarter
-            </button>
-            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:opacity-90">
-              <Plus className="size-4" /> New Lead
-            </button>
-          </div>
         </header>
 
         <DragDropContext onDragEnd={onDragEnd}>
@@ -123,9 +112,6 @@ function PipelinePage() {
                         <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">
                           {items.length}
                         </span>
-                      </div>
-                      <div className="px-3 pb-2 text-[11px] text-muted-foreground">
-                        Pipeline value <span className="text-foreground font-medium">—</span>
                       </div>
                       <div className="p-2 pt-1 space-y-2 max-h-[calc(100vh-360px)] overflow-y-auto">
                         {items.map((c, idx) => {
