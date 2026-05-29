@@ -51,7 +51,7 @@ function PipelinePage() {
   return (
     <div className="p-8 space-y-6">
       <header className="flex items-end gap-4 flex-wrap">
-        <h1 className="font-display text-5xl leading-none tracking-tight">Pipeline</h1>
+        <h1 className="font-display text-3xl tracking-wide">Pipeline</h1>
         <p className="text-sm text-muted-foreground mb-1">Drag leads between stages to update status</p>
       </header>
 
