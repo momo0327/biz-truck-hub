@@ -124,13 +124,16 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
             <p className="text-xs text-muted-foreground">Org: {company.org_number ?? "—"}</p>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={deleteCompany} className="p-2 rounded-md hover:bg-destructive/10 text-destructive">
-              <Trash2 className="size-4" />
-            </button>
+            {!readOnly && (
+              <button onClick={deleteCompany} className="p-2 rounded-md hover:bg-destructive/10 text-destructive">
+                <Trash2 className="size-4" />
+              </button>
+            )}
             <button onClick={onClose} className="p-2 rounded-md hover:bg-muted">
               <X className="size-5" />
             </button>
           </div>
+
         </div>
 
         <div className="p-6 space-y-6">
