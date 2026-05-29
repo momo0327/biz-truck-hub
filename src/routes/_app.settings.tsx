@@ -99,7 +99,7 @@ function SettingsPage() {
   return (
     <div className="p-8 space-y-6">
       <header className="flex items-end gap-4 flex-wrap">
-        <h1 className="font-display text-5xl leading-none tracking-tight">Settings</h1>
+        <h1 className="font-display text-3xl tracking-wide">Settings</h1>
         <p className="text-sm text-muted-foreground mb-1">
           Account, calling preferences, and integrations
         </p>
