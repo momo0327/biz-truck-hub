@@ -8,7 +8,7 @@ import { PhoneButtons } from "./PhoneButtons";
 import { VehiclesTable, type Vehicle } from "./VehiclesTable";
 import { toast } from "sonner";
 
-export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCompanyDeleted }: { company: Company; onClose: () => void; onCompanyChange?: (company: Company) => void; onCompanyDeleted?: (id: string) => void }) {
+export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCompanyDeleted, readOnly = false }: { company: Company; onClose: () => void; onCompanyChange?: (company: Company) => void; onCompanyDeleted?: (id: string) => void; readOnly?: boolean }) {
   const [company, setCompany] = useState<Company>(initial);
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [note, setNote] = useState("");
