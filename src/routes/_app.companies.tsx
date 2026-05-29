@@ -148,7 +148,7 @@ function CompaniesPage() {
               <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Primary Contact</th>
               <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Phone</th>
               <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Status</th>
-              <th className="text-right px-4 py-3 w-[120px]"></th>
+              <th className="text-right px-4 py-3 w-[60px]"></th>
             </tr>
 
           </thead>
@@ -184,7 +184,7 @@ function CompaniesPage() {
                     <div className="font-medium text-sm">{c.contact_person || "—"}</div>
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <PhoneButtons phones={c.phones ?? []} companyId={c.id} contactName={c.name} compact />
+                    <PhoneButtons phones={c.phones ?? []} companyId={c.id} contactName={c.name} compact readOnly />
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full ${meta.tone}`}>
@@ -192,14 +192,14 @@ function CompaniesPage() {
                       {meta.label}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-right w-[120px]" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-3 py-3 text-right w-[60px]" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => researchOne(c.id)}
                       disabled={busy}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[11px] hover:bg-muted disabled:opacity-50 whitespace-nowrap"
+                      title={c.researched_at ? "Refresh research" : "Research"}
+                      className="inline-flex items-center justify-center size-8 rounded-md border hover:bg-muted disabled:opacity-50"
                     >
-                      {busy ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
-                      {c.researched_at ? "Refresh" : "Research"}
+                      {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
                     </button>
                   </td>
                 </tr>
