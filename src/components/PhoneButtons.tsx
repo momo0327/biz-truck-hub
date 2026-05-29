@@ -13,7 +13,7 @@ export function PhoneButtons({ phones, companyId, contactName, compact, readOnly
   const canCall = !readOnly && !!ctx;
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="inline-flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
       {visible.map((p) => (
         <div key={p} className="inline-flex items-center rounded-full bg-success/10 text-success border border-success/20 overflow-hidden">
           <a href={`tel:${p.replace(/\s/g, "")}`} className="px-3 py-1 text-xs font-medium inline-flex items-center gap-1.5 hover:bg-success/20">
