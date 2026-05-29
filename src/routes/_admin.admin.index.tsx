@@ -8,13 +8,17 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { Phone, PhoneCall, Users, ArrowUpRight } from "lucide-react";
+
 
 export const Route = createFileRoute("/_admin/admin/")({
   component: AdminDashboard,
