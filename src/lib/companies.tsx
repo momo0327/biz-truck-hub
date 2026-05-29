@@ -6,17 +6,21 @@ export type Company = Database["public"]["Tables"]["companies"]["Row"];
 export type CallLog = Database["public"]["Tables"]["call_logs"]["Row"];
 export type Status = Database["public"]["Enums"]["company_status"];
 
-export const STATUS_META: Record<Status, { label: string; emoji: string; tone: string }> = {
-  new: { label: "New", emoji: "🆕", tone: "bg-muted text-foreground" },
-  called_no_answer: { label: "No Answer", emoji: "📞", tone: "bg-info/15 text-info" },
-  follow_up: { label: "Follow Up", emoji: "🔁", tone: "bg-warning/20 text-warning-foreground" },
-  in_negotiation: { label: "Negotiating", emoji: "💬", tone: "bg-primary/10 text-primary" },
-  deal_made: { label: "Deal Made", emoji: "✅", tone: "bg-success/15 text-success" },
-  not_interested: { label: "Not Interested", emoji: "❌", tone: "bg-destructive/10 text-destructive" },
+export const STATUS_META: Record<Status, { label: string; emoji: string; tone: string; accent: string; dot: string }> = {
+  new: { label: "New", emoji: "•", tone: "bg-muted text-foreground", accent: "var(--stage-new)", dot: "bg-[var(--stage-new)]" },
+  called_no_answer: { label: "Contacted", emoji: "•", tone: "bg-info/10 text-info", accent: "var(--stage-contacted)", dot: "bg-[var(--stage-contacted)]" },
+  follow_up: { label: "Qualified", emoji: "•", tone: "bg-warning/15 text-warning-foreground", accent: "var(--stage-qualified)", dot: "bg-[var(--stage-qualified)]" },
+  in_negotiation: { label: "Negotiating", emoji: "•", tone: "bg-[color-mix(in_oklab,var(--stage-negotiating)_15%,transparent)] text-[var(--stage-negotiating)]", accent: "var(--stage-negotiating)", dot: "bg-[var(--stage-negotiating)]" },
+  deal_made: { label: "Closing", emoji: "•", tone: "bg-success/15 text-success", accent: "var(--stage-closing)", dot: "bg-[var(--stage-closing)]" },
+  not_interested: { label: "Lost", emoji: "•", tone: "bg-destructive/10 text-destructive", accent: "var(--stage-lost)", dot: "bg-[var(--stage-lost)]" },
 };
 
 export const STATUS_ORDER: Status[] = [
   "new", "called_no_answer", "follow_up", "in_negotiation", "deal_made", "not_interested",
+];
+
+export const PIPELINE_ORDER: Status[] = [
+  "new", "called_no_answer", "follow_up", "in_negotiation", "deal_made",
 ];
 
 type CompaniesContextValue = {

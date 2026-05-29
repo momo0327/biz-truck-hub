@@ -12,7 +12,7 @@ import { CompaniesProvider } from "@/lib/companies";
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/companies", label: "Companies", icon: Building2 },
-  { to: "/kanban", label: "Kanban", icon: KanbanSquare },
+  { to: "/kanban", label: "Pipeline", icon: KanbanSquare },
   { to: "/calls", label: "Call history", icon: Phone },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
