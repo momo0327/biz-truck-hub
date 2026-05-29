@@ -41,8 +41,8 @@ type SessionMedia = Session & {
   };
 };
 
-export const SoftphoneCtx = createContext<SoftphoneCtx | null>(null);
-const Ctx = SoftphoneCtx;
+const Ctx = createContext<SoftphoneCtx | null>(null);
+export const SoftphoneContext = Ctx;
 
 export function useSoftphone() {
   const v = useContext(Ctx);
