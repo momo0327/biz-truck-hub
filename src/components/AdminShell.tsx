@@ -1,23 +1,21 @@
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Users, UserPlus, Settings, ShieldCheck, LogOut } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { LayoutDashboard, Users, UserPlus, Settings } from "lucide-react";
 import { useEffect } from "react";
-import { useAuth, signOut } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 import { useUserRole } from "@/lib/roles";
-import { cn } from "@/lib/utils";
-import logo from "@/assets/logo.png";
+import { Shell, type ShellNavItem } from "@/components/Shell";
 
-const nav = [
+const nav: readonly ShellNavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/admin/employees", label: "Employees", icon: Users, exact: false },
-  { to: "/admin/invite", label: "Invite employee", icon: UserPlus, exact: false },
-  { to: "/admin/settings", label: "Settings", icon: Settings, exact: false },
-] as const;
+  { to: "/admin/employees", label: "Employees", icon: Users },
+  { to: "/admin/invite", label: "Invite employee", icon: UserPlus },
+  { to: "/admin/settings", label: "Settings", icon: Settings },
+];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
-  const loc = useLocation();
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
@@ -36,46 +34,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="w-60 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col sticky top-0 h-screen">
-        <div className="px-5 py-6">
-          <img src={logo} alt="Auto Wahab Export" className="h-8 w-auto brightness-0 invert" />
-          <div className="mt-3 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] uppercase tracking-wider font-medium">
-            <ShieldCheck className="size-3" /> Admin
-          </div>
-        </div>
-        <nav className="px-3 flex-1 space-y-0.5">
-          {nav.map((n) => {
-            const active = n.exact ? loc.pathname === n.to : loc.pathname.startsWith(n.to);
-            const Icon = n.icon;
-            return (
-              <Link
-                key={n.to}
-                to={n.to}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "hover:bg-sidebar-accent/40",
-                )}
-              >
-                <Icon className="size-4" />
-                {n.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="p-3 border-t border-sidebar-border">
-          <div className="px-3 py-2 text-xs opacity-60 truncate">{user.email}</div>
-          <button
-            onClick={() => signOut().then(() => navigate({ to: "/login" }))}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-sidebar-accent/40"
-          >
-            <LogOut className="size-4" /> Sign out
-          </button>
-        </div>
-      </aside>
-      <main className="flex-1 min-w-0">{children}</main>
-    </div>
+    <Shell user={user} nav={nav} roleLabel="Admin">
+      {children}
+    </Shell>
   );
 }
