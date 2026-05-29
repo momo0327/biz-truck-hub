@@ -147,10 +147,10 @@ function CompaniesPage() {
               <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Company</th>
               <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Primary Contact</th>
               <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Phone</th>
-              <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Fleet</th>
               <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Status</th>
-              <th className="text-right px-4 py-3"></th>
+              <th className="text-right px-4 py-3 w-[120px]"></th>
             </tr>
+
           </thead>
           <tbody className="divide-y">
             {filtered.map((c) => {
