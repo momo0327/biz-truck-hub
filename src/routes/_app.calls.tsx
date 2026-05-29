@@ -243,7 +243,7 @@ function CallsHistoryPage() {
             )}
             {!loading && filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground italic">
+                <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground italic">
                   No calls match this filter.
                 </td>
               </tr>
@@ -251,7 +251,7 @@ function CallsHistoryPage() {
             {grouped.map(([day, rows]) => (
               <Fragment key={`g-${day}`}>
                 <tr key={`g-${day}`} className="bg-muted/40">
-                  <td colSpan={8} className="px-5 py-2 text-[11px] font-medium tracking-[0.18em] uppercase text-muted-foreground">
+                  <td colSpan={6} className="px-5 py-2 text-[11px] font-medium tracking-[0.18em] uppercase text-muted-foreground">
                     {day} · {rows.length} calls
                   </td>
                 </tr>
@@ -309,26 +309,8 @@ function CallsHistoryPage() {
                       <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
                         {new Date(c.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </td>
-                      <td className="px-3 py-3">
-                        {(c.duration ?? 0) > 0 ? (
-                          <button className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border bg-card text-xs hover:bg-muted">
-                            <span className="inline-flex items-center justify-center size-5 rounded-full bg-primary text-primary-foreground">
-                              <Play className="size-3" />
-                            </span>
-                            Play
-                          </button>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-muted-foreground text-xs">
-                            {isVoicemail ? <Voicemail className="size-3.5" /> : <span className="opacity-30">—</span>}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3">
-                        <button className="p-1.5 rounded hover:bg-muted text-muted-foreground">
-                          <MoreHorizontal className="size-4" />
-                        </button>
-                      </td>
                     </tr>
+
                   );
                 })}
               </Fragment>
