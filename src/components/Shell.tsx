@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { LogOut, PanelLeftClose, PanelLeftOpen, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { signOut, type AuthUser } from "@/lib/auth";
+import { signOut } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
 import {
@@ -28,7 +28,7 @@ export function Shell({
   roleLabel,
   children,
 }: {
-  user: AuthUser;
+  user: { email?: string | null };
   nav: readonly ShellNavItem[];
   roleLabel: string;
   children: React.ReactNode;
