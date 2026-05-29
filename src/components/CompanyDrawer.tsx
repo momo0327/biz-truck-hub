@@ -140,15 +140,18 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Contact</h4>
-              <button
-                onClick={doResearch}
-                disabled={researching}
-                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                {researching ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
-                {company.researched_at ? "Re-research" : "Research with AI"}
-              </button>
+              {!readOnly && (
+                <button
+                  onClick={doResearch}
+                  disabled={researching}
+                  className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                >
+                  {researching ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
+                  {company.researched_at ? "Re-research" : "Research with AI"}
+                </button>
+              )}
             </div>
+
             <PhoneButtons phones={company.phones ?? []} companyId={company.id} contactName={company.name} />
             {company.website && (
               <a href={company.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-info hover:underline">
