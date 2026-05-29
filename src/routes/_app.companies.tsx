@@ -156,14 +156,12 @@ function CompaniesPage() {
             {filtered.map((c) => {
               const meta = STATUS_META[c.status];
               const busy = busyIds.has(c.id);
-              const init = c.name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
               const city = c.address?.split(",")[0]?.trim() || "";
               const trucks = Array.isArray(c.vehicles) ? c.vehicles.length : 0;
               const fleetLabel = trucks > 0 ? `${trucks} trucks` : (c.fleet_size || c.trucks_info?.slice(0, 24) || "—");
-              const firstPhone = c.phones?.[0];
               return (
                 <tr key={c.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelected(c)}>
-                  <td className="px-4 py-4 w-10" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selectedIds.has(c.id)}
@@ -178,42 +176,34 @@ function CompaniesPage() {
                       className="size-4 cursor-pointer"
                     />
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center justify-center size-10 rounded-md bg-muted text-[11px] font-semibold tracking-wide text-muted-foreground shrink-0">
-                        {init}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{c.name}</div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {[city, c.org_number].filter(Boolean).join(" · ") || "—"}
-                        </div>
-                      </div>
+                  <td className="px-4 py-3">
+                    <div className="font-medium truncate">{c.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {[city, c.org_number].filter(Boolean).join(" · ") || "—"}
                     </div>
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-4 py-3">
                     <div className="font-medium text-sm">{c.contact_person || "—"}</div>
-                    <div className="text-xs text-muted-foreground">{c.contact_person ? "Contact" : ""}</div>
                   </td>
-                  <td className="px-4 py-4 font-mono text-xs text-muted-foreground">
-                    {firstPhone ?? "—"}
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <PhoneButtons phones={c.phones ?? []} companyId={c.id} contactName={c.name} compact />
                   </td>
-                  <td className="px-4 py-4 text-xs text-muted-foreground">
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
                     {fleetLabel}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full ${meta.tone}`}>
                       <span className={`size-1.5 rounded-full ${meta.dot}`} />
                       {meta.label}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => researchOne(c.id)}
                       disabled={busy}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-medium tracking-wide uppercase hover:opacity-90 disabled:opacity-50"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[11px] hover:bg-muted disabled:opacity-50 whitespace-nowrap"
                     >
-                      {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+                      {busy ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
                       {c.researched_at ? "Refresh" : "Research"}
                     </button>
                   </td>
