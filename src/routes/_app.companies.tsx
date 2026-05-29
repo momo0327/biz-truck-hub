@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ImportDialog } from "@/components/ImportDialog";
 import { AddCompanyDialog } from "@/components/AddCompanyDialog";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
-import { PhoneButtons } from "@/components/PhoneButtons";
+
 import { useCompanies, STATUS_META, type Company } from "@/lib/companies";
 import { CompaniesSkeleton } from "@/components/PageSkeletons";
 import { researchCompanyFn, deleteCompaniesFn } from "@/server/research.functions";
