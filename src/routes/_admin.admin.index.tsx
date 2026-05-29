@@ -24,17 +24,6 @@ export const Route = createFileRoute("/_admin/admin/")({
   component: AdminDashboard,
 });
 
-function mockWeeklyData() {
-  return [
-    { day: "Mon", calls: 42, answered: 28 },
-    { day: "Tue", calls: 58, answered: 41 },
-    { day: "Wed", calls: 34, answered: 22 },
-    { day: "Thu", calls: 71, answered: 50 },
-    { day: "Fri", calls: 45, answered: 33 },
-    { day: "Sat", calls: 12, answered: 8 },
-    { day: "Sun", calls: 8, answered: 5 },
-  ];
-}
 
 function AdminDashboard() {
   const fetchOverview = useServerFn(getEmployeesOverviewFn);
@@ -57,8 +46,7 @@ function AdminDashboard() {
   }, [refetch]);
 
   const totals = data?.totals ?? { calls: 0, answered: 0, leads: 0 };
-  const hasRealWeekly = (data?.weekly ?? []).some((d) => d.calls > 0 || d.answered > 0);
-  const weekly = hasRealWeekly ? data!.weekly : mockWeeklyData();
+  const weekly = data?.weekly ?? [];
   const answerRate = totals.calls > 0 ? Math.round((totals.answered / totals.calls) * 100) : 0;
   const topEmployees = (data?.employees ?? [])
     .slice()

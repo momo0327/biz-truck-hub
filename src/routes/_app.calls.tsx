@@ -6,10 +6,6 @@ import {
   PhoneMissed,
   Voicemail,
   Search,
-  Filter as FilterIcon,
-  Calendar,
-  Play,
-  MoreHorizontal,
   Check,
   X,
   PhoneCall,
@@ -168,11 +164,11 @@ function CallsHistoryPage() {
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <KpiCard label="Total calls" value={stats.total.toString()} suffix="today" delta="+12.4%" />
-        <KpiCard label="Inbound" value={stats.inbound.toString()} delta="+8" />
-        <KpiCard label="Outbound" value={stats.outbound.toString()} delta="+24" />
-        <KpiCard label="Connect rate" value={stats.connectRate.toString()} suffix="%" delta="+3.1pt" />
-        <KpiCard label="Talk time" value={stats.talkHrs} suffix="hrs" delta="+1.2h" />
+        <KpiCard label="Total calls" value={stats.total.toString()} suffix="today" />
+        <KpiCard label="Inbound" value={stats.inbound.toString()} />
+        <KpiCard label="Outbound" value={stats.outbound.toString()} />
+        <KpiCard label="Connect rate" value={stats.connectRate.toString()} suffix="%" />
+        <KpiCard label="Talk time" value={stats.talkHrs} suffix="hrs" />
       </div>
 
       {/* Filters */}
@@ -218,14 +214,6 @@ function CallsHistoryPage() {
             );
           })}
         </div>
-        <div className="flex items-center gap-2 ml-auto">
-          <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md border bg-card text-sm hover:bg-muted">
-            <Calendar className="size-4" /> May 18 – May 25
-          </button>
-          <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md border bg-card text-sm hover:bg-muted">
-            <FilterIcon className="size-4" /> Agent
-          </button>
-        </div>
       </div>
 
       {/* Table */}
@@ -239,8 +227,6 @@ function CallsHistoryPage() {
               <th className="text-left px-3 py-3">Outcome</th>
               <th className="text-left px-3 py-3">Duration</th>
               <th className="text-left px-3 py-3">Time</th>
-              <th className="text-left px-3 py-3">Recording</th>
-              <th className="px-3 py-3"></th>
             </tr>
           </thead>
           <tbody>
@@ -253,7 +239,7 @@ function CallsHistoryPage() {
             )}
             {!loading && filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground italic">
+                <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground italic">
                   No calls match this filter.
                 </td>
               </tr>
@@ -261,7 +247,7 @@ function CallsHistoryPage() {
             {grouped.map(([day, rows]) => (
               <Fragment key={`g-${day}`}>
                 <tr key={`g-${day}`} className="bg-muted/40">
-                  <td colSpan={8} className="px-5 py-2 text-[11px] font-medium tracking-[0.18em] uppercase text-muted-foreground">
+                  <td colSpan={6} className="px-5 py-2 text-[11px] font-medium tracking-[0.18em] uppercase text-muted-foreground">
                     {day} · {rows.length} calls
                   </td>
                 </tr>
@@ -319,26 +305,8 @@ function CallsHistoryPage() {
                       <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
                         {new Date(c.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </td>
-                      <td className="px-3 py-3">
-                        {(c.duration ?? 0) > 0 ? (
-                          <button className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border bg-card text-xs hover:bg-muted">
-                            <span className="inline-flex items-center justify-center size-5 rounded-full bg-primary text-primary-foreground">
-                              <Play className="size-3" />
-                            </span>
-                            Play
-                          </button>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-muted-foreground text-xs">
-                            {isVoicemail ? <Voicemail className="size-3.5" /> : <span className="opacity-30">—</span>}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3">
-                        <button className="p-1.5 rounded hover:bg-muted text-muted-foreground">
-                          <MoreHorizontal className="size-4" />
-                        </button>
-                      </td>
                     </tr>
+
                   );
                 })}
               </Fragment>
@@ -354,12 +322,10 @@ function KpiCard({
   label,
   value,
   suffix,
-  delta,
 }: {
   label: string;
   value: string;
   suffix?: string;
-  delta?: string;
 }) {
   return (
     <div className="bg-card border rounded-xl p-5">
@@ -370,7 +336,6 @@ function KpiCard({
         <span className="font-display text-4xl leading-none tracking-tight">{value}</span>
         {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
       </div>
-      {delta && <div className="mt-3 text-xs text-success">{delta}</div>}
     </div>
   );
 }
