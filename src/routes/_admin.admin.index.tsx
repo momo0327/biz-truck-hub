@@ -102,51 +102,61 @@ function AdminDashboard() {
         />
       </div>
 
-      <section className="rounded-lg border bg-card p-5">
-        <div className="flex items-baseline justify-between mb-4">
-          <div>
-            <h2 className="font-display text-lg">Calls this week</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Daily call volume vs answered calls.
-            </p>
-          </div>
-          <div className="flex items-center gap-4 text-xs">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-primary" /> Calls
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-info" /> Answered
-            </span>
-          </div>
-        </div>
-        <div className="h-72">
-          {isLoading ? (
-            <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-              Loading…
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <section className="rounded-lg border bg-card p-5 lg:col-span-2">
+          <div className="flex items-baseline justify-between mb-4">
+            <div>
+              <h2 className="font-display text-lg">Calls this week</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Daily call volume vs answered calls.
+              </p>
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weekly} margin={{ top: 8, right: 12, left: -16, bottom: 0 }} barGap={6}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="day" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis allowDecimals={false} stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  cursor={{ fill: "color-mix(in oklab, var(--muted) 40%, transparent)" }}
-                  contentStyle={{
-                    background: "var(--popover)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                />
-                <Legend wrapperStyle={{ display: "none" }} />
-                <Bar dataKey="calls" name="Calls" fill="var(--primary)" radius={[6, 6, 0, 0]} maxBarSize={36} />
-                <Bar dataKey="answered" name="Answered" fill="var(--info)" radius={[6, 6, 0, 0]} maxBarSize={36} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </section>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full bg-primary" /> Calls
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full bg-info" /> Answered
+              </span>
+            </div>
+          </div>
+          <div className="h-72">
+            {isLoading ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                Loading…
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weekly} margin={{ top: 8, right: 12, left: -16, bottom: 0 }} barGap={6}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="day" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis allowDecimals={false} stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    cursor={{ fill: "color-mix(in oklab, var(--muted) 40%, transparent)" }}
+                    contentStyle={{
+                      background: "var(--popover)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Legend wrapperStyle={{ display: "none" }} />
+                  <Bar dataKey="calls" name="Calls" fill="var(--primary)" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                  <Bar dataKey="answered" name="Answered" fill="var(--info)" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </section>
+
+        <CallsByEmployee
+          employees={(data?.employees ?? []).map((e) => ({
+            name: e.displayName || e.email || "—",
+            calls: e.stats.calls,
+          }))}
+        />
+      </div>
+
 
       <section className="rounded-lg border bg-card p-5">
         <div className="flex items-baseline justify-between mb-4">
