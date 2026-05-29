@@ -161,6 +161,11 @@ function CallsHistoryPage() {
 
   return (
     <div className="p-8 space-y-6">
+      <header className="flex items-end gap-4 flex-wrap">
+        <h1 className="font-display text-5xl leading-none tracking-tight">Call History</h1>
+        <p className="text-sm text-muted-foreground mb-1">All inbound and outbound calls across your team</p>
+      </header>
+
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <KpiCard label="Total calls" value={stats.total.toString()} suffix="today" delta="+12.4%" />

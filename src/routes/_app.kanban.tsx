@@ -50,6 +50,11 @@ function PipelinePage() {
 
   return (
     <div className="p-8 space-y-6">
+      <header className="flex items-end gap-4 flex-wrap">
+        <h1 className="font-display text-5xl leading-none tracking-tight">Pipeline</h1>
+        <p className="text-sm text-muted-foreground mb-1">Drag leads between stages to update status</p>
+      </header>
+
       {/* Top stage summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {totals.map(({ status, count }) => {
