@@ -118,20 +118,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {!collapsed && "Collapse menu"}
             </button>
             <div className="border-t border-sidebar-border" />
-            {!collapsed && (
-              <div className="px-3 py-2 text-xs opacity-60 truncate">{user.email}</div>
-            )}
             <button
               onClick={() => signOut().then(() => navigate({ to: "/login" }))}
-              title={collapsed ? "Sign out" : undefined}
+              title={collapsed ? "Sign out" : "Sign out"}
               className={cn(
-                "w-full flex items-center gap-2 py-2 rounded-md text-sm hover:bg-sidebar-accent/40",
-                collapsed ? "justify-center px-0" : "px-3",
+                "w-full flex items-center gap-3 py-2 rounded-md hover:bg-sidebar-accent/40 transition-colors",
+                collapsed ? "justify-center px-0" : "px-2",
               )}
             >
-              <LogOut className="size-4" /> {!collapsed && "Sign out"}
+              <span className="relative shrink-0">
+                <span className="inline-flex items-center justify-center size-9 rounded-full bg-white text-[11px] font-semibold text-primary">
+                  {(user.email ?? "?").slice(0, 2).toUpperCase()}
+                </span>
+                <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-success ring-2 ring-sidebar" />
+              </span>
+              {!collapsed && (
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block text-sm font-semibold text-sidebar-accent-foreground truncate">
+                    {user.email?.split("@")[0] ?? "User"}
+                  </span>
+                  <span className="block text-xs text-sidebar-foreground/60 truncate">Senior Agent</span>
+                </span>
+              )}
+              {!collapsed && <LogOut className="size-4 opacity-60 shrink-0" />}
             </button>
           </div>
+
         </aside>
         <main className="flex-1 min-w-0">
           <CompaniesProvider>{children}</CompaniesProvider>
