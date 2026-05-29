@@ -192,8 +192,9 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Status</h4>
             <select
               value={company.status}
+              disabled={readOnly}
               onChange={(e) => changeStatus(e.target.value as Status)}
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+              className="w-full px-3 py-2 rounded-md border bg-background text-sm disabled:opacity-70"
             >
               {STATUS_ORDER.map((s) => (
                 <option key={s} value={s}>{STATUS_META[s].emoji} {STATUS_META[s].label}</option>
@@ -205,28 +206,31 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Notes</h4>
             <textarea
               value={notes}
+              readOnly={readOnly}
               onChange={(e) => setNotes(e.target.value)}
-              onBlur={saveNotes}
+              onBlur={readOnly ? undefined : saveNotes}
               rows={3}
               className="w-full px-3 py-2 rounded-md border bg-background text-sm"
-              placeholder="Internal notes…"
+              placeholder={readOnly ? "No notes" : "Internal notes…"}
             />
           </section>
 
           <section className="space-y-2">
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Call log</h4>
-            <div className="flex gap-2">
-              <input
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addCall()}
-                placeholder="Log a call note…"
-                className="flex-1 px-3 py-2 rounded-md border bg-background text-sm"
-              />
-              <button onClick={addCall} className="px-3 py-2 text-sm rounded-md bg-primary text-primary-foreground">
-                Add
-              </button>
-            </div>
+            {!readOnly && (
+              <div className="flex gap-2">
+                <input
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addCall()}
+                  placeholder="Log a call note…"
+                  className="flex-1 px-3 py-2 rounded-md border bg-background text-sm"
+                />
+                <button onClick={addCall} className="px-3 py-2 text-sm rounded-md bg-primary text-primary-foreground">
+                  Add
+                </button>
+              </div>
+            )}
             <ul className="space-y-2">
               {calls.map((c) => (
                 <li key={c.id} className="text-sm border-l-2 border-primary/30 pl-3">
@@ -241,6 +245,7 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
               {calls.length === 0 && <li className="text-sm text-muted-foreground italic">No calls logged.</li>}
             </ul>
           </section>
+
         </div>
       </div>
     </div>
