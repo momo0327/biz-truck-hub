@@ -8,13 +8,17 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { Phone, PhoneCall, Users, ArrowUpRight } from "lucide-react";
+
 
 export const Route = createFileRoute("/_admin/admin/")({
   component: AdminDashboard,
@@ -98,51 +102,61 @@ function AdminDashboard() {
         />
       </div>
 
-      <section className="rounded-lg border bg-card p-5">
-        <div className="flex items-baseline justify-between mb-4">
-          <div>
-            <h2 className="font-display text-lg">Calls this week</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Daily call volume vs answered calls.
-            </p>
-          </div>
-          <div className="flex items-center gap-4 text-xs">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-primary" /> Calls
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-info" /> Answered
-            </span>
-          </div>
-        </div>
-        <div className="h-72">
-          {isLoading ? (
-            <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-              Loading…
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <section className="rounded-lg border bg-card p-5 lg:col-span-2">
+          <div className="flex items-baseline justify-between mb-4">
+            <div>
+              <h2 className="font-display text-lg">Calls this week</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Daily call volume vs answered calls.
+              </p>
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weekly} margin={{ top: 8, right: 12, left: -16, bottom: 0 }} barGap={6}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="day" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis allowDecimals={false} stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  cursor={{ fill: "color-mix(in oklab, var(--muted) 40%, transparent)" }}
-                  contentStyle={{
-                    background: "var(--popover)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                />
-                <Legend wrapperStyle={{ display: "none" }} />
-                <Bar dataKey="calls" name="Calls" fill="var(--primary)" radius={[6, 6, 0, 0]} maxBarSize={36} />
-                <Bar dataKey="answered" name="Answered" fill="var(--info)" radius={[6, 6, 0, 0]} maxBarSize={36} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </section>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full bg-primary" /> Calls
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full bg-info" /> Answered
+              </span>
+            </div>
+          </div>
+          <div className="h-72">
+            {isLoading ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                Loading…
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weekly} margin={{ top: 8, right: 12, left: -16, bottom: 0 }} barGap={6}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="day" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis allowDecimals={false} stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    cursor={{ fill: "color-mix(in oklab, var(--muted) 40%, transparent)" }}
+                    contentStyle={{
+                      background: "var(--popover)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Legend wrapperStyle={{ display: "none" }} />
+                  <Bar dataKey="calls" name="Calls" fill="var(--primary)" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                  <Bar dataKey="answered" name="Answered" fill="var(--info)" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </section>
+
+        <CallsByEmployee
+          employees={(data?.employees ?? []).map((e) => ({
+            name: e.displayName || e.email || "—",
+            calls: e.stats.calls,
+          }))}
+        />
+      </div>
+
 
       <section className="rounded-lg border bg-card p-5">
         <div className="flex items-baseline justify-between mb-4">
@@ -236,3 +250,92 @@ function StatCard({
     </div>
   );
 }
+
+const DONUT_COLORS = [
+  "var(--primary)",
+  "var(--info)",
+  "var(--success)",
+  "var(--warning)",
+  "var(--stage-negotiating)",
+  "var(--stage-lost)",
+  "var(--muted-foreground)",
+];
+
+function CallsByEmployee({ employees }: { employees: { name: string; calls: number }[] }) {
+  const filtered = employees.filter((e) => e.calls > 0).sort((a, b) => b.calls - a.calls);
+  const top = filtered.slice(0, 6);
+  const restTotal = filtered.slice(6).reduce((s, e) => s + e.calls, 0);
+  const data = restTotal > 0 ? [...top, { name: "Others", calls: restTotal }] : top;
+  const total = data.reduce((s, e) => s + e.calls, 0);
+  const leader = data[0];
+  const leaderPct = leader && total > 0 ? Math.round((leader.calls / total) * 100) : 0;
+
+  return (
+    <section className="rounded-lg border bg-card p-5">
+      <div className="mb-2">
+        <h2 className="font-display text-lg uppercase tracking-wide">Calls by Employee</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          All time · {total.toLocaleString()} total
+        </p>
+      </div>
+
+      {total === 0 ? (
+        <div className="h-60 flex items-center justify-center text-muted-foreground text-sm">
+          No calls yet.
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative w-full h-44">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  dataKey="calls"
+                  nameKey="name"
+                  innerRadius={50}
+                  outerRadius={75}
+                  paddingAngle={2}
+                  stroke="none"
+                >
+                  {data.map((_, i) => (
+                    <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--popover)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <div className="font-display text-3xl font-semibold leading-none">
+                {leaderPct}<span className="text-base align-top">%</span>
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mt-1">
+                Top agent
+              </div>
+            </div>
+          </div>
+
+          <ul className="w-full space-y-1.5">
+            {data.map((e, i) => (
+              <li key={e.name} className="flex items-center gap-2 text-xs">
+                <span
+                  className="size-2.5 rounded-full shrink-0"
+                  style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                />
+                <span className="flex-1 truncate text-foreground">{e.name}</span>
+                <span className="font-display font-semibold text-sm">{e.calls}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+

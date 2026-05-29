@@ -118,9 +118,10 @@ export async function fetchEmployeeDetail(employeeId: string) {
       supabaseAdmin.from("profiles").select("*").eq("user_id", employeeId).maybeSingle(),
       supabaseAdmin
         .from("companies")
-        .select("id, name, status, phones, last_contact, created_at, contact_person, org_number")
+        .select("*")
         .eq("user_id", employeeId)
         .order("last_contact", { ascending: false, nullsFirst: false }),
+
       supabaseAdmin
         .from("call_logs")
         .select("id, company_id, to_number, direction, duration, status, note, outcome, created_at")

@@ -8,7 +8,7 @@ import { PhoneButtons } from "./PhoneButtons";
 import { VehiclesTable, type Vehicle } from "./VehiclesTable";
 import { toast } from "sonner";
 
-export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCompanyDeleted }: { company: Company; onClose: () => void; onCompanyChange?: (company: Company) => void; onCompanyDeleted?: (id: string) => void }) {
+export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCompanyDeleted, readOnly = false }: { company: Company; onClose: () => void; onCompanyChange?: (company: Company) => void; onCompanyDeleted?: (id: string) => void; readOnly?: boolean }) {
   const [company, setCompany] = useState<Company>(initial);
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [note, setNote] = useState("");
@@ -124,28 +124,34 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
             <p className="text-xs text-muted-foreground">Org: {company.org_number ?? "—"}</p>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={deleteCompany} className="p-2 rounded-md hover:bg-destructive/10 text-destructive">
-              <Trash2 className="size-4" />
-            </button>
+            {!readOnly && (
+              <button onClick={deleteCompany} className="p-2 rounded-md hover:bg-destructive/10 text-destructive">
+                <Trash2 className="size-4" />
+              </button>
+            )}
             <button onClick={onClose} className="p-2 rounded-md hover:bg-muted">
               <X className="size-5" />
             </button>
           </div>
+
         </div>
 
         <div className="p-6 space-y-6">
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Contact</h4>
-              <button
-                onClick={doResearch}
-                disabled={researching}
-                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                {researching ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
-                {company.researched_at ? "Re-research" : "Research with AI"}
-              </button>
+              {!readOnly && (
+                <button
+                  onClick={doResearch}
+                  disabled={researching}
+                  className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                >
+                  {researching ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
+                  {company.researched_at ? "Re-research" : "Research with AI"}
+                </button>
+              )}
             </div>
+
             <PhoneButtons phones={company.phones ?? []} companyId={company.id} contactName={company.name} />
             {company.website && (
               <a href={company.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-info hover:underline">
@@ -186,8 +192,9 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Status</h4>
             <select
               value={company.status}
+              disabled={readOnly}
               onChange={(e) => changeStatus(e.target.value as Status)}
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+              className="w-full px-3 py-2 rounded-md border bg-background text-sm disabled:opacity-70"
             >
               {STATUS_ORDER.map((s) => (
                 <option key={s} value={s}>{STATUS_META[s].emoji} {STATUS_META[s].label}</option>
@@ -199,28 +206,31 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Notes</h4>
             <textarea
               value={notes}
+              readOnly={readOnly}
               onChange={(e) => setNotes(e.target.value)}
-              onBlur={saveNotes}
+              onBlur={readOnly ? undefined : saveNotes}
               rows={3}
               className="w-full px-3 py-2 rounded-md border bg-background text-sm"
-              placeholder="Internal notes…"
+              placeholder={readOnly ? "No notes" : "Internal notes…"}
             />
           </section>
 
           <section className="space-y-2">
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Call log</h4>
-            <div className="flex gap-2">
-              <input
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addCall()}
-                placeholder="Log a call note…"
-                className="flex-1 px-3 py-2 rounded-md border bg-background text-sm"
-              />
-              <button onClick={addCall} className="px-3 py-2 text-sm rounded-md bg-primary text-primary-foreground">
-                Add
-              </button>
-            </div>
+            {!readOnly && (
+              <div className="flex gap-2">
+                <input
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addCall()}
+                  placeholder="Log a call note…"
+                  className="flex-1 px-3 py-2 rounded-md border bg-background text-sm"
+                />
+                <button onClick={addCall} className="px-3 py-2 text-sm rounded-md bg-primary text-primary-foreground">
+                  Add
+                </button>
+              </div>
+            )}
             <ul className="space-y-2">
               {calls.map((c) => (
                 <li key={c.id} className="text-sm border-l-2 border-primary/30 pl-3">
@@ -235,6 +245,7 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
               {calls.length === 0 && <li className="text-sm text-muted-foreground italic">No calls logged.</li>}
             </ul>
           </section>
+
         </div>
       </div>
     </div>

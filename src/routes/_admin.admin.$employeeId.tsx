@@ -4,12 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { getEmployeeDetailFn, deleteEmployeeFn } from "@/lib/admin.functions";
-import { STATUS_META, type Status } from "@/lib/companies";
+import { STATUS_META, type Company } from "@/lib/companies";
+import { PhoneButtons } from "@/components/PhoneButtons";
+import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { ArrowLeft, Mail, Phone, Building2, PhoneCall, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_admin/admin/$employeeId")({
   component: EmployeeDetail,
 });
+
+type Tab = "companies" | "calls";
 
 function EmployeeDetail() {
   const { employeeId } = Route.useParams();
@@ -21,9 +25,11 @@ function EmployeeDetail() {
     queryFn: () => fetchDetail({ data: { employeeId } }),
   });
 
+  const [tab, setTab] = useState<Tab>("companies");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [selected, setSelected] = useState<Company | null>(null);
 
   async function submitDelete(e: React.FormEvent) {
     e.preventDefault();
@@ -52,7 +58,7 @@ function EmployeeDetail() {
   const { employee, companies, calls } = data;
 
   return (
-    <div className="p-8 max-w-7xl space-y-8">
+    <div className="p-8 max-w-7xl space-y-6">
       <div>
         <Link
           to="/admin"
@@ -131,109 +137,144 @@ function EmployeeDetail() {
         </div>
       )}
 
+      <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="flex items-center gap-1 border-b px-2 bg-muted/30">
+          <TabButton active={tab === "companies"} onClick={() => setTab("companies")} icon={Building2}>
+            Companies ({companies.length})
+          </TabButton>
+          <TabButton active={tab === "calls"} onClick={() => setTab("calls")} icon={PhoneCall}>
+            Call log ({calls.length})
+          </TabButton>
+        </div>
 
-      <section>
-        <div className="flex items-center gap-2 mb-3">
-          <Building2 className="size-4 text-muted-foreground" />
-          <h2 className="font-display text-lg">Companies ({companies.length})</h2>
-        </div>
-        <div className="rounded-lg border bg-card overflow-hidden">
-          {companies.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              No companies yet.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium">Name</th>
-                  <th className="text-left px-4 py-2 font-medium">Status</th>
-                  <th className="text-left px-4 py-2 font-medium">Phones</th>
-                  <th className="text-left px-4 py-2 font-medium">Contact</th>
-                  <th className="text-left px-4 py-2 font-medium">Last contact</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {companies.map((c) => {
-                  const meta = STATUS_META[c.status as Status];
-                  return (
-                    <tr key={c.id}>
-                      <td className="px-4 py-2.5">
-                        <div className="font-medium">{c.name}</div>
-                        {c.org_number && (
-                          <div className="text-xs text-muted-foreground">{c.org_number}</div>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${meta.tone}`}>
-                          {meta.emoji} {meta.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-muted-foreground">
-                        {(c.phones ?? []).join(", ") || "—"}
-                      </td>
-                      <td className="px-4 py-2.5 text-muted-foreground">
-                        {c.contact_person || "—"}
-                      </td>
-                      <td className="px-4 py-2.5 text-muted-foreground text-xs">
-                        {c.last_contact
-                          ? new Date(c.last_contact).toLocaleString()
-                          : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </section>
-
-      <section>
-        <div className="flex items-center gap-2 mb-3">
-          <PhoneCall className="size-4 text-muted-foreground" />
-          <h2 className="font-display text-lg">Call log ({calls.length})</h2>
-        </div>
-        <div className="rounded-lg border bg-card overflow-hidden">
-          {calls.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">No calls yet.</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium">When</th>
-                  <th className="text-left px-4 py-2 font-medium">Number</th>
-                  <th className="text-left px-4 py-2 font-medium">Direction</th>
-                  <th className="text-left px-4 py-2 font-medium">Duration</th>
-                  <th className="text-left px-4 py-2 font-medium">Status</th>
-                  <th className="text-left px-4 py-2 font-medium">Note</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {calls.map((c) => (
-                  <tr key={c.id}>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(c.created_at).toLocaleString()}
+        {tab === "companies" && (
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Company</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Primary Contact</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Phone</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Status</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Last contact</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {(companies as Company[]).map((c) => {
+                const meta = STATUS_META[c.status];
+                const city = c.address?.split(",")[0]?.trim() || "";
+                return (
+                  <tr key={c.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelected(c)}>
+                    <td className="px-4 py-3">
+                      <div className="font-medium truncate">{c.name}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {[city, c.org_number].filter(Boolean).join(" · ") || "—"}
+                      </div>
                     </td>
-                    <td className="px-4 py-2.5">{c.to_number ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{c.direction ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
-                      {c.duration ? `${c.duration}s` : "—"}
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-sm">{c.contact_person || "—"}</div>
                     </td>
-                    <td className="px-4 py-2.5">
-                      <StatusBadge status={c.status} />
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <PhoneButtons phones={c.phones ?? []} companyId={c.id} contactName={c.name} compact />
                     </td>
-                    <td className="px-4 py-2.5 text-muted-foreground text-xs max-w-md truncate">
-                      {c.note || "—"}
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full ${meta.tone}`}>
+                        <span className={`size-1.5 rounded-full ${meta.dot}`} />
+                        {meta.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                      {c.last_contact ? new Date(c.last_contact).toLocaleString() : "—"}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </section>
+                );
+              })}
+              {companies.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground text-sm">
+                    No companies imported yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+
+        {tab === "calls" && (
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">When</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Number</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Direction</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Duration</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Status</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Note</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {calls.map((c) => (
+                <tr key={c.id} className="hover:bg-muted/30">
+                  <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(c.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3">{c.to_number ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{c.direction ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {c.duration ? `${c.duration}s` : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={c.status} />
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs max-w-md truncate">
+                    {c.note || "—"}
+                  </td>
+                </tr>
+              ))}
+              {calls.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground text-sm">
+                    No calls logged.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {selected && (
+        <CompanyDrawer
+          company={selected}
+          readOnly
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  icon: Icon,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-2 px-4 py-3 text-sm border-b-2 -mb-px transition-colors ${
+        active
+          ? "border-primary text-foreground font-medium"
+          : "border-transparent text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      <Icon className="size-4" /> {children}
+    </button>
   );
 }
 
