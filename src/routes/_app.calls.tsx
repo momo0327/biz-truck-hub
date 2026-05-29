@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   PhoneIncoming,
   PhoneOutgoing,
   PhoneMissed,
   Voicemail,
   Search,
-  Filter,
+  Filter as FilterIcon,
   Calendar,
   Play,
   MoreHorizontal,
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_app/calls")({
   component: CallsHistoryPage,
 });
 
-type Filter = "all" | "inbound" | "outbound" | "missed" | "voicemail" | "recorded";
+type CallFilter = "all" | "inbound" | "outbound" | "missed" | "voicemail" | "recorded";
 
 function initials(name: string) {
   return name
