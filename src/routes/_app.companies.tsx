@@ -157,8 +157,6 @@ function CompaniesPage() {
               const meta = STATUS_META[c.status];
               const busy = busyIds.has(c.id);
               const city = c.address?.split(",")[0]?.trim() || "";
-              const trucks = Array.isArray(c.vehicles) ? c.vehicles.length : 0;
-              const fleetLabel = trucks > 0 ? `${trucks} trucks` : (c.fleet_size || c.trucks_info?.slice(0, 24) || "—");
               return (
                 <tr key={c.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelected(c)}>
                   <td className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
@@ -188,16 +186,13 @@ function CompaniesPage() {
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <PhoneButtons phones={c.phones ?? []} companyId={c.id} contactName={c.name} compact />
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {fleetLabel}
-                  </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full ${meta.tone}`}>
                       <span className={`size-1.5 rounded-full ${meta.dot}`} />
                       {meta.label}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-3 py-3 text-right w-[120px]" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => researchOne(c.id)}
                       disabled={busy}
@@ -212,10 +207,11 @@ function CompaniesPage() {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground text-sm">
+                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground text-sm">
                   No companies. Click <strong>Import</strong> to add your Excel list.
                 </td>
               </tr>
+
             )}
           </tbody>
         </table>
