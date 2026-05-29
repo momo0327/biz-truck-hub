@@ -6,10 +6,6 @@ import {
   PhoneMissed,
   Voicemail,
   Search,
-  Filter as FilterIcon,
-  Calendar,
-  Play,
-  MoreHorizontal,
   Check,
   X,
   PhoneCall,
@@ -326,12 +322,10 @@ function KpiCard({
   label,
   value,
   suffix,
-  delta,
 }: {
   label: string;
   value: string;
   suffix?: string;
-  delta?: string;
 }) {
   return (
     <div className="bg-card border rounded-xl p-5">
@@ -342,7 +336,6 @@ function KpiCard({
         <span className="font-display text-4xl leading-none tracking-tight">{value}</span>
         {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
       </div>
-      {delta && <div className="mt-3 text-xs text-success">{delta}</div>}
     </div>
   );
 }
