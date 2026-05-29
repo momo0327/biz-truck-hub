@@ -56,7 +56,7 @@ function CallsHistoryPage() {
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<CallFilter>("all");
   const { companies } = useCompanies();
 
   const companyById = useMemo(() => {
@@ -196,7 +196,7 @@ function CallsHistoryPage() {
             return (
               <button
                 key={key}
-                onClick={() => setFilter(key as Filter)}
+                onClick={() => setFilter(key as CallFilter)}
                 className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-full border text-sm transition-colors ${
                   active ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-muted"
                 }`}
@@ -218,7 +218,7 @@ function CallsHistoryPage() {
             <Calendar className="size-4" /> May 18 – May 25
           </button>
           <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md border bg-card text-sm hover:bg-muted">
-            <Filter className="size-4" /> Agent
+            <FilterIcon className="size-4" /> Agent
           </button>
         </div>
       </div>
