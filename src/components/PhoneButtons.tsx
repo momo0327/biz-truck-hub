@@ -1,14 +1,16 @@
 import { Phone, Copy, PhoneCall } from "lucide-react";
 import { toast } from "sonner";
-import { useSoftphone } from "@/components/softphone/SoftphoneProvider";
+import { useContext } from "react";
+import { SoftphoneCtx } from "@/components/softphone/SoftphoneProvider";
 
-export function PhoneButtons({ phones, companyId, contactName, compact }: { phones: string[]; companyId?: string; contactName?: string; compact?: boolean }) {
-  const { startCall } = useSoftphone();
+export function PhoneButtons({ phones, companyId, contactName, compact, readOnly }: { phones: string[]; companyId?: string; contactName?: string; compact?: boolean; readOnly?: boolean }) {
+  const ctx = useContext(SoftphoneCtx);
 
   if (!phones?.length) return <span className="text-xs text-muted-foreground">No phone</span>;
 
   const visible = compact ? phones.slice(0, 1) : phones;
   const extra = compact ? phones.length - visible.length : 0;
+  const canCall = !readOnly && !!ctx;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -17,17 +19,18 @@ export function PhoneButtons({ phones, companyId, contactName, compact }: { phon
           <a href={`tel:${p.replace(/\s/g, "")}`} className="px-3 py-1 text-xs font-medium inline-flex items-center gap-1.5 hover:bg-success/20">
             <Phone className="size-3" /> {p}
           </a>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              console.log("[PhoneButtons] click", { raw: p, companyId, contactName });
-              startCall({ number: p, contactName, companyId });
-            }}
-            className="px-2 py-1 hover:bg-success/20 border-l border-success/20"
-            title="Call from browser"
-          >
-            <PhoneCall className="size-3" />
-          </button>
+          {canCall && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                ctx!.startCall({ number: p, contactName, companyId });
+              }}
+              className="px-2 py-1 hover:bg-success/20 border-l border-success/20"
+              title="Call from browser"
+            >
+              <PhoneCall className="size-3" />
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
