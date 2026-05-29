@@ -1,10 +1,10 @@
 import { Phone, Copy, PhoneCall } from "lucide-react";
 import { toast } from "sonner";
 import { useContext } from "react";
-import { SoftphoneCtx } from "@/components/softphone/SoftphoneProvider";
+import { SoftphoneContext } from "@/components/softphone/SoftphoneProvider";
 
 export function PhoneButtons({ phones, companyId, contactName, compact, readOnly }: { phones: string[]; companyId?: string; contactName?: string; compact?: boolean; readOnly?: boolean }) {
-  const ctx = useContext(SoftphoneCtx);
+  const ctx = useContext(SoftphoneContext);
 
   if (!phones?.length) return <span className="text-xs text-muted-foreground">No phone</span>;
 
