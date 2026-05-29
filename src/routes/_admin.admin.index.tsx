@@ -250,3 +250,92 @@ function StatCard({
     </div>
   );
 }
+
+const DONUT_COLORS = [
+  "var(--primary)",
+  "var(--info)",
+  "var(--success)",
+  "var(--warning)",
+  "var(--stage-negotiating)",
+  "var(--stage-lost)",
+  "var(--muted-foreground)",
+];
+
+function CallsByEmployee({ employees }: { employees: { name: string; calls: number }[] }) {
+  const filtered = employees.filter((e) => e.calls > 0).sort((a, b) => b.calls - a.calls);
+  const top = filtered.slice(0, 6);
+  const restTotal = filtered.slice(6).reduce((s, e) => s + e.calls, 0);
+  const data = restTotal > 0 ? [...top, { name: "Others", calls: restTotal }] : top;
+  const total = data.reduce((s, e) => s + e.calls, 0);
+  const leader = data[0];
+  const leaderPct = leader && total > 0 ? Math.round((leader.calls / total) * 100) : 0;
+
+  return (
+    <section className="rounded-lg border bg-card p-5">
+      <div className="mb-2">
+        <h2 className="font-display text-lg uppercase tracking-wide">Calls by Employee</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          All time · {total.toLocaleString()} total
+        </p>
+      </div>
+
+      {total === 0 ? (
+        <div className="h-60 flex items-center justify-center text-muted-foreground text-sm">
+          No calls yet.
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative w-full h-44">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  dataKey="calls"
+                  nameKey="name"
+                  innerRadius={50}
+                  outerRadius={75}
+                  paddingAngle={2}
+                  stroke="none"
+                >
+                  {data.map((_, i) => (
+                    <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--popover)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <div className="font-display text-3xl font-semibold leading-none">
+                {leaderPct}<span className="text-base align-top">%</span>
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mt-1">
+                Top agent
+              </div>
+            </div>
+          </div>
+
+          <ul className="w-full space-y-1.5">
+            {data.map((e, i) => (
+              <li key={e.name} className="flex items-center gap-2 text-xs">
+                <span
+                  className="size-2.5 rounded-full shrink-0"
+                  style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                />
+                <span className="flex-1 truncate text-foreground">{e.name}</span>
+                <span className="font-display font-semibold text-sm">{e.calls}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
