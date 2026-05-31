@@ -76,10 +76,18 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   if (typeof window !== "undefined") {
     const hash = window.location.hash;
+    const search = window.location.search;
     const path = window.location.pathname;
+    const hasInviteParams =
+      search.includes("type=invite") ||
+      search.includes("token_hash=") ||
+      (path === "/login" && search.includes("code="));
     if (
       path !== "/accept-invite" &&
-      (hash.includes("type=invite") || hash.includes("type=recovery") || hash.includes("type=signup"))
+      (hash.includes("type=invite") ||
+        hash.includes("type=recovery") ||
+        hash.includes("type=signup") ||
+        hasInviteParams)
     ) {
       window.location.replace(`/accept-invite${window.location.search}${hash}`);
     }

@@ -41,7 +41,23 @@ function AcceptInvitePage() {
       // If the URL still has the invite token in its hash, Supabase needs a
       // moment to parse it into a session. Don't flash "expired" before that.
       const hash = typeof window !== "undefined" ? window.location.hash : "";
+      const params = new URLSearchParams(
+        typeof window !== "undefined" ? window.location.search : "",
+      );
+      const type = params.get("type") ?? "invite";
+      const tokenHash = params.get("token_hash");
       const hasInviteHash = /access_token=|type=invite|type=recovery/.test(hash);
+
+      if (tokenHash && type === "invite") {
+        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "invite" });
+        if (error) {
+          if (!cancelled) {
+            setHasSession(false);
+            setChecking(false);
+          }
+          return;
+        }
+      }
 
       const ok = await verify();
       if (cancelled) return;
