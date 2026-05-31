@@ -107,6 +107,7 @@ function CompaniesPage() {
               </button>
             </>
           )}
+          <DialerButton />
           <button
             onClick={researchAll}
             disabled={bulkBusy}
