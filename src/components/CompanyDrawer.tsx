@@ -259,6 +259,99 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
             />
           </section>
 
+          <section className="space-y-3">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Schedule a call
+            </h4>
+            {!readOnly && (
+              <div className="space-y-2">
+                <input
+                  value={schedTitle}
+                  onChange={(e) => setSchedTitle(e.target.value)}
+                  placeholder="Title (e.g. Follow-up call)"
+                  className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                />
+                <div className="flex gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="flex-1 inline-flex items-center justify-between gap-2 px-3 py-2 rounded-md border bg-background text-sm">
+                        <span className="inline-flex items-center gap-2">
+                          <CalendarIcon className="size-4" />
+                          {schedDate
+                            ? schedDate.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
+                            : "Pick a date"}
+                        </span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={schedDate}
+                        onSelect={setSchedDate}
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <input
+                    type="time"
+                    value={schedTime}
+                    onChange={(e) => setSchedTime(e.target.value)}
+                    className="px-3 py-2 rounded-md border bg-background text-sm w-32"
+                  />
+                  <button
+                    onClick={addSchedule}
+                    className="inline-flex items-center gap-1 px-3 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90"
+                  >
+                    <Plus className="size-4" /> Add
+                  </button>
+                </div>
+              </div>
+            )}
+            <ul className="space-y-1.5">
+              {schedules.length === 0 && (
+                <li className="text-sm text-muted-foreground italic">No calls scheduled.</li>
+              )}
+              {schedules.map((s) => {
+                const dt = new Date(s.scheduled_at);
+                return (
+                  <li key={s.id} className="flex items-center gap-2 text-sm border rounded-md px-3 py-2">
+                    <CalendarIcon className="size-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className={`font-medium truncate ${s.done ? "line-through text-muted-foreground" : ""}`}>
+                        {s.title}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                        {" · "}
+                        {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    </div>
+                    {!readOnly && (
+                      <>
+                        <button
+                          onClick={async () => { await toggleScheduleDone(s.id, !s.done); refreshSchedules(); }}
+                          className="text-xs px-2 py-1 rounded border hover:bg-muted"
+                        >
+                          {s.done ? "Undo" : "Done"}
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Delete this scheduled call?")) return;
+                            await deleteSchedule(s.id);
+                            refreshSchedules();
+                          }}
+                          className="size-7 inline-flex items-center justify-center rounded border hover:bg-destructive/10 text-destructive"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
           <section className="space-y-2">
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Call log</h4>
             {!readOnly && (
