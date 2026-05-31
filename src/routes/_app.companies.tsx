@@ -8,7 +8,7 @@ import { ArchiveDialog } from "@/components/ArchiveDialog";
 import { PhoneButtons } from "@/components/PhoneButtons";
 
 
-import { useCompanies, STATUS_META, type Company } from "@/lib/companies";
+import { useCompanies, STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
 import { CompaniesSkeleton } from "@/components/PageSkeletons";
 import { researchCompanyFn, deleteCompaniesFn } from "@/server/research.functions";
 import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2, Archive as ArchiveIcon } from "lucide-react";
@@ -26,16 +26,24 @@ function CompaniesPage() {
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const research = useServerFn(researchCompanyFn);
   const deleteMany = useServerFn(deleteCompaniesFn);
 
-  const filtered = companies.filter(
-    (c) =>
+  const statusCounts = STATUS_ORDER.reduce(
+    (acc, status) => ({ ...acc, [status]: companies.filter((c) => c.status === status).length }),
+    {} as Record<Status, number>,
+  );
+
+  const filtered = companies.filter((c) => {
+    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
+    const matchesSearch =
       !q ||
       c.name.toLowerCase().includes(q.toLowerCase()) ||
-      c.org_number?.includes(q),
-  );
+      c.org_number?.includes(q);
+    return matchesStatus && matchesSearch;
+  });
 
   async function researchOne(id: string) {
     setBusyIds((s) => new Set(s).add(id));
