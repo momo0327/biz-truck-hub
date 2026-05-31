@@ -11,7 +11,6 @@ import {
   PhoneCall,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useCompanies } from "@/lib/companies";
 import type { CallLog } from "@/lib/companies";
 
 export const Route = createFileRoute("/_app/calls")({
@@ -53,13 +52,9 @@ function CallsHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<CallFilter>("all");
-  const { companies } = useCompanies();
+  const [companyNames, setCompanyNames] = useState<Map<string, string>>(new Map());
 
-  const companyById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const c of companies) m.set(c.id, c.name);
-    return m;
-  }, [companies]);
+  const companyById = companyNames;
 
   useEffect(() => {
     (async () => {
@@ -68,7 +63,15 @@ function CallsHistoryPage() {
         .select("*")
         .order("created_at", { ascending: false })
         .limit(1000);
-      setCalls((data ?? []) as CallLog[]);
+      const rows = (data ?? []) as CallLog[];
+      setCalls(rows);
+      const ids = Array.from(new Set(rows.map((r) => r.company_id).filter(Boolean) as string[]));
+      if (ids.length) {
+        const { data: comps } = await supabase.from("companies").select("id,name").in("id", ids);
+        const m = new Map<string, string>();
+        for (const c of (comps ?? []) as { id: string; name: string }[]) m.set(c.id, c.name);
+        setCompanyNames(m);
+      }
       setLoading(false);
     })();
 
@@ -77,9 +80,20 @@ function CallsHistoryPage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "call_logs" },
-        (payload) => {
+        async (payload) => {
           if (payload.eventType === "INSERT") {
-            setCalls((prev) => [payload.new as CallLog, ...prev]);
+            const row = payload.new as CallLog;
+            setCalls((prev) => [row, ...prev]);
+            if (row.company_id) {
+              setCompanyNames((prev) => {
+                if (prev.has(row.company_id!)) return prev;
+                supabase.from("companies").select("id,name").eq("id", row.company_id!).maybeSingle()
+                  .then(({ data }) => {
+                    if (data) setCompanyNames((p) => new Map(p).set(data.id, data.name));
+                  });
+                return prev;
+              });
+            }
           } else if (payload.eventType === "UPDATE") {
             setCalls((prev) =>
               prev.map((c) => (c.id === (payload.new as CallLog).id ? (payload.new as CallLog) : c)),

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanies, type Company } from "@/lib/companies";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
-import { Folder, ArrowLeft, Trash2 } from "lucide-react";
+import { Folder, ArrowLeft, Trash2, ArchiveRestore } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/archives")({ component: ArchivesPage });
@@ -61,6 +61,33 @@ function ArchivesPage() {
     await refreshCompanies();
   }
 
+  async function restoreFolder(folder: ArchiveFolder) {
+    if (!confirm(`Restore folder "${folder.name}"? All companies inside will return to the Companies page.`))
+      return;
+    const { error: e1 } = await supabase
+      .from("companies")
+      .update({ archived_folder_id: null, archived_at: null } as any)
+      .eq("archived_folder_id" as any, folder.id);
+    if (e1) return toast.error(e1.message);
+    const { error: e2 } = await (supabase as any).from("archive_folders").delete().eq("id", folder.id);
+    if (e2) return toast.error(e2.message);
+    toast.success(`Restored ${folder.name} to Companies`);
+    setOpen(null);
+    await loadFolders();
+    await refreshCompanies();
+  }
+
+  async function restoreCompany(companyId: string) {
+    const { error } = await supabase
+      .from("companies")
+      .update({ archived_folder_id: null, archived_at: null } as any)
+      .eq("id", companyId);
+    if (error) return toast.error(error.message);
+    setCompanies((prev) => prev.filter((c) => c.id !== companyId));
+    toast.success("Company restored");
+    await refreshCompanies();
+  }
+
   if (open) {
     return (
       <div className="p-8 space-y-6 w-full">
@@ -75,12 +102,20 @@ function ArchivesPage() {
             <h1 className="font-display text-3xl tracking-wide uppercase">{open.name}</h1>
             <p className="text-sm text-muted-foreground mt-1">{companies.length} companies archived</p>
           </div>
-          <button
-            onClick={() => deleteFolder(open)}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-destructive/30 text-destructive text-sm hover:bg-destructive/10"
-          >
-            <Trash2 className="size-4" /> Delete folder
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => restoreFolder(open)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-primary/30 text-primary text-sm hover:bg-primary/10"
+            >
+              <ArchiveRestore className="size-4" /> Restore to Companies
+            </button>
+            <button
+              onClick={() => deleteFolder(open)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-destructive/30 text-destructive text-sm hover:bg-destructive/10"
+            >
+              <Trash2 className="size-4" /> Delete folder
+            </button>
+          </div>
         </header>
 
         <div className="rounded-lg border bg-card overflow-hidden">
@@ -91,6 +126,7 @@ function ArchivesPage() {
                 <th className="text-left px-4 py-3">Contact</th>
                 <th className="text-left px-4 py-3">Fleet</th>
                 <th className="text-left px-4 py-3">Archived</th>
+                <th className="text-right px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -111,11 +147,19 @@ function ArchivesPage() {
                       ? new Date((c as any).archived_at).toLocaleDateString()
                       : "—"}
                   </td>
+                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => restoreCompany(c.id)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs hover:bg-muted"
+                    >
+                      <ArchiveRestore className="size-3.5" /> Restore
+                    </button>
+                  </td>
                 </tr>
               ))}
               {companies.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground text-sm">
+                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-sm">
                     Folder is empty.
                   </td>
                 </tr>
