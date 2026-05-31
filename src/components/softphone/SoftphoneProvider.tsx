@@ -74,6 +74,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [sipError, setSipError] = useState<string | null>(null);
   const placeCall = useServerFn(placeCallFn);
   const hangupServerCall = useServerFn(hangupCallFn);
+  const checkAnswered = useServerFn(checkCustomerAnsweredFn);
   const elksCallIdRef = useRef<string | null>(null);
 
   const uaRef = useRef<UserAgent | null>(null);
