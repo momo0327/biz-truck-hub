@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useCompanies, STATUS_META, PIPELINE_ORDER, type CallLog } from "@/lib/companies";
+import { useCompanies, type CallLog } from "@/lib/companies";
 import { DashboardSkeleton } from "@/components/PageSkeletons";
 import { supabase } from "@/integrations/supabase/client";
-import { Building2, PhoneCall, TrendingUp, CheckCircle2, Search, ArrowRight, PhoneIncoming, PhoneOutgoing, PhoneMissed } from "lucide-react";
+import { listSchedules, getWeekFromToday, isSameDay, type ScheduledCall } from "@/lib/schedule";
+import { Building2, PhoneCall, TrendingUp, CheckCircle2, Search, ArrowRight, PhoneIncoming, PhoneOutgoing, PhoneMissed, Calendar as CalendarIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_app/")({ component: Dashboard });
 
