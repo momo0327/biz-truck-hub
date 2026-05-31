@@ -4,13 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { ImportDialog } from "@/components/ImportDialog";
 import { AddCompanyDialog } from "@/components/AddCompanyDialog";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
+import { ArchiveDialog } from "@/components/ArchiveDialog";
 import { PhoneButtons } from "@/components/PhoneButtons";
 
 
 import { useCompanies, STATUS_META, type Company } from "@/lib/companies";
 import { CompaniesSkeleton } from "@/components/PageSkeletons";
 import { researchCompanyFn, deleteCompaniesFn } from "@/server/research.functions";
-import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2 } from "lucide-react";
+import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2, Archive as ArchiveIcon } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -20,6 +21,7 @@ function CompaniesPage() {
   const { companies, loading, refresh, upsertCompany, refetchCompany, removeCompanies } = useCompanies();
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [selected, setSelected] = useState<Company | null>(null);
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -71,23 +73,31 @@ function CompaniesPage() {
         </div>
         <div className="flex gap-2">
           {selectedIds.size > 0 && (
-            <button
-              onClick={async () => {
-                if (!confirm(`Delete ${selectedIds.size} selected companies?`)) return;
-                const ids = Array.from(selectedIds);
-                try {
-                  const res = await deleteMany({ data: { ids } });
-                  toast.success(`Deleted ${res.deleted} companies`);
-                  setSelectedIds(new Set());
-                  removeCompanies(ids);
-                } catch (e: any) {
-                  toast.error(e.message ?? "Failed to delete");
-                }
-              }}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-destructive/30 text-destructive text-sm hover:bg-destructive/10"
-            >
-              <Trash2 className="size-4" /> Delete {selectedIds.size}
-            </button>
+            <>
+              <button
+                onClick={() => setArchiveOpen(true)}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border bg-card text-sm hover:bg-muted"
+              >
+                <ArchiveIcon className="size-4" /> Archive {selectedIds.size}
+              </button>
+              <button
+                onClick={async () => {
+                  if (!confirm(`Delete ${selectedIds.size} selected companies?`)) return;
+                  const ids = Array.from(selectedIds);
+                  try {
+                    const res = await deleteMany({ data: { ids } });
+                    toast.success(`Deleted ${res.deleted} companies`);
+                    setSelectedIds(new Set());
+                    removeCompanies(ids);
+                  } catch (e: any) {
+                    toast.error(e.message ?? "Failed to delete");
+                  }
+                }}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-destructive/30 text-destructive text-sm hover:bg-destructive/10"
+              >
+                <Trash2 className="size-4" /> Delete {selectedIds.size}
+              </button>
+            </>
           )}
           <button
             onClick={researchAll}
@@ -237,6 +247,16 @@ function CompaniesPage() {
             setSelected(company);
           }}
           onCompanyDeleted={(id) => removeCompanies([id])}
+        />
+      )}
+      {archiveOpen && (
+        <ArchiveDialog
+          companyIds={Array.from(selectedIds)}
+          onClose={() => setArchiveOpen(false)}
+          onArchived={() => {
+            removeCompanies(Array.from(selectedIds));
+            setSelectedIds(new Set());
+          }}
         />
       )}
     </div>

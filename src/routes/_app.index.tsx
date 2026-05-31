@@ -1,15 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useCompanies, STATUS_META, PIPELINE_ORDER, type CallLog } from "@/lib/companies";
+import { useCompanies, type CallLog } from "@/lib/companies";
 import { DashboardSkeleton } from "@/components/PageSkeletons";
 import { supabase } from "@/integrations/supabase/client";
-import { Building2, PhoneCall, TrendingUp, CheckCircle2, Search, ArrowRight, PhoneIncoming, PhoneOutgoing, PhoneMissed } from "lucide-react";
+import { listSchedules, getWeekFromToday, isSameDay, type ScheduledCall } from "@/lib/schedule";
+import { Building2, PhoneCall, TrendingUp, CheckCircle2, Search, ArrowRight, PhoneIncoming, PhoneOutgoing, PhoneMissed, Calendar as CalendarIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_app/")({ component: Dashboard });
 
 function Dashboard() {
   const { companies, loading } = useCompanies();
   const [calls, setCalls] = useState<CallLog[]>([]);
+  const [schedules, setSchedules] = useState<ScheduledCall[]>([]);
+
+  useEffect(() => {
+    listSchedules().then(setSchedules).catch(() => {});
+    const ch = (supabase as any)
+      .channel("dash-schedules")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "scheduled_calls" },
+        () => listSchedules().then(setSchedules).catch(() => {}),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -81,66 +96,9 @@ function Dashboard() {
         })}
       </div>
 
-      {/* Pipeline mini board */}
-      <section className="bg-card border rounded-xl p-6">
-        <header className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className="font-display text-xl tracking-wide uppercase">Lead Pipeline</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Snapshot of every active opportunity by stage.
-            </p>
-          </div>
-          <Link
-            to="/kanban"
-            className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
-          >
-            Open pipeline <ArrowRight className="size-3" />
-          </Link>
-        </header>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {PIPELINE_ORDER.map((status) => {
-            const meta = STATUS_META[status];
-            const list = companies.filter((c) => c.status === status);
-            return (
-              <div
-                key={status}
-                className="rounded-lg border bg-background/50 p-3 flex flex-col gap-2"
-                style={{ borderTop: `3px solid ${meta.accent}` }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.14em] uppercase">
-                    <span className={`size-1.5 rounded-full ${meta.dot}`} />
-                    {meta.label}
-                  </div>
-                  <span className="text-[11px] text-muted-foreground">{list.length}</span>
-                </div>
-                <div className="space-y-1.5">
-                  {list.slice(0, 3).map((c) => (
-                    <Link
-                      key={c.id}
-                      to="/kanban"
-                      className="block bg-card border rounded-md px-2.5 py-2 hover:border-primary/40"
-                    >
-                      <div className="text-sm font-medium truncate">{c.name}</div>
-                      <div className="text-[10px] text-muted-foreground truncate">
-                        {c.address?.split(",")[0] || c.fleet_size || "—"}
-                      </div>
-                    </Link>
-                  ))}
-                  {list.length === 0 && (
-                    <div className="text-[11px] text-muted-foreground italic px-1">empty</div>
-                  )}
-                  {list.length > 3 && (
-                    <div className="text-[10px] text-muted-foreground px-1">
-                      +{list.length - 3} more
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      {/* This week's calendar preview */}
+      <WeekPreview schedules={schedules} companyById={companyById} />
+
 
       {/* Recent calls */}
       <section className="bg-card border rounded-xl p-6">
@@ -193,5 +151,79 @@ function Dashboard() {
         </ul>
       </section>
     </div>
+  );
+}
+
+function WeekPreview({
+  schedules,
+  companyById,
+}: {
+  schedules: ScheduledCall[];
+  companyById: Map<string, string>;
+}) {
+  const week = getWeekFromToday();
+  return (
+    <section className="bg-card border rounded-xl p-6">
+      <header className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="font-display text-xl tracking-wide uppercase">This week</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Your scheduled calls for the next 7 days.
+          </p>
+        </div>
+        <Link
+          to="/calendar"
+          className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
+        >
+          Open calendar <ArrowRight className="size-3" />
+        </Link>
+      </header>
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        {week.map((day, idx) => {
+          const dayItems = schedules
+            .filter((s) => isSameDay(new Date(s.scheduled_at), day))
+            .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
+          const isToday = idx === 0;
+          return (
+            <div
+              key={day.toISOString()}
+              className={`rounded-lg border bg-background/50 p-3 flex flex-col gap-2 min-h-[120px] ${isToday ? "border-primary/50" : ""}`}
+            >
+              <div className="flex items-baseline justify-between">
+                <div className="text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground">
+                  {day.toLocaleDateString(undefined, { weekday: "short" })}
+                </div>
+                <div className={`text-lg font-display ${isToday ? "text-primary" : ""}`}>
+                  {day.getDate()}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                {dayItems.length === 0 && (
+                  <div className="text-[11px] text-muted-foreground italic">—</div>
+                )}
+                {dayItems.slice(0, 3).map((s) => (
+                  <Link
+                    key={s.id}
+                    to="/calendar"
+                    className="block bg-card border rounded-md px-2 py-1.5 hover:border-primary/40"
+                  >
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground tabular-nums">
+                      <CalendarIcon className="size-2.5" />
+                      {new Date(s.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                    <div className="text-xs font-medium truncate">
+                      {companyById.get(s.company_id) ?? s.title}
+                    </div>
+                  </Link>
+                ))}
+                {dayItems.length > 3 && (
+                  <div className="text-[10px] text-muted-foreground">+{dayItems.length - 3} more</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }

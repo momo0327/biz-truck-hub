@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
-import { X, Loader2, RefreshCw, ExternalLink, Trash2 } from "lucide-react";
+import { X, Loader2, RefreshCw, ExternalLink, Trash2, Calendar as CalendarIcon, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { researchCompanyFn } from "@/server/research.functions";
 import { STATUS_META, STATUS_ORDER, type Company, type CallLog, type Status } from "@/lib/companies";
 import { PhoneButtons } from "./PhoneButtons";
 import { VehiclesTable, type Vehicle } from "./VehiclesTable";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  listSchedulesForCompany,
+  createSchedule,
+  deleteSchedule,
+  toggleScheduleDone,
+  type ScheduledCall,
+} from "@/lib/schedule";
 import { toast } from "sonner";
 
 export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCompanyDeleted, readOnly = false }: { company: Company; onClose: () => void; onCompanyChange?: (company: Company) => void; onCompanyDeleted?: (id: string) => void; readOnly?: boolean }) {
@@ -14,6 +23,10 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
   const [note, setNote] = useState("");
   const [notes, setNotes] = useState(initial.notes ?? "");
   const [researching, setResearching] = useState(false);
+  const [schedules, setSchedules] = useState<ScheduledCall[]>([]);
+  const [schedDate, setSchedDate] = useState<Date | undefined>(undefined);
+  const [schedTime, setSchedTime] = useState("09:00");
+  const [schedTitle, setSchedTitle] = useState("Call");
   const research = useServerFn(researchCompanyFn);
 
   // Sync when parent passes a different company (e.g. realtime update arrived).
@@ -30,6 +43,37 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
       .order("created_at", { ascending: false })
       .then(({ data }) => setCalls(data ?? []));
   }, [company.id]);
+
+  async function refreshSchedules() {
+    try {
+      const list = await listSchedulesForCompany(company.id);
+      setSchedules(list);
+    } catch {}
+  }
+  useEffect(() => {
+    refreshSchedules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [company.id]);
+
+  async function addSchedule() {
+    if (!schedDate) return toast.error("Pick a date");
+    const [hh, mm] = schedTime.split(":").map(Number);
+    const dt = new Date(schedDate);
+    dt.setHours(hh || 9, mm || 0, 0, 0);
+    try {
+      await createSchedule({
+        company_id: company.id,
+        scheduled_at: dt.toISOString(),
+        title: schedTitle.trim() || "Call",
+      });
+      toast.success("Scheduled");
+      setSchedDate(undefined);
+      setSchedTitle("Call");
+      refreshSchedules();
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to schedule");
+    }
+  }
 
   async function refetchCompany() {
     const { data } = await supabase.from("companies").select("*").eq("id", company.id).single();
@@ -213,6 +257,99 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
               className="w-full px-3 py-2 rounded-md border bg-background text-sm"
               placeholder={readOnly ? "No notes" : "Internal notes…"}
             />
+          </section>
+
+          <section className="space-y-3">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Schedule a call
+            </h4>
+            {!readOnly && (
+              <div className="space-y-2">
+                <input
+                  value={schedTitle}
+                  onChange={(e) => setSchedTitle(e.target.value)}
+                  placeholder="Title (e.g. Follow-up call)"
+                  className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                />
+                <div className="flex gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="flex-1 inline-flex items-center justify-between gap-2 px-3 py-2 rounded-md border bg-background text-sm">
+                        <span className="inline-flex items-center gap-2">
+                          <CalendarIcon className="size-4" />
+                          {schedDate
+                            ? schedDate.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
+                            : "Pick a date"}
+                        </span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={schedDate}
+                        onSelect={setSchedDate}
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <input
+                    type="time"
+                    value={schedTime}
+                    onChange={(e) => setSchedTime(e.target.value)}
+                    className="px-3 py-2 rounded-md border bg-background text-sm w-32"
+                  />
+                  <button
+                    onClick={addSchedule}
+                    className="inline-flex items-center gap-1 px-3 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90"
+                  >
+                    <Plus className="size-4" /> Add
+                  </button>
+                </div>
+              </div>
+            )}
+            <ul className="space-y-1.5">
+              {schedules.length === 0 && (
+                <li className="text-sm text-muted-foreground italic">No calls scheduled.</li>
+              )}
+              {schedules.map((s) => {
+                const dt = new Date(s.scheduled_at);
+                return (
+                  <li key={s.id} className="flex items-center gap-2 text-sm border rounded-md px-3 py-2">
+                    <CalendarIcon className="size-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className={`font-medium truncate ${s.done ? "line-through text-muted-foreground" : ""}`}>
+                        {s.title}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                        {" · "}
+                        {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    </div>
+                    {!readOnly && (
+                      <>
+                        <button
+                          onClick={async () => { await toggleScheduleDone(s.id, !s.done); refreshSchedules(); }}
+                          className="text-xs px-2 py-1 rounded border hover:bg-muted"
+                        >
+                          {s.done ? "Undo" : "Done"}
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Delete this scheduled call?")) return;
+                            await deleteSchedule(s.id);
+                            refreshSchedules();
+                          }}
+                          className="size-7 inline-flex items-center justify-center rounded border hover:bg-destructive/10 text-destructive"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           </section>
 
           <section className="space-y-2">
