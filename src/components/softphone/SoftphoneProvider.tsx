@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useServerFn } from "@tanstack/react-start";
 import { Inviter, Registerer, SessionState, UserAgent, type Session } from "sip.js";
 import { getWebrtcCredentials } from "@/lib/webrtc.functions";
-import { placeCallFn, hangupCallFn } from "@/lib/calls.functions";
+import { placeCallFn, hangupCallFn, checkCustomerAnsweredFn } from "@/lib/calls.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export type CallState = "idle" | "dialing" | "ringing" | "in-call" | "ended";
@@ -74,6 +74,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [sipError, setSipError] = useState<string | null>(null);
   const placeCall = useServerFn(placeCallFn);
   const hangupServerCall = useServerFn(hangupCallFn);
+  const checkAnswered = useServerFn(checkCustomerAnsweredFn);
   const elksCallIdRef = useRef<string | null>(null);
 
   const uaRef = useRef<UserAgent | null>(null);
@@ -264,35 +265,28 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             return;
           }
 
-          // Outbound: wait for the elks-connect webhook to flip the call_logs
-          // row to status='answered'. Poll until then.
+          // Outbound: poll 46elks for the customer sub-call. As soon as the
+          // customer picks up, the sub-call gets a `start` timestamp.
           setState("ringing");
           if (answerPollRef.current) window.clearInterval(answerPollRef.current);
           answerPollRef.current = window.setInterval(async () => {
             const callId = elksCallIdRef.current;
             if (!callId) return;
-            const { data } = await supabase
-              .from("call_logs")
-              .select("status")
-              .eq("elks_call_id", callId)
-              .maybeSingle();
-            const status = data?.status;
-            if (!status) return;
-            if (status === "answered" || status === "success") {
-              if (answerPollRef.current) {
-                window.clearInterval(answerPollRef.current);
-                answerPollRef.current = null;
+            try {
+              const res = await checkAnswered({ data: { callId } });
+              if (res.ok && res.answered) {
+                if (answerPollRef.current) {
+                  window.clearInterval(answerPollRef.current);
+                  answerPollRef.current = null;
+                }
+                setState("in-call");
+                setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+                startTick();
               }
-              setState("in-call");
-              setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-              startTick();
-            } else if (status === "busy" || status === "failed" || status === "noanswer") {
-              if (answerPollRef.current) {
-                window.clearInterval(answerPollRef.current);
-                answerPollRef.current = null;
-              }
+            } catch (err) {
+              console.error("[softphone] answer poll failed", err);
             }
-          }, 1200);
+          }, 1500);
         } else if (s === SessionState.Terminated) {
           if (answerPollRef.current) {
             window.clearInterval(answerPollRef.current);
@@ -310,7 +304,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         }
       });
     },
-    [startTick, state, stopTick],
+    [startTick, state, stopTick, checkAnswered],
   );
 
   const startCall: SoftphoneCtx["startCall"] = useCallback(

@@ -190,3 +190,31 @@ export const hangupCallFn = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+// Poll 46elks to see whether the customer leg of an outbound bridged call
+// has actually been answered. The parent call (browser/WebRTC) is `callId`;
+// 46elks creates a sub-call when the connect action dials the customer, and
+// that sub-call's `start` timestamp is set the moment they pick up.
+export const checkCustomerAnsweredFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ callId: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const username = process.env.ELKS_API_USERNAME;
+    const password = process.env.ELKS_API_PASSWORD;
+    if (!username || !password) return { ok: false as const, answered: false };
+    const auth = Buffer.from(`${username}:${password}`).toString("base64");
+
+    const url = `https://api.46elks.com/a1/calls?parent=${encodeURIComponent(data.callId)}&limit=10`;
+    const res = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
+    if (!res.ok) return { ok: false as const, answered: false };
+    const json = (await res.json().catch(() => null)) as
+      | { data?: Array<{ id?: string; state?: string; start?: string }> }
+      | null;
+    const subs = json?.data ?? [];
+    // Customer answered if any sub-call has a `start` timestamp (set on pickup)
+    // or its state has progressed to ongoing/success.
+    const answered = subs.some(
+      (c) => !!c.start || c.state === "ongoing" || c.state === "success",
+    );
+    return { ok: true as const, answered };
+  });
