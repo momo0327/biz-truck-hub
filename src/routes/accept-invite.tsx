@@ -59,18 +59,6 @@ function AcceptInvitePage() {
         }
       }
 
-      const authCode = params.get("code");
-      if (authCode) {
-        const { error } = await supabase.auth.exchangeCodeForSession(authCode);
-        if (error) {
-          if (!cancelled) {
-            setHasSession(false);
-            setChecking(false);
-          }
-          return;
-        }
-      }
-
       const ok = await verify();
       if (cancelled) return;
 
