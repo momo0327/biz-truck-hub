@@ -130,14 +130,48 @@ function CompaniesPage() {
         </div>
       </header>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search by name or org number…"
-          className="w-full max-w-md pl-9 pr-3 py-2 rounded-md border bg-card text-sm"
-        />
+      <div className="space-y-4">
+        <div className="flex gap-3 overflow-x-auto pb-1">
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={`inline-flex shrink-0 items-center gap-3 rounded-full border px-5 py-3 text-sm font-medium transition ${
+              statusFilter === "all" ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"
+            }`}
+          >
+            All
+            <span className={`rounded-full px-2 py-0.5 text-xs ${statusFilter === "all" ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"}`}>
+              {companies.length}
+            </span>
+          </button>
+          {STATUS_ORDER.map((status) => {
+            const meta = STATUS_META[status];
+            const active = statusFilter === status;
+            return (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`inline-flex shrink-0 items-center gap-3 rounded-full border px-5 py-3 text-sm font-medium transition ${
+                  active ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"
+                }`}
+              >
+                {meta.label}
+                <span className={`rounded-full px-2 py-0.5 text-xs ${active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"}`}>
+                  {statusCounts[status]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by name or org number…"
+            className="w-full max-w-md pl-9 pr-3 py-2 rounded-md border bg-card text-sm"
+          />
+        </div>
       </div>
 
       <div className="rounded-lg border bg-card overflow-hidden">
