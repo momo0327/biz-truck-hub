@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
-import { X, Loader2, RefreshCw, ExternalLink, Trash2 } from "lucide-react";
+import { X, Loader2, RefreshCw, ExternalLink, Trash2, Calendar as CalendarIcon, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { researchCompanyFn } from "@/server/research.functions";
 import { STATUS_META, STATUS_ORDER, type Company, type CallLog, type Status } from "@/lib/companies";
 import { PhoneButtons } from "./PhoneButtons";
 import { VehiclesTable, type Vehicle } from "./VehiclesTable";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  listSchedulesForCompany,
+  createSchedule,
+  deleteSchedule,
+  toggleScheduleDone,
+  type ScheduledCall,
+} from "@/lib/schedule";
 import { toast } from "sonner";
 
 export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCompanyDeleted, readOnly = false }: { company: Company; onClose: () => void; onCompanyChange?: (company: Company) => void; onCompanyDeleted?: (id: string) => void; readOnly?: boolean }) {
@@ -14,6 +23,10 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
   const [note, setNote] = useState("");
   const [notes, setNotes] = useState(initial.notes ?? "");
   const [researching, setResearching] = useState(false);
+  const [schedules, setSchedules] = useState<ScheduledCall[]>([]);
+  const [schedDate, setSchedDate] = useState<Date | undefined>(undefined);
+  const [schedTime, setSchedTime] = useState("09:00");
+  const [schedTitle, setSchedTitle] = useState("Call");
   const research = useServerFn(researchCompanyFn);
 
   // Sync when parent passes a different company (e.g. realtime update arrived).
