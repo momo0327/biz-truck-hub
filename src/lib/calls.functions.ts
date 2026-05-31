@@ -197,24 +197,38 @@ export const hangupCallFn = createServerFn({ method: "POST" })
 // that sub-call's `start` timestamp is set the moment they pick up.
 export const checkCustomerAnsweredFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ callId: z.string().min(1) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ callId: z.string().min(1), targetNumber: z.string().min(4) }).parse(d),
+  )
   .handler(async ({ data }) => {
     const username = process.env.ELKS_API_USERNAME;
     const password = process.env.ELKS_API_PASSWORD;
     if (!username || !password) return { ok: false as const, answered: false };
     const auth = Buffer.from(`${username}:${password}`).toString("base64");
+    const target = normalizeE164(data.targetNumber);
+    const matchesTarget = (value: unknown) =>
+      typeof value === "string" && normalizeE164(value) === target;
+    const hasAnswerSignal = (entry: { start?: unknown; duration?: unknown; state?: unknown }) =>
+      (typeof entry.start === "string" && entry.start.length > 0) ||
+      (typeof entry.duration === "number" && entry.duration > 0) ||
+      (typeof entry.duration === "string" && Number(entry.duration) > 0) ||
+      entry.state === "success";
 
-    const url = `https://api.46elks.com/a1/calls?parent=${encodeURIComponent(data.callId)}&limit=10`;
+    const url = `https://api.46elks.com/a1/calls/${encodeURIComponent(data.callId)}`;
     const res = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
     if (!res.ok) return { ok: false as const, answered: false };
     const json = (await res.json().catch(() => null)) as
-      | { data?: Array<{ id?: string; state?: string; start?: string }> }
+      | {
+          actions?: Array<{ connect?: unknown; result?: unknown }>;
+          legs?: Array<{ from?: unknown; to?: unknown; state?: unknown; start?: unknown; duration?: unknown }>;
+        }
       | null;
-    const subs = json?.data ?? [];
-    // Customer answered if any sub-call has a `start` timestamp (set on pickup)
-    // or its state has progressed to ongoing/success.
-    const answered = subs.some(
-      (c) => !!c.start || c.state === "ongoing" || c.state === "success",
-    );
+    const legs = Array.isArray(json?.legs) ? json.legs : [];
+    const actions = Array.isArray(json?.actions) ? json.actions : [];
+    // Only trust the customer leg/action. The parent WebRTC leg becomes
+    // ongoing as soon as 46elks reaches the browser, which is too early.
+    const answered =
+      legs.some((leg) => (matchesTarget(leg.to) || matchesTarget(leg.from)) && hasAnswerSignal(leg)) ||
+      actions.some((action) => matchesTarget(action.connect) && action.result === "success");
     return { ok: true as const, answered };
   });
