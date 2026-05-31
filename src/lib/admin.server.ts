@@ -154,6 +154,23 @@ export async function inviteUser(email: string) {
   const proto = getRequestHeader("x-forwarded-proto") || "https";
   const redirectTo = `${proto}://${host}/accept-invite`;
 
+  // If a previous invite to the same email never completed account setup,
+  // delete that pending shell user so we can issue a fresh invitation.
+  try {
+    const { data: existing } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const pending = existing?.users.find(
+      (u) =>
+        u.email?.toLowerCase() === email.toLowerCase() &&
+        (u.user_metadata as { needs_password_setup?: boolean } | null)?.needs_password_setup ===
+          true,
+    );
+    if (pending) {
+      await supabaseAdmin.auth.admin.deleteUser(pending.id);
+    }
+  } catch {
+    // best-effort cleanup; fall through to invite call
+  }
+
   const { data: invite, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
     redirectTo,
     data: { needs_password_setup: true },
