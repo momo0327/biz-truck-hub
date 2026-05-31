@@ -61,6 +61,33 @@ function ArchivesPage() {
     await refreshCompanies();
   }
 
+  async function restoreFolder(folder: ArchiveFolder) {
+    if (!confirm(`Restore folder "${folder.name}"? All companies inside will return to the Companies page.`))
+      return;
+    const { error: e1 } = await supabase
+      .from("companies")
+      .update({ archived_folder_id: null, archived_at: null } as any)
+      .eq("archived_folder_id" as any, folder.id);
+    if (e1) return toast.error(e1.message);
+    const { error: e2 } = await (supabase as any).from("archive_folders").delete().eq("id", folder.id);
+    if (e2) return toast.error(e2.message);
+    toast.success(`Restored ${folder.name} to Companies`);
+    setOpen(null);
+    await loadFolders();
+    await refreshCompanies();
+  }
+
+  async function restoreCompany(companyId: string) {
+    const { error } = await supabase
+      .from("companies")
+      .update({ archived_folder_id: null, archived_at: null } as any)
+      .eq("id", companyId);
+    if (error) return toast.error(error.message);
+    setCompanies((prev) => prev.filter((c) => c.id !== companyId));
+    toast.success("Company restored");
+    await refreshCompanies();
+  }
+
   if (open) {
     return (
       <div className="p-8 space-y-6 w-full">
