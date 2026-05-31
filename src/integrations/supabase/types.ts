@@ -251,6 +251,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      archive_companies: {
+        Args: {
+          _company_ids: string[]
+          _folder_id: string
+          _folder_name: string
+        }
+        Returns: {
+          archived_count: number
+          folder_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
