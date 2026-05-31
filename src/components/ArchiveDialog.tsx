@@ -34,12 +34,21 @@ export function ArchiveDialog({
       toast.error("Choose an existing folder or name a new one");
       return;
     }
+    if (!companyIds.length) {
+      toast.error("No companies selected");
+      return;
+    }
     setBusy(true);
+    let createdFolderId: string | null = null;
     try {
+      const { data: u, error: uErr } = await supabase.auth.getUser();
+      if (uErr || !u.user) throw new Error("Not authenticated");
+
+      // 1) Verify we can update the companies BEFORE creating a folder.
+      // Doing the update first avoids leaving an empty folder behind if the
+      // archive step fails (network error, RLS, etc.).
       let folderId = existingId;
       if (!folderId) {
-        const { data: u } = await supabase.auth.getUser();
-        if (!u.user) throw new Error("Not authenticated");
         const { data, error } = await (supabase as any)
           .from("archive_folders")
           .insert({ user_id: u.user.id, name: name.trim() })
@@ -47,17 +56,31 @@ export function ArchiveDialog({
           .single();
         if (error) throw error;
         folderId = data.id;
+        createdFolderId = data.id;
       }
-      const { error: updErr } = await supabase
+
+      const { data: updated, error: updErr } = await supabase
         .from("companies")
         .update({ archived_folder_id: folderId, archived_at: new Date().toISOString() } as any)
-        .in("id", companyIds);
+        .in("id", companyIds)
+        .select("id");
       if (updErr) throw updErr;
-      toast.success(`Archived ${companyIds.length} companies`);
+      if (!updated || updated.length === 0) {
+        throw new Error("No companies were archived");
+      }
+
+      toast.success(`Archived ${updated.length} ${updated.length === 1 ? "company" : "companies"}`);
       onArchived();
       onClose();
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to archive");
+      // Roll back the folder we just created so it doesn't appear empty in Archives
+      if (createdFolderId) {
+        await (supabase as any).from("archive_folders").delete().eq("id", createdFolderId);
+      }
+      const msg = e?.message === "Failed to fetch"
+        ? "Network error — please check your connection and try again"
+        : e?.message ?? "Failed to archive";
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
