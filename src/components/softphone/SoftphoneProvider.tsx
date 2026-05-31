@@ -245,8 +245,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           // SIP "Established" means our browser leg is up — but 46elks hasn't
           // necessarily reached the customer yet. Pipe audio through, but
           // stay in "ringing" (UI shows "Calling…") until the 46elks
-          // `next` webhook on the connect action reports the customer
-          // actually answered (status=answered on the call_logs row).
+          // call details show that the target/customer leg has answered.
           const pc = (session as SessionMedia).sessionDescriptionHandler?.peerConnection;
           if (pc && audioRef.current) {
             const remote = new MediaStream();
@@ -298,6 +297,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           setState("ended");
           sessionRef.current = null;
           outboundActiveRef.current = false;
+          outboundTargetRef.current = null;
           if (audioRef.current) audioRef.current.srcObject = null;
           window.setTimeout(() => {
             setState((cur) => (cur === "ended" ? "idle" : cur));
@@ -348,9 +348,10 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           setSipError(err instanceof Error ? err.message : String(err));
           setState("ended");
           outboundActiveRef.current = false;
+          outboundTargetRef.current = null;
         });
     },
-    [sipStatus, startTick, placeCall],
+    [sipStatus, placeCall],
   );
 
   const hangup = useCallback(async () => {
