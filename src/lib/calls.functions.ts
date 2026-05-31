@@ -72,36 +72,44 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const proto = getRequestHeader("x-forwarded-proto") || "https";
     const base = `${proto}://${host}`;
     const statusUrl = `${base}/api/public/elks-status`;
+    const connectUrl = `${base}/api/public/elks-connect`;
 
     // 46elks rejects whenhangup if it isn't a valid public URL. In local/dev
     // previews host can be localhost or otherwise unreachable — in that case
     // omit the webhook (the call still goes through, we just don't get the
     // status callback) instead of failing the whole call with "Invalid value
     // for whenhangup, not a URL".
-    let validStatusUrl: string | null = null;
-    try {
-      const u = new URL(statusUrl);
-      const isHttps = u.protocol === "https:";
-      const hostname = u.hostname;
-      const isPublic =
-        hostname.includes(".") &&
-        !hostname.endsWith(".local") &&
-        hostname !== "localhost" &&
-        hostname !== "127.0.0.1" &&
-        hostname !== "0.0.0.0";
-      if (isHttps && isPublic) validStatusUrl = u.toString();
-    } catch {
-      validStatusUrl = null;
+    function publicHttps(s: string): string | null {
+      try {
+        const u = new URL(s);
+        const isHttps = u.protocol === "https:";
+        const hostname = u.hostname;
+        const isPublic =
+          hostname.includes(".") &&
+          !hostname.endsWith(".local") &&
+          hostname !== "localhost" &&
+          hostname !== "127.0.0.1" &&
+          hostname !== "0.0.0.0";
+        if (isHttps && isPublic) return u.toString();
+      } catch {
+        return null;
+      }
+      return null;
     }
+    const validStatusUrl = publicHttps(statusUrl);
+    const validConnectUrl = publicHttps(connectUrl);
+
 
     // Call the browser (WebRTC) leg FIRST. As soon as the user picks up in the
     // softphone, 46elks dials the target. The target's phone then rings like a
     // normal incoming call and connects instantly on answer — no awkward
     // "ringing then connecting" pause on their end.
+    const connectAction: Record<string, string> = { connect: target };
+    if (validConnectUrl) connectAction.next = validConnectUrl;
     const bodyParams: Record<string, string> = {
       from: fromNumber,
       to: webrtcNumber,
-      voice_start: JSON.stringify({ connect: target }),
+      voice_start: JSON.stringify(connectAction),
     };
     if (validStatusUrl) bodyParams.whenhangup = validStatusUrl;
     const body = new URLSearchParams(bodyParams);

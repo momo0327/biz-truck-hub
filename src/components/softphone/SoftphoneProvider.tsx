@@ -241,9 +241,10 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           setState("ringing");
         } else if (s === SessionState.Established) {
           // SIP "Established" means our browser leg is up — but 46elks hasn't
-          // necessarily reached the customer yet. Pipe audio through, but stay
-          // in "ringing" (UI shows "Calling…") until we actually see sustained
-          // inbound RTP packets from the customer.
+          // necessarily reached the customer yet. Pipe audio through, but
+          // stay in "ringing" (UI shows "Calling…") until the 46elks
+          // `next` webhook on the connect action reports the customer
+          // actually answered (status=answered on the call_logs row).
           const pc = (session as SessionMedia).sessionDescriptionHandler?.peerConnection;
           if (pc && audioRef.current) {
             const remote = new MediaStream();
@@ -263,47 +264,35 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             return;
           }
 
-          // Outbound: poll inbound RTP packets. Customer is considered "on the
-          // line" once we see steady packet growth over a short window
-          // (filters out brief setup pings and any short comfort noise).
+          // Outbound: wait for the elks-connect webhook to flip the call_logs
+          // row to status='answered'. Poll until then.
           setState("ringing");
           if (answerPollRef.current) window.clearInterval(answerPollRef.current);
-          let lastPackets = 0;
-          let growingSamples = 0;
-          const startedPollAt = Date.now();
           answerPollRef.current = window.setInterval(async () => {
-            if (!pc || session.state !== SessionState.Established) return;
-            try {
-              const stats = await pc.getStats();
-              let packets = 0;
-              stats.forEach((report) => {
-                if (
-                  report.type === "inbound-rtp" &&
-                  (report as RTCInboundRtpStreamStats).kind === "audio"
-                ) {
-                  packets += (report as RTCInboundRtpStreamStats).packetsReceived ?? 0;
-                }
-              });
-              const grew = packets > lastPackets + 5;
-              lastPackets = packets;
-              if (grew) growingSamples += 1;
-              else growingSamples = 0;
-
-              // ~1.5s of sustained inbound audio = customer answered.
-              // Also guard with a min time so we don't flip on initial SDP frames.
-              if (growingSamples >= 3 && Date.now() - startedPollAt > 1200) {
-                if (answerPollRef.current) {
-                  window.clearInterval(answerPollRef.current);
-                  answerPollRef.current = null;
-                }
-                setState("in-call");
-                setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-                startTick();
+            const callId = elksCallIdRef.current;
+            if (!callId) return;
+            const { data } = await supabase
+              .from("call_logs")
+              .select("status")
+              .eq("elks_call_id", callId)
+              .maybeSingle();
+            const status = data?.status;
+            if (!status) return;
+            if (status === "answered" || status === "success") {
+              if (answerPollRef.current) {
+                window.clearInterval(answerPollRef.current);
+                answerPollRef.current = null;
               }
-            } catch (err) {
-              console.warn("[softphone] getStats failed", err);
+              setState("in-call");
+              setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+              startTick();
+            } else if (status === "busy" || status === "failed" || status === "noanswer") {
+              if (answerPollRef.current) {
+                window.clearInterval(answerPollRef.current);
+                answerPollRef.current = null;
+              }
             }
-          }, 500);
+          }, 1200);
         } else if (s === SessionState.Terminated) {
           if (answerPollRef.current) {
             window.clearInterval(answerPollRef.current);
