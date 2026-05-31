@@ -191,10 +191,9 @@ export const hangupCallFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Poll 46elks to see whether the customer leg of an outbound bridged call
-// has actually been answered. The parent call (browser/WebRTC) is `callId`;
-// 46elks creates a sub-call when the connect action dials the customer, and
-// that sub-call's `start` timestamp is set the moment they pick up.
+// Poll 46elks to see whether the target/customer leg of an outbound bridged
+// call has actually been answered. The parent WebRTC call is not enough: it
+// starts when 46elks reaches the browser, before the customer picks up.
 export const checkCustomerAnsweredFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
