@@ -79,7 +79,9 @@ function RootComponent() {
     const search = window.location.search;
     const path = window.location.pathname;
     const hasInviteParams =
-      search.includes("type=invite") || search.includes("token_hash=") || search.includes("code=");
+      search.includes("type=invite") ||
+      search.includes("token_hash=") ||
+      (path === "/login" && search.includes("code="));
     if (
       path !== "/accept-invite" &&
       (hash.includes("type=invite") ||
