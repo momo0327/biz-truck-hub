@@ -44,7 +44,7 @@ function SettingsPage() {
       .then(({ data }) => {
         if (!data) return;
         const d = data as any;
-        setDisplayPhone(d.display_phone_number ?? d.phone_number ?? "");
+        setDisplayPhone(d.display_phone_number ?? "");
         setElksNumber(d.phone_number ?? "");
         setElksUri(d.elks_webrtc_uri ?? "");
         setElksUser(d.elks_webrtc_username ?? "");
