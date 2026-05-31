@@ -249,6 +249,16 @@ function CompaniesPage() {
           onCompanyDeleted={(id) => removeCompanies([id])}
         />
       )}
+      {archiveOpen && (
+        <ArchiveDialog
+          companyIds={Array.from(selectedIds)}
+          onClose={() => setArchiveOpen(false)}
+          onArchived={() => {
+            removeCompanies(Array.from(selectedIds));
+            setSelectedIds(new Set());
+          }}
+        />
+      )}
     </div>
   );
 }
