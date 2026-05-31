@@ -53,13 +53,9 @@ function CallsHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<CallFilter>("all");
-  const { companies } = useCompanies();
+  const [companyNames, setCompanyNames] = useState<Map<string, string>>(new Map());
 
-  const companyById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const c of companies) m.set(c.id, c.name);
-    return m;
-  }, [companies]);
+  const companyById = companyNames;
 
   useEffect(() => {
     (async () => {
