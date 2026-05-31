@@ -80,9 +80,20 @@ function CallsHistoryPage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "call_logs" },
-        (payload) => {
+        async (payload) => {
           if (payload.eventType === "INSERT") {
-            setCalls((prev) => [payload.new as CallLog, ...prev]);
+            const row = payload.new as CallLog;
+            setCalls((prev) => [row, ...prev]);
+            if (row.company_id) {
+              setCompanyNames((prev) => {
+                if (prev.has(row.company_id!)) return prev;
+                supabase.from("companies").select("id,name").eq("id", row.company_id!).maybeSingle()
+                  .then(({ data }) => {
+                    if (data) setCompanyNames((p) => new Map(p).set(data.id, data.name));
+                  });
+                return prev;
+              });
+            }
           } else if (payload.eventType === "UPDATE") {
             setCalls((prev) =>
               prev.map((c) => (c.id === (payload.new as CallLog).id ? (payload.new as CallLog) : c)),
