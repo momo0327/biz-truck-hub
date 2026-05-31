@@ -126,6 +126,7 @@ function ArchivesPage() {
                 <th className="text-left px-4 py-3">Contact</th>
                 <th className="text-left px-4 py-3">Fleet</th>
                 <th className="text-left px-4 py-3">Archived</th>
+                <th className="text-right px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -146,11 +147,19 @@ function ArchivesPage() {
                       ? new Date((c as any).archived_at).toLocaleDateString()
                       : "—"}
                   </td>
+                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => restoreCompany(c.id)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs hover:bg-muted"
+                    >
+                      <ArchiveRestore className="size-3.5" /> Restore
+                    </button>
+                  </td>
                 </tr>
               ))}
               {companies.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground text-sm">
+                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-sm">
                     Folder is empty.
                   </td>
                 </tr>
