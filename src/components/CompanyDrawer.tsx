@@ -44,6 +44,37 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
       .then(({ data }) => setCalls(data ?? []));
   }, [company.id]);
 
+  async function refreshSchedules() {
+    try {
+      const list = await listSchedulesForCompany(company.id);
+      setSchedules(list);
+    } catch {}
+  }
+  useEffect(() => {
+    refreshSchedules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [company.id]);
+
+  async function addSchedule() {
+    if (!schedDate) return toast.error("Pick a date");
+    const [hh, mm] = schedTime.split(":").map(Number);
+    const dt = new Date(schedDate);
+    dt.setHours(hh || 9, mm || 0, 0, 0);
+    try {
+      await createSchedule({
+        company_id: company.id,
+        scheduled_at: dt.toISOString(),
+        title: schedTitle.trim() || "Call",
+      });
+      toast.success("Scheduled");
+      setSchedDate(undefined);
+      setSchedTitle("Call");
+      refreshSchedules();
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to schedule");
+    }
+  }
+
   async function refetchCompany() {
     const { data } = await supabase.from("companies").select("*").eq("id", company.id).single();
     if (data) {
