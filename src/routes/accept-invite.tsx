@@ -38,18 +38,42 @@ function AcceptInvitePage() {
     }
 
     async function init() {
-      // If the URL still has the invite token in its hash, Supabase needs a
-      // moment to parse it into a session. Don't flash "expired" before that.
       const hash = typeof window !== "undefined" ? window.location.hash : "";
-      const params = new URLSearchParams(
-        typeof window !== "undefined" ? window.location.search : "",
-      );
-      const type = params.get("type") ?? "invite";
+      const search = typeof window !== "undefined" ? window.location.search : "";
+      const params = new URLSearchParams(search);
+      const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+      const code = params.get("code");
       const tokenHash = params.get("token_hash");
-      const hasInviteHash = /access_token=|type=invite|type=recovery/.test(hash);
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const linkType = params.get("type") ?? hashParams.get("type");
+      const hasInviteToken = Boolean(
+        code || tokenHash || accessToken || linkType === "invite" || linkType === "recovery",
+      );
 
-      if (tokenHash && type === "invite") {
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          if (!cancelled) {
+            setHasSession(false);
+            setChecking(false);
+          }
+          return;
+        }
+      } else if (tokenHash) {
         const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "invite" });
+        if (error) {
+          if (!cancelled) {
+            setHasSession(false);
+            setChecking(false);
+          }
+          return;
+        }
+      } else if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
         if (error) {
           if (!cancelled) {
             setHasSession(false);
@@ -59,10 +83,14 @@ function AcceptInvitePage() {
         }
       }
 
+      if (hasInviteToken && typeof window !== "undefined") {
+        window.history.replaceState(null, "", "/accept-invite");
+      }
+
       const ok = await verify();
       if (cancelled) return;
 
-      if (!ok && hasInviteHash) {
+      if (!ok && hasInviteToken) {
         // Give supabase-js up to 4s to parse the hash and emit SIGNED_IN.
         timeoutId = setTimeout(() => {
           if (!cancelled) setChecking(false);
@@ -73,13 +101,14 @@ function AcceptInvitePage() {
     }
 
     init();
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-        const ok = await verify();
-        if (!cancelled && ok) {
-          if (timeoutId) clearTimeout(timeoutId);
-          setChecking(false);
-        }
+        void verify().then((ok) => {
+          if (!cancelled && ok) {
+            if (timeoutId) clearTimeout(timeoutId);
+            setChecking(false);
+          }
+        });
       }
     });
     return () => {

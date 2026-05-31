@@ -112,8 +112,11 @@ export async function fetchOverviewData(userIds: string[]) {
     fetchAll<{ user_id: string; status: string; last_contact: string | null }>(() =>
       supabaseAdmin.from("companies").select("user_id, status, last_contact").in("user_id", userIds),
     ),
-    fetchAll<{ user_id: string; duration: number | null; created_at: string }>(() =>
-      supabaseAdmin.from("call_logs").select("user_id, duration, created_at").in("user_id", userIds),
+    fetchAll<{ user_id: string; duration: number | null; status: string | null; created_at: string }>(() =>
+      supabaseAdmin
+        .from("call_logs")
+        .select("user_id, duration, status, created_at")
+        .in("user_id", userIds),
     ),
   ]);
   return { profiles, roles, companies, calls };

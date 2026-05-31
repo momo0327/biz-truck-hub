@@ -2,12 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const ANSWERED_STATUSES = new Set([
-  "follow_up",
-  "in_negotiation",
-  "deal_made",
-  "not_interested",
-]);
+const ANSWERED_CALL_STATUSES = new Set(["success", "answered", "completed"]);
 
 export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -56,10 +51,9 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
       };
     });
 
-    const contactedCompanies = companies.filter((c) => c.last_contact);
     const totals = {
-      calls: contactedCompanies.length,
-      answered: contactedCompanies.filter((c) => ANSWERED_STATUSES.has(c.status)).length,
+      calls: calls.length,
+      answered: calls.filter((c) => ANSWERED_CALL_STATUSES.has((c.status ?? "").toLowerCase())).length,
       leads: companies.length,
     };
 
@@ -76,12 +70,12 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
       byDate.set(key, bucket);
       weekly.push({ day, ...bucket });
     }
-    contactedCompanies.forEach((c) => {
-      const key = new Date(c.last_contact!).toISOString().slice(0, 10);
+    calls.forEach((c) => {
+      const key = new Date(c.created_at).toISOString().slice(0, 10);
       const b = byDate.get(key);
       if (!b) return;
       b.calls++;
-      if (ANSWERED_STATUSES.has(c.status)) b.answered++;
+      if (ANSWERED_CALL_STATUSES.has((c.status ?? "").toLowerCase())) b.answered++;
     });
     // sync mutated values back into the array
     let i = 6;
