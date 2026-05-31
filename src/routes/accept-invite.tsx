@@ -18,35 +18,57 @@ function AcceptInvitePage() {
 
   useEffect(() => {
     let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     async function verify() {
-      // Wait briefly for supabase-js to parse the invite token from the URL hash.
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        if (!cancelled) {
-          setHasSession(false);
-          setChecking(false);
-        }
-        return;
+        if (!cancelled) setHasSession(false);
+        return false;
       }
-      // Re-validate with the auth server — the JWT may belong to a user that
-      // was deleted (e.g. admin re-invited the same email).
       const { data: userData, error } = await supabase.auth.getUser();
-      if (cancelled) return;
+      if (cancelled) return false;
       if (error || !userData.user) {
-        // Stale session — clear it so the user sees the "expired link" UI.
         await supabase.auth.signOut().catch(() => {});
         setHasSession(false);
-      } else {
-        setHasSession(true);
+        return false;
+      }
+      setHasSession(true);
+      return true;
+    }
+
+    async function init() {
+      // If the URL still has the invite token in its hash, Supabase needs a
+      // moment to parse it into a session. Don't flash "expired" before that.
+      const hash = typeof window !== "undefined" ? window.location.hash : "";
+      const hasInviteHash = /access_token=|type=invite|type=recovery/.test(hash);
+
+      const ok = await verify();
+      if (cancelled) return;
+
+      if (!ok && hasInviteHash) {
+        // Give supabase-js up to 4s to parse the hash and emit SIGNED_IN.
+        timeoutId = setTimeout(() => {
+          if (!cancelled) setChecking(false);
+        }, 4000);
+        return;
       }
       setChecking(false);
     }
-    verify();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      verify();
+
+    init();
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        const ok = await verify();
+        if (!cancelled && ok) {
+          if (timeoutId) clearTimeout(timeoutId);
+          setChecking(false);
+        }
+      }
     });
     return () => {
       cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
       sub.subscription.unsubscribe();
     };
   }, []);
