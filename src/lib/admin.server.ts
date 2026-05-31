@@ -159,7 +159,7 @@ export async function inviteUser(email: string) {
   const redirectHost = previewProjectId
     ? `id-preview--${previewProjectId}.lovable.app`
     : host;
-  const redirectTo = `${proto}://${redirectHost}/accept-invite`;
+  const redirectTo = `https://${redirectHost}/accept-invite`;
 
   // If a previous invite to the same email never completed account setup,
   // delete that pending shell user so we can issue a fresh invitation.
