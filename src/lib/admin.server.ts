@@ -148,6 +148,7 @@ export async function inviteUser(email: string) {
 
   const { data: invite, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
     redirectTo,
+    data: { needs_password_setup: true },
   });
   if (error) {
     if ((error as any).status === 422 || /already.*registered|exists/i.test(error.message)) {
