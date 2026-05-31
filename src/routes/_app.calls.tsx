@@ -64,7 +64,15 @@ function CallsHistoryPage() {
         .select("*")
         .order("created_at", { ascending: false })
         .limit(1000);
-      setCalls((data ?? []) as CallLog[]);
+      const rows = (data ?? []) as CallLog[];
+      setCalls(rows);
+      const ids = Array.from(new Set(rows.map((r) => r.company_id).filter(Boolean) as string[]));
+      if (ids.length) {
+        const { data: comps } = await supabase.from("companies").select("id,name").in("id", ids);
+        const m = new Map<string, string>();
+        for (const c of (comps ?? []) as { id: string; name: string }[]) m.set(c.id, c.name);
+        setCompanyNames(m);
+      }
       setLoading(false);
     })();
 
