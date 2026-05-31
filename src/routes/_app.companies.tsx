@@ -65,7 +65,7 @@ function CompaniesPage() {
   if (loading) return <CompaniesSkeleton />;
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl">
+    <div className="p-6 md:p-8 space-y-6 w-full max-w-none">
       <header className="flex items-end justify-between gap-4 flex-wrap">
         <div className="flex items-end gap-4 flex-wrap">
           <h1 className="font-display text-3xl tracking-wide">Companies</h1>
