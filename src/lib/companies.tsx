@@ -67,6 +67,7 @@ export function CompaniesProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("companies")
         .select("*")
+        .is("archived_folder_id" as any, null)
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
         .range(from, from + pageSize - 1);

@@ -18,6 +18,8 @@ import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppKanbanRouteImport } from './routes/_app.kanban'
 import { Route as AppCompaniesRouteImport } from './routes/_app.companies'
 import { Route as AppCallsRouteImport } from './routes/_app.calls'
+import { Route as AppCalendarRouteImport } from './routes/_app.calendar'
+import { Route as AppArchivesRouteImport } from './routes/_app.archives'
 import { Route as AdminAdminRouteImport } from './routes/_admin.admin'
 import { Route as AdminAdminIndexRouteImport } from './routes/_admin.admin.index'
 import { Route as ApiPublicElksVoiceStartRouteImport } from './routes/api/public/elks-voice-start'
@@ -70,6 +72,16 @@ const AppCallsRoute = AppCallsRouteImport.update({
   path: '/calls',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCalendarRoute = AppCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppArchivesRoute = AppArchivesRouteImport.update({
+  id: '/archives',
+  path: '/archives',
+  getParentRoute: () => AppRoute,
+} as any)
 const AdminAdminRoute = AdminAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -116,6 +128,8 @@ export interface FileRoutesByFullPath {
   '/accept-invite': typeof AcceptInviteRoute
   '/login': typeof LoginRoute
   '/admin': typeof AdminAdminRouteWithChildren
+  '/archives': typeof AppArchivesRoute
+  '/calendar': typeof AppCalendarRoute
   '/calls': typeof AppCallsRoute
   '/companies': typeof AppCompaniesRoute
   '/kanban': typeof AppKanbanRoute
@@ -132,6 +146,8 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/login': typeof LoginRoute
+  '/archives': typeof AppArchivesRoute
+  '/calendar': typeof AppCalendarRoute
   '/calls': typeof AppCallsRoute
   '/companies': typeof AppCompaniesRoute
   '/kanban': typeof AppKanbanRoute
@@ -151,6 +167,8 @@ export interface FileRoutesById {
   '/accept-invite': typeof AcceptInviteRoute
   '/login': typeof LoginRoute
   '/_admin/admin': typeof AdminAdminRouteWithChildren
+  '/_app/archives': typeof AppArchivesRoute
+  '/_app/calendar': typeof AppCalendarRoute
   '/_app/calls': typeof AppCallsRoute
   '/_app/companies': typeof AppCompaniesRoute
   '/_app/kanban': typeof AppKanbanRoute
@@ -171,6 +189,8 @@ export interface FileRouteTypes {
     | '/accept-invite'
     | '/login'
     | '/admin'
+    | '/archives'
+    | '/calendar'
     | '/calls'
     | '/companies'
     | '/kanban'
@@ -187,6 +207,8 @@ export interface FileRouteTypes {
     | '/'
     | '/accept-invite'
     | '/login'
+    | '/archives'
+    | '/calendar'
     | '/calls'
     | '/companies'
     | '/kanban'
@@ -205,6 +227,8 @@ export interface FileRouteTypes {
     | '/accept-invite'
     | '/login'
     | '/_admin/admin'
+    | '/_app/archives'
+    | '/_app/calendar'
     | '/_app/calls'
     | '/_app/companies'
     | '/_app/kanban'
@@ -291,6 +315,20 @@ declare module '@tanstack/react-router' {
       path: '/calls'
       fullPath: '/calls'
       preLoaderRoute: typeof AppCallsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/calendar': {
+      id: '/_app/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof AppCalendarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/archives': {
+      id: '/_app/archives'
+      path: '/archives'
+      fullPath: '/archives'
+      preLoaderRoute: typeof AppArchivesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_admin/admin': {
@@ -383,6 +421,8 @@ const AdminRouteChildren: AdminRouteChildren = {
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface AppRouteChildren {
+  AppArchivesRoute: typeof AppArchivesRoute
+  AppCalendarRoute: typeof AppCalendarRoute
   AppCallsRoute: typeof AppCallsRoute
   AppCompaniesRoute: typeof AppCompaniesRoute
   AppKanbanRoute: typeof AppKanbanRoute
@@ -391,6 +431,8 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppArchivesRoute: AppArchivesRoute,
+  AppCalendarRoute: AppCalendarRoute,
   AppCallsRoute: AppCallsRoute,
   AppCompaniesRoute: AppCompaniesRoute,
   AppKanbanRoute: AppKanbanRoute,
