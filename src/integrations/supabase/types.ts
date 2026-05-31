@@ -166,6 +166,10 @@ export type Database = {
         Row: {
           created_at: string
           display_name: string | null
+          display_phone_number: string | null
+          elks_webrtc_password: string | null
+          elks_webrtc_uri: string | null
+          elks_webrtc_username: string | null
           id: string
           phone_number: string | null
           updated_at: string
@@ -174,6 +178,10 @@ export type Database = {
         Insert: {
           created_at?: string
           display_name?: string | null
+          display_phone_number?: string | null
+          elks_webrtc_password?: string | null
+          elks_webrtc_uri?: string | null
+          elks_webrtc_username?: string | null
           id?: string
           phone_number?: string | null
           updated_at?: string
@@ -182,6 +190,10 @@ export type Database = {
         Update: {
           created_at?: string
           display_name?: string | null
+          display_phone_number?: string | null
+          elks_webrtc_password?: string | null
+          elks_webrtc_uri?: string | null
+          elks_webrtc_username?: string | null
           id?: string
           phone_number?: string | null
           updated_at?: string
