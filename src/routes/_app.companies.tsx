@@ -13,7 +13,6 @@ import { CompaniesSkeleton } from "@/components/PageSkeletons";
 import { researchCompanyFn, deleteCompaniesFn } from "@/server/research.functions";
 import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2, Archive as ArchiveIcon } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_app/companies")({ component: CompaniesPage });
 
