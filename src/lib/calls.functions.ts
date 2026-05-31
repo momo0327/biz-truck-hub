@@ -104,10 +104,12 @@ export const placeCallFn = createServerFn({ method: "POST" })
     // softphone, 46elks dials the target. The target's phone then rings like a
     // normal incoming call and connects instantly on answer — no awkward
     // "ringing then connecting" pause on their end.
+    const connectAction: Record<string, string> = { connect: target };
+    if (validConnectUrl) connectAction.next = validConnectUrl;
     const bodyParams: Record<string, string> = {
       from: fromNumber,
       to: webrtcNumber,
-      voice_start: JSON.stringify({ connect: target }),
+      voice_start: JSON.stringify(connectAction),
     };
     if (validStatusUrl) bodyParams.whenhangup = validStatusUrl;
     const body = new URLSearchParams(bodyParams);
