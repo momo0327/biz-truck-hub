@@ -99,16 +99,14 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const validStatusUrl = publicHttps(statusUrl);
     const validConnectUrl = publicHttps(connectUrl);
 
-
-    // Call the browser (WebRTC) leg FIRST. As soon as the user picks up in the
-    // softphone, 46elks dials the target. The target's phone then rings like a
-    // normal incoming call and connects instantly on answer — no awkward
-    // "ringing then connecting" pause on their end.
-    const connectAction: Record<string, string> = { connect: target };
+    // Call the customer FIRST. 46elks only runs `voice_start` after the
+    // customer answers, so the browser/WebRTC leg is not connected until the
+    // customer has actually picked up.
+    const connectAction: Record<string, string> = { connect: webrtcNumber };
     if (validConnectUrl) connectAction.next = validConnectUrl;
     const bodyParams: Record<string, string> = {
       from: fromNumber,
-      to: webrtcNumber,
+      to: target,
       voice_start: JSON.stringify(connectAction),
     };
     if (validStatusUrl) bodyParams.whenhangup = validStatusUrl;
@@ -191,30 +189,49 @@ export const hangupCallFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Poll 46elks to see whether the customer leg of an outbound bridged call
-// has actually been answered. The parent call (browser/WebRTC) is `callId`;
-// 46elks creates a sub-call when the connect action dials the customer, and
-// that sub-call's `start` timestamp is set the moment they pick up.
+// Poll 46elks to see whether the target/customer leg of an outbound bridged
+// call has actually been answered. The parent WebRTC call is not enough: it
+// starts when 46elks reaches the browser, before the customer picks up.
 export const checkCustomerAnsweredFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ callId: z.string().min(1) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ callId: z.string().min(1), targetNumber: z.string().min(4) }).parse(d),
+  )
   .handler(async ({ data }) => {
     const username = process.env.ELKS_API_USERNAME;
     const password = process.env.ELKS_API_PASSWORD;
     if (!username || !password) return { ok: false as const, answered: false };
     const auth = Buffer.from(`${username}:${password}`).toString("base64");
+    const target = normalizeE164(data.targetNumber);
+    const matchesTarget = (value: unknown) =>
+      typeof value === "string" && normalizeE164(value) === target;
+    const hasAnswerSignal = (entry: { start?: unknown; duration?: unknown; state?: unknown }) =>
+      (typeof entry.start === "string" && entry.start.length > 0) ||
+      (typeof entry.duration === "number" && entry.duration > 0) ||
+      (typeof entry.duration === "string" && Number(entry.duration) > 0) ||
+      entry.state === "success";
 
-    const url = `https://api.46elks.com/a1/calls?parent=${encodeURIComponent(data.callId)}&limit=10`;
+    const url = `https://api.46elks.com/a1/calls/${encodeURIComponent(data.callId)}`;
     const res = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
     if (!res.ok) return { ok: false as const, answered: false };
     const json = (await res.json().catch(() => null)) as
-      | { data?: Array<{ id?: string; state?: string; start?: string }> }
+      | {
+          from?: unknown;
+          to?: unknown;
+          state?: unknown;
+          start?: unknown;
+          duration?: unknown;
+          actions?: Array<{ connect?: unknown; result?: unknown }>;
+          legs?: Array<{ from?: unknown; to?: unknown; state?: unknown; start?: unknown; duration?: unknown }>;
+        }
       | null;
-    const subs = json?.data ?? [];
-    // Customer answered if any sub-call has a `start` timestamp (set on pickup)
-    // or its state has progressed to ongoing/success.
-    const answered = subs.some(
-      (c) => !!c.start || c.state === "ongoing" || c.state === "success",
-    );
+    const legs = Array.isArray(json?.legs) ? json.legs : [];
+    const actions = Array.isArray(json?.actions) ? json.actions : [];
+    // Only trust the customer leg/action. The parent WebRTC leg becomes
+    // ongoing as soon as 46elks reaches the browser, which is too early.
+    const answered =
+      (!!json && (matchesTarget(json.to) || matchesTarget(json.from)) && hasAnswerSignal(json)) ||
+      legs.some((leg) => (matchesTarget(leg.to) || matchesTarget(leg.from)) && hasAnswerSignal(leg)) ||
+      actions.some((action) => matchesTarget(action.connect) && action.result === "success");
     return { ok: true as const, answered };
   });

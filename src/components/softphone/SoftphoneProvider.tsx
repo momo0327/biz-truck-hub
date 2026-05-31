@@ -85,6 +85,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const outboundActiveRef = useRef(false);
   const trunkNumberRef = useRef<string | null>(null);
   const answerPollRef = useRef<number | null>(null);
+  const outboundTargetRef = useRef<string | null>(null);
   const fetchCreds = useServerFn(getWebrtcCredentials);
 
   const stopTick = useCallback(() => {
@@ -244,8 +245,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           // SIP "Established" means our browser leg is up — but 46elks hasn't
           // necessarily reached the customer yet. Pipe audio through, but
           // stay in "ringing" (UI shows "Calling…") until the 46elks
-          // `next` webhook on the connect action reports the customer
-          // actually answered (status=answered on the call_logs row).
+          // call details show that the target/customer leg has answered.
           const pc = (session as SessionMedia).sessionDescriptionHandler?.peerConnection;
           if (pc && audioRef.current) {
             const remote = new MediaStream();
@@ -271,9 +271,10 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           if (answerPollRef.current) window.clearInterval(answerPollRef.current);
           answerPollRef.current = window.setInterval(async () => {
             const callId = elksCallIdRef.current;
-            if (!callId) return;
+            const targetNumber = outboundTargetRef.current;
+            if (!callId || !targetNumber) return;
             try {
-              const res = await checkAnswered({ data: { callId } });
+              const res = await checkAnswered({ data: { callId, targetNumber } });
               if (res.ok && res.answered) {
                 if (answerPollRef.current) {
                   window.clearInterval(answerPollRef.current);
@@ -296,6 +297,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           setState("ended");
           sessionRef.current = null;
           outboundActiveRef.current = false;
+          outboundTargetRef.current = null;
           if (audioRef.current) audioRef.current.srcObject = null;
           window.setTimeout(() => {
             setState((cur) => (cur === "ended" ? "idle" : cur));
@@ -310,27 +312,25 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const startCall: SoftphoneCtx["startCall"] = useCallback(
     (opts) => {
       outboundActiveRef.current = true;
+      elksCallIdRef.current = null;
       setMuted(false);
       setDurationSec(0);
       setNotes("");
       setOpen(true);
-      setCall({ ...opts, startedAt: Date.now(), direction: "outbound" });
+      const normalized = normalizeForSip(opts.number);
+      outboundTargetRef.current = normalized;
+      setCall({ ...opts, number: normalized, startedAt: Date.now(), direction: "outbound" });
 
       const ua = uaRef.current;
       if (!ua || sipStatus !== "registered") {
-        // Fallback: mock progression so the UI is still usable
-        setState("dialing");
-        window.setTimeout(() => setState("ringing"), 1200);
-        window.setTimeout(() => {
-          setState("in-call");
-          setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-          startTick();
-        }, 3000);
+        setSipError("WebRTC is not registered yet");
+        setState("ended");
+        outboundActiveRef.current = false;
+        outboundTargetRef.current = null;
         return;
       }
 
       setState("dialing");
-      const normalized = normalizeForSip(opts.number);
       console.log("[softphone] startCall", {
         rawNumber: opts.number,
         normalized,
@@ -348,9 +348,10 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           setSipError(err instanceof Error ? err.message : String(err));
           setState("ended");
           outboundActiveRef.current = false;
+          outboundTargetRef.current = null;
         });
     },
-    [sipStatus, startTick, placeCall],
+    [sipStatus, placeCall],
   );
 
   const hangup = useCallback(async () => {
@@ -419,6 +420,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       sessionRef.current = null;
       outboundActiveRef.current = false;
       elksCallIdRef.current = null;
+      outboundTargetRef.current = null;
     }, 1200);
   }, [stopTick, hangupServerCall, call, notes]);
 
