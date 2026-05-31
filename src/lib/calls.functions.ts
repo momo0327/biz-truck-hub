@@ -99,16 +99,14 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const validStatusUrl = publicHttps(statusUrl);
     const validConnectUrl = publicHttps(connectUrl);
 
-
-    // Call the browser (WebRTC) leg FIRST. As soon as the user picks up in the
-    // softphone, 46elks dials the target. The target's phone then rings like a
-    // normal incoming call and connects instantly on answer — no awkward
-    // "ringing then connecting" pause on their end.
-    const connectAction: Record<string, string> = { connect: target };
+    // Call the customer FIRST. 46elks only runs `voice_start` after the
+    // customer answers, so the browser/WebRTC leg is not connected until the
+    // customer has actually picked up.
+    const connectAction: Record<string, string> = { connect: webrtcNumber };
     if (validConnectUrl) connectAction.next = validConnectUrl;
     const bodyParams: Record<string, string> = {
       from: fromNumber,
-      to: webrtcNumber,
+      to: target,
       voice_start: JSON.stringify(connectAction),
     };
     if (validStatusUrl) bodyParams.whenhangup = validStatusUrl;
