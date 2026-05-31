@@ -158,28 +158,80 @@ function SettingsPage() {
                 <h2 className="font-display text-xl tracking-wide">Profile</h2>
                 <p className="text-sm text-muted-foreground mt-1">Your account details.</p>
               </div>
-              <div className="space-y-4 max-w-xl">
+              <div className="space-y-5 max-w-xl">
                 <Field label="Email" value={user?.email ?? "—"} />
+
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Your phone number</label>
-                  <div className="flex gap-2">
-                    <input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+46701234567"
-                      className="flex-1 px-3 py-2 rounded-md border bg-background text-sm"
-                    />
-                    <button
-                      onClick={savePhone}
-                      disabled={savingPhone}
-                      className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50"
-                    >
-                      Save
-                    </button>
-                  </div>
+                  <label className="text-sm font-medium">Display number (caller ID)</label>
+                  <input
+                    value={displayPhone}
+                    onChange={(e) => setDisplayPhone(e.target.value)}
+                    placeholder="+46701234567"
+                    className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                  />
                   <p className="text-xs text-muted-foreground">
-                    Used for outbound calls via 46elks — we ring your phone first, then connect.
+                    The number shown to the person you call.
                   </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Your 46elks number</label>
+                  <input
+                    value={elksNumber}
+                    onChange={(e) => setElksNumber(e.target.value)}
+                    placeholder="+4610XXXXXXX"
+                    className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The actual purchased 46elks number assigned to this account.
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t space-y-1">
+                  <div className="text-sm font-medium">46elks WebRTC softphone</div>
+                  <p className="text-xs text-muted-foreground">
+                    Each account needs its own WebRTC credentials so two users can call at the same time. Create a SIP/WebRTC user in your 46elks dashboard and paste the values here.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">WebRTC URI</label>
+                  <input
+                    value={elksUri}
+                    onChange={(e) => setElksUri(e.target.value)}
+                    placeholder="46XXXXXXXXX@sip.46elks.com"
+                    className="w-full px-3 py-2 rounded-md border bg-background text-sm font-mono"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">WebRTC username</label>
+                    <input
+                      value={elksUser}
+                      onChange={(e) => setElksUser(e.target.value)}
+                      className="w-full px-3 py-2 rounded-md border bg-background text-sm font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">WebRTC password</label>
+                    <input
+                      type="password"
+                      value={elksPass}
+                      onChange={(e) => setElksPass(e.target.value)}
+                      className="w-full px-3 py-2 rounded-md border bg-background text-sm font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={savePhone}
+                    disabled={savingPhone}
+                    className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50"
+                  >
+                    Save calling profile
+                  </button>
                 </div>
               </div>
             </div>
