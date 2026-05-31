@@ -39,44 +39,18 @@ export function ArchiveDialog({
       return;
     }
     setBusy(true);
-    let createdFolderId: string | null = null;
     try {
-      const { data: u, error: uErr } = await supabase.auth.getUser();
-      if (uErr || !u.user) throw new Error("Not authenticated");
-
-      // 1) Verify we can update the companies BEFORE creating a folder.
-      // Doing the update first avoids leaving an empty folder behind if the
-      // archive step fails (network error, RLS, etc.).
-      let folderId = existingId;
-      if (!folderId) {
-        const { data, error } = await (supabase as any)
-          .from("archive_folders")
-          .insert({ user_id: u.user.id, name: name.trim() })
-          .select()
-          .single();
-        if (error) throw error;
-        folderId = data.id;
-        createdFolderId = data.id;
-      }
-
-      const { data: updated, error: updErr } = await supabase
-        .from("companies")
-        .update({ archived_folder_id: folderId, archived_at: new Date().toISOString() } as any)
-        .in("id", companyIds)
-        .select("id");
-      if (updErr) throw updErr;
-      if (!updated || updated.length === 0) {
-        throw new Error("No companies were archived");
-      }
-
-      toast.success(`Archived ${updated.length} ${updated.length === 1 ? "company" : "companies"}`);
+      const { data, error } = await (supabase as any).rpc("archive_companies", {
+        _folder_name: name.trim() || null,
+        _folder_id: existingId || null,
+        _company_ids: companyIds,
+      });
+      if (error) throw error;
+      const archivedCount = data?.[0]?.archived_count ?? companyIds.length;
+      toast.success(`Archived ${archivedCount} ${archivedCount === 1 ? "company" : "companies"}`);
       onArchived();
       onClose();
     } catch (e: any) {
-      // Roll back the folder we just created so it doesn't appear empty in Archives
-      if (createdFolderId) {
-        await (supabase as any).from("archive_folders").delete().eq("id", createdFolderId);
-      }
       const msg = e?.message === "Failed to fetch"
         ? "Network error — please check your connection and try again"
         : e?.message ?? "Failed to archive";
