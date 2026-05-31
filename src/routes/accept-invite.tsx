@@ -42,8 +42,8 @@ function AcceptInvitePage() {
       const search = typeof window !== "undefined" ? window.location.search : "";
       const params = new URLSearchParams(search);
       const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
-      const code = params.get("code");
-      const tokenHash = params.get("token_hash");
+      const code = params.get("code") ?? hashParams.get("code");
+      const tokenHash = params.get("token_hash") ?? hashParams.get("token_hash");
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
       const linkType = params.get("type") ?? hashParams.get("type");
