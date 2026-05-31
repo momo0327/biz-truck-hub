@@ -155,11 +155,7 @@ export async function fetchEmployeeDetail(employeeId: string) {
 export async function inviteUser(email: string) {
   const host = getRequestHost();
   const proto = getRequestHeader("x-forwarded-proto") || "https";
-  const previewProjectId = host.endsWith(".lovableproject.com") ? host.split(".")[0] : null;
-  const redirectHost = previewProjectId
-    ? `id-preview--${previewProjectId}.lovable.app`
-    : host;
-  const redirectTo = `https://${redirectHost}/accept-invite`;
+  const redirectTo = `${proto}://${host}/accept-invite`;
 
   // If a previous invite to the same email never completed account setup,
   // delete that pending shell user so we can issue a fresh invitation.

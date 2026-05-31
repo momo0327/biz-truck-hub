@@ -72,42 +72,36 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const proto = getRequestHeader("x-forwarded-proto") || "https";
     const base = `${proto}://${host}`;
     const statusUrl = `${base}/api/public/elks-status`;
-    const connectUrl = `${base}/api/public/elks-connect`;
 
     // 46elks rejects whenhangup if it isn't a valid public URL. In local/dev
     // previews host can be localhost or otherwise unreachable — in that case
     // omit the webhook (the call still goes through, we just don't get the
     // status callback) instead of failing the whole call with "Invalid value
     // for whenhangup, not a URL".
-    function publicHttps(s: string): string | null {
-      try {
-        const u = new URL(s);
-        const isHttps = u.protocol === "https:";
-        const hostname = u.hostname;
-        const isPublic =
-          hostname.includes(".") &&
-          !hostname.endsWith(".local") &&
-          hostname !== "localhost" &&
-          hostname !== "127.0.0.1" &&
-          hostname !== "0.0.0.0";
-        if (isHttps && isPublic) return u.toString();
-      } catch {
-        return null;
-      }
-      return null;
+    let validStatusUrl: string | null = null;
+    try {
+      const u = new URL(statusUrl);
+      const isHttps = u.protocol === "https:";
+      const hostname = u.hostname;
+      const isPublic =
+        hostname.includes(".") &&
+        !hostname.endsWith(".local") &&
+        hostname !== "localhost" &&
+        hostname !== "127.0.0.1" &&
+        hostname !== "0.0.0.0";
+      if (isHttps && isPublic) validStatusUrl = u.toString();
+    } catch {
+      validStatusUrl = null;
     }
-    const validStatusUrl = publicHttps(statusUrl);
-    const validConnectUrl = publicHttps(connectUrl);
 
-    // Call the customer FIRST. 46elks only runs `voice_start` after the
-    // customer answers, so the browser/WebRTC leg is not connected until the
-    // customer has actually picked up.
-    const connectAction: Record<string, string> = { connect: webrtcNumber };
-    if (validConnectUrl) connectAction.next = validConnectUrl;
+    // Call the browser (WebRTC) leg FIRST. As soon as the user picks up in the
+    // softphone, 46elks dials the target. The target's phone then rings like a
+    // normal incoming call and connects instantly on answer — no awkward
+    // "ringing then connecting" pause on their end.
     const bodyParams: Record<string, string> = {
       from: fromNumber,
-      to: target,
-      voice_start: JSON.stringify(connectAction),
+      to: webrtcNumber,
+      voice_start: JSON.stringify({ connect: target }),
     };
     if (validStatusUrl) bodyParams.whenhangup = validStatusUrl;
     const body = new URLSearchParams(bodyParams);
@@ -187,51 +181,4 @@ export const hangupCallFn = createServerFn({ method: "POST" })
       return { ok: false, error: `46elks: ${res.status} ${text.slice(0, 200)}` };
     }
     return { ok: true };
-  });
-
-// Poll 46elks to see whether the target/customer leg of an outbound bridged
-// call has actually been answered. The parent WebRTC call is not enough: it
-// starts when 46elks reaches the browser, before the customer picks up.
-export const checkCustomerAnsweredFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ callId: z.string().min(1), targetNumber: z.string().min(4) }).parse(d),
-  )
-  .handler(async ({ data }) => {
-    const username = process.env.ELKS_API_USERNAME;
-    const password = process.env.ELKS_API_PASSWORD;
-    if (!username || !password) return { ok: false as const, answered: false };
-    const auth = Buffer.from(`${username}:${password}`).toString("base64");
-    const target = normalizeE164(data.targetNumber);
-    const matchesTarget = (value: unknown) =>
-      typeof value === "string" && normalizeE164(value) === target;
-    const hasAnswerSignal = (entry: { start?: unknown; duration?: unknown; state?: unknown }) =>
-      (typeof entry.start === "string" && entry.start.length > 0) ||
-      (typeof entry.duration === "number" && entry.duration > 0) ||
-      (typeof entry.duration === "string" && Number(entry.duration) > 0) ||
-      entry.state === "success";
-
-    const url = `https://api.46elks.com/a1/calls/${encodeURIComponent(data.callId)}`;
-    const res = await fetch(url, { headers: { Authorization: `Basic ${auth}` } });
-    if (!res.ok) return { ok: false as const, answered: false };
-    const json = (await res.json().catch(() => null)) as
-      | {
-          from?: unknown;
-          to?: unknown;
-          state?: unknown;
-          start?: unknown;
-          duration?: unknown;
-          actions?: Array<{ connect?: unknown; result?: unknown }>;
-          legs?: Array<{ from?: unknown; to?: unknown; state?: unknown; start?: unknown; duration?: unknown }>;
-        }
-      | null;
-    const legs = Array.isArray(json?.legs) ? json.legs : [];
-    const actions = Array.isArray(json?.actions) ? json.actions : [];
-    // Only trust the customer leg/action. The parent WebRTC leg becomes
-    // ongoing as soon as 46elks reaches the browser, which is too early.
-    const answered =
-      (!!json && (matchesTarget(json.to) || matchesTarget(json.from)) && hasAnswerSignal(json)) ||
-      legs.some((leg) => (matchesTarget(leg.to) || matchesTarget(leg.from)) && hasAnswerSignal(leg)) ||
-      actions.some((action) => matchesTarget(action.connect) && action.result === "success");
-    return { ok: true as const, answered };
   });

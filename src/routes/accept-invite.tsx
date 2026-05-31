@@ -42,8 +42,8 @@ function AcceptInvitePage() {
       const search = typeof window !== "undefined" ? window.location.search : "";
       const params = new URLSearchParams(search);
       const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
-      const code = params.get("code") ?? hashParams.get("code");
-      const tokenHash = params.get("token_hash") ?? hashParams.get("token_hash");
+      const code = params.get("code");
+      const tokenHash = params.get("token_hash");
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
       const linkType = params.get("type") ?? hashParams.get("type");
@@ -51,7 +51,16 @@ function AcceptInvitePage() {
         code || tokenHash || accessToken || linkType === "invite" || linkType === "recovery",
       );
 
-      if (tokenHash) {
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          if (!cancelled) {
+            setHasSession(false);
+            setChecking(false);
+          }
+          return;
+        }
+      } else if (tokenHash) {
         const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "invite" });
         if (error) {
           if (!cancelled) {
@@ -65,15 +74,6 @@ function AcceptInvitePage() {
           access_token: accessToken,
           refresh_token: refreshToken,
         });
-        if (error) {
-          if (!cancelled) {
-            setHasSession(false);
-            setChecking(false);
-          }
-          return;
-        }
-      } else if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
           if (!cancelled) {
             setHasSession(false);

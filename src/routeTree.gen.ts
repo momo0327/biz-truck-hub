@@ -22,7 +22,6 @@ import { Route as AdminAdminRouteImport } from './routes/_admin.admin'
 import { Route as AdminAdminIndexRouteImport } from './routes/_admin.admin.index'
 import { Route as ApiPublicElksVoiceStartRouteImport } from './routes/api/public/elks-voice-start'
 import { Route as ApiPublicElksStatusRouteImport } from './routes/api/public/elks-status'
-import { Route as ApiPublicElksConnectRouteImport } from './routes/api/public/elks-connect'
 import { Route as AdminAdminSettingsRouteImport } from './routes/_admin.admin.settings'
 import { Route as AdminAdminInviteRouteImport } from './routes/_admin.admin.invite'
 import { Route as AdminAdminEmployeesRouteImport } from './routes/_admin.admin.employees'
@@ -91,11 +90,6 @@ const ApiPublicElksStatusRoute = ApiPublicElksStatusRouteImport.update({
   path: '/api/public/elks-status',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicElksConnectRoute = ApiPublicElksConnectRouteImport.update({
-  id: '/api/public/elks-connect',
-  path: '/api/public/elks-connect',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminAdminSettingsRoute = AdminAdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -130,7 +124,6 @@ export interface FileRoutesByFullPath {
   '/admin/employees': typeof AdminAdminEmployeesRoute
   '/admin/invite': typeof AdminAdminInviteRoute
   '/admin/settings': typeof AdminAdminSettingsRoute
-  '/api/public/elks-connect': typeof ApiPublicElksConnectRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
   '/admin/': typeof AdminAdminIndexRoute
@@ -147,7 +140,6 @@ export interface FileRoutesByTo {
   '/admin/employees': typeof AdminAdminEmployeesRoute
   '/admin/invite': typeof AdminAdminInviteRoute
   '/admin/settings': typeof AdminAdminSettingsRoute
-  '/api/public/elks-connect': typeof ApiPublicElksConnectRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
   '/admin': typeof AdminAdminIndexRoute
@@ -168,7 +160,6 @@ export interface FileRoutesById {
   '/_admin/admin/employees': typeof AdminAdminEmployeesRoute
   '/_admin/admin/invite': typeof AdminAdminInviteRoute
   '/_admin/admin/settings': typeof AdminAdminSettingsRoute
-  '/api/public/elks-connect': typeof ApiPublicElksConnectRoute
   '/api/public/elks-status': typeof ApiPublicElksStatusRoute
   '/api/public/elks-voice-start': typeof ApiPublicElksVoiceStartRoute
   '/_admin/admin/': typeof AdminAdminIndexRoute
@@ -188,7 +179,6 @@ export interface FileRouteTypes {
     | '/admin/employees'
     | '/admin/invite'
     | '/admin/settings'
-    | '/api/public/elks-connect'
     | '/api/public/elks-status'
     | '/api/public/elks-voice-start'
     | '/admin/'
@@ -205,7 +195,6 @@ export interface FileRouteTypes {
     | '/admin/employees'
     | '/admin/invite'
     | '/admin/settings'
-    | '/api/public/elks-connect'
     | '/api/public/elks-status'
     | '/api/public/elks-voice-start'
     | '/admin'
@@ -225,7 +214,6 @@ export interface FileRouteTypes {
     | '/_admin/admin/employees'
     | '/_admin/admin/invite'
     | '/_admin/admin/settings'
-    | '/api/public/elks-connect'
     | '/api/public/elks-status'
     | '/api/public/elks-voice-start'
     | '/_admin/admin/'
@@ -236,7 +224,6 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AcceptInviteRoute: typeof AcceptInviteRoute
   LoginRoute: typeof LoginRoute
-  ApiPublicElksConnectRoute: typeof ApiPublicElksConnectRoute
   ApiPublicElksStatusRoute: typeof ApiPublicElksStatusRoute
   ApiPublicElksVoiceStartRoute: typeof ApiPublicElksVoiceStartRoute
 }
@@ -334,13 +321,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicElksStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/elks-connect': {
-      id: '/api/public/elks-connect'
-      path: '/api/public/elks-connect'
-      fullPath: '/api/public/elks-connect'
-      preLoaderRoute: typeof ApiPublicElksConnectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_admin/admin/settings': {
       id: '/_admin/admin/settings'
       path: '/settings'
@@ -425,7 +405,6 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AcceptInviteRoute: AcceptInviteRoute,
   LoginRoute: LoginRoute,
-  ApiPublicElksConnectRoute: ApiPublicElksConnectRoute,
   ApiPublicElksStatusRoute: ApiPublicElksStatusRoute,
   ApiPublicElksVoiceStartRoute: ApiPublicElksVoiceStartRoute,
 }
