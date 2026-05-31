@@ -102,12 +102,20 @@ function ArchivesPage() {
             <h1 className="font-display text-3xl tracking-wide uppercase">{open.name}</h1>
             <p className="text-sm text-muted-foreground mt-1">{companies.length} companies archived</p>
           </div>
-          <button
-            onClick={() => deleteFolder(open)}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-destructive/30 text-destructive text-sm hover:bg-destructive/10"
-          >
-            <Trash2 className="size-4" /> Delete folder
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => restoreFolder(open)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-primary/30 text-primary text-sm hover:bg-primary/10"
+            >
+              <ArchiveRestore className="size-4" /> Restore to Companies
+            </button>
+            <button
+              onClick={() => deleteFolder(open)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-destructive/30 text-destructive text-sm hover:bg-destructive/10"
+            >
+              <Trash2 className="size-4" /> Delete folder
+            </button>
+          </div>
         </header>
 
         <div className="rounded-lg border bg-card overflow-hidden">
