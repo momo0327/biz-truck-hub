@@ -55,7 +55,7 @@ function Dashboard() {
   ];
 
   return (
-    <div className="p-8 space-y-6 max-w-[1400px]">
+    <div className="p-8 space-y-6 w-full">
       <header className="flex items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl tracking-wide uppercase">Dashboard</h1>
