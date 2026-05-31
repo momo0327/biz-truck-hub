@@ -304,7 +304,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         }
       });
     },
-    [startTick, state, stopTick],
+    [startTick, state, stopTick, checkAnswered],
   );
 
   const startCall: SoftphoneCtx["startCall"] = useCallback(
