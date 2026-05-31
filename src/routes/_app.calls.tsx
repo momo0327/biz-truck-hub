@@ -11,7 +11,6 @@ import {
   PhoneCall,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useCompanies } from "@/lib/companies";
 import type { CallLog } from "@/lib/companies";
 
 export const Route = createFileRoute("/_app/calls")({
