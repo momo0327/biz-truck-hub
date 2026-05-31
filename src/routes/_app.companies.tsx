@@ -8,12 +8,11 @@ import { ArchiveDialog } from "@/components/ArchiveDialog";
 import { PhoneButtons } from "@/components/PhoneButtons";
 
 
-import { useCompanies, STATUS_META, type Company } from "@/lib/companies";
+import { useCompanies, STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
 import { CompaniesSkeleton } from "@/components/PageSkeletons";
 import { researchCompanyFn, deleteCompaniesFn } from "@/server/research.functions";
 import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2, Archive as ArchiveIcon } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_app/companies")({ component: CompaniesPage });
 
@@ -26,16 +25,24 @@ function CompaniesPage() {
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const research = useServerFn(researchCompanyFn);
   const deleteMany = useServerFn(deleteCompaniesFn);
 
-  const filtered = companies.filter(
-    (c) =>
+  const statusCounts = STATUS_ORDER.reduce(
+    (acc, status) => ({ ...acc, [status]: companies.filter((c) => c.status === status).length }),
+    {} as Record<Status, number>,
+  );
+
+  const filtered = companies.filter((c) => {
+    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
+    const matchesSearch =
       !q ||
       c.name.toLowerCase().includes(q.toLowerCase()) ||
-      c.org_number?.includes(q),
-  );
+      c.org_number?.includes(q);
+    return matchesStatus && matchesSearch;
+  });
 
   async function researchOne(id: string) {
     setBusyIds((s) => new Set(s).add(id));
@@ -71,7 +78,7 @@ function CompaniesPage() {
           <h1 className="font-display text-3xl tracking-wide">Companies</h1>
           <p className="text-sm text-muted-foreground mb-1">{companies.length} imported</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           {selectedIds.size > 0 && (
             <>
               <button
@@ -122,18 +129,52 @@ function CompaniesPage() {
         </div>
       </header>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search by name or org number…"
-          className="w-full max-w-md pl-9 pr-3 py-2 rounded-md border bg-card text-sm"
-        />
+      <div className="space-y-4">
+        <div className="flex gap-3 overflow-x-auto pb-1">
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={`inline-flex shrink-0 items-center gap-3 rounded-full border px-5 py-3 text-sm font-medium transition ${
+              statusFilter === "all" ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"
+            }`}
+          >
+            All
+            <span className={`rounded-full px-2 py-0.5 text-xs ${statusFilter === "all" ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"}`}>
+              {companies.length}
+            </span>
+          </button>
+          {STATUS_ORDER.map((status) => {
+            const meta = STATUS_META[status];
+            const active = statusFilter === status;
+            return (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`inline-flex shrink-0 items-center gap-3 rounded-full border px-5 py-3 text-sm font-medium transition ${
+                  active ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"
+                }`}
+              >
+                {meta.label}
+                <span className={`rounded-full px-2 py-0.5 text-xs ${active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"}`}>
+                  {statusCounts[status]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by name or org number…"
+            className="w-full max-w-md pl-9 pr-3 py-2 rounded-md border bg-card text-sm"
+          />
+        </div>
       </div>
 
-      <div className="rounded-lg border bg-card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-lg border bg-card overflow-x-auto">
+        <table className="w-full min-w-[860px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3 w-10">
