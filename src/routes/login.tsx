@@ -15,7 +15,9 @@ function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/" });
+    if (!loading && user) {
+      navigate({ to: user.user_metadata?.needs_password_setup ? "/accept-invite" : "/" });
+    }
   }, [loading, user, navigate]);
 
   async function submit(e: React.FormEvent) {
