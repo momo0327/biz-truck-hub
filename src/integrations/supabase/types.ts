@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      archive_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       call_logs: {
         Row: {
           company_id: string
@@ -67,6 +88,8 @@ export type Database = {
       companies: {
         Row: {
           address: string | null
+          archived_at: string | null
+          archived_folder_id: string | null
           contact_person: string | null
           created_at: string
           fleet_size: string | null
@@ -87,6 +110,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          archived_at?: string | null
+          archived_folder_id?: string | null
           contact_person?: string | null
           created_at?: string
           fleet_size?: string | null
@@ -107,6 +132,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          archived_at?: string | null
+          archived_folder_id?: string | null
           contact_person?: string | null
           created_at?: string
           fleet_size?: string | null
@@ -125,7 +152,15 @@ export type Database = {
           vehicles?: Json
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "companies_archived_folder_id_fkey"
+            columns: ["archived_folder_id"]
+            isOneToOne: false
+            referencedRelation: "archive_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -149,6 +184,42 @@ export type Database = {
           display_name?: string | null
           id?: string
           phone_number?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scheduled_calls: {
+        Row: {
+          company_id: string
+          created_at: string
+          done: boolean
+          id: string
+          note: string | null
+          scheduled_at: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          note?: string | null
+          scheduled_at: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          note?: string | null
+          scheduled_at?: string
+          title?: string
           updated_at?: string
           user_id?: string
         }
