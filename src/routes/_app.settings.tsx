@@ -26,23 +26,46 @@ function SettingsPage() {
   const { user } = useAuth();
   const { companies, loading, refresh } = useCompanies();
   const deleteAll = useServerFn(deleteAllCompaniesFn);
-  const [phone, setPhone] = useState("");
+  const [displayPhone, setDisplayPhone] = useState("");
+  const [elksNumber, setElksNumber] = useState("");
+  const [elksUri, setElksUri] = useState("");
+  const [elksUser, setElksUser] = useState("");
+  const [elksPass, setElksPass] = useState("");
   const [savingPhone, setSavingPhone] = useState(false);
   const [tab, setTab] = useState<TabKey>("profile");
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("profiles").select("phone_number").eq("user_id", user.id).single()
-      .then(({ data }) => { if (data?.phone_number) setPhone(data.phone_number); });
+    supabase
+      .from("profiles")
+      .select("phone_number,display_phone_number,elks_webrtc_uri,elks_webrtc_username,elks_webrtc_password")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (!data) return;
+        const d = data as any;
+        setDisplayPhone(d.display_phone_number ?? d.phone_number ?? "");
+        setElksNumber(d.phone_number ?? "");
+        setElksUri(d.elks_webrtc_uri ?? "");
+        setElksUser(d.elks_webrtc_username ?? "");
+        setElksPass(d.elks_webrtc_password ?? "");
+      });
   }, [user]);
 
   async function savePhone() {
     if (!user) return;
     setSavingPhone(true);
-    const { error } = await supabase.from("profiles").update({ phone_number: phone }).eq("user_id", user.id);
+    const payload: Record<string, string | null> = {
+      display_phone_number: displayPhone.trim() || null,
+      phone_number: elksNumber.trim() || null,
+      elks_webrtc_uri: elksUri.trim() || null,
+      elks_webrtc_username: elksUser.trim() || null,
+      elks_webrtc_password: elksPass.trim() || null,
+    };
+    const { error } = await supabase.from("profiles").update(payload as any).eq("user_id", user.id);
     setSavingPhone(false);
     if (error) return toast.error(error.message);
-    toast.success("Phone saved");
+    toast.success("Calling profile saved");
   }
 
   function exportCsv() {
