@@ -51,16 +51,7 @@ function AcceptInvitePage() {
         code || tokenHash || accessToken || linkType === "invite" || linkType === "recovery",
       );
 
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          if (!cancelled) {
-            setHasSession(false);
-            setChecking(false);
-          }
-          return;
-        }
-      } else if (tokenHash) {
+      if (tokenHash) {
         const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "invite" });
         if (error) {
           if (!cancelled) {
@@ -74,6 +65,15 @@ function AcceptInvitePage() {
           access_token: accessToken,
           refresh_token: refreshToken,
         });
+        if (error) {
+          if (!cancelled) {
+            setHasSession(false);
+            setChecking(false);
+          }
+          return;
+        }
+      } else if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
           if (!cancelled) {
             setHasSession(false);
