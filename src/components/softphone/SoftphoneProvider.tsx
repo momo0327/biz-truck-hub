@@ -271,9 +271,10 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           if (answerPollRef.current) window.clearInterval(answerPollRef.current);
           answerPollRef.current = window.setInterval(async () => {
             const callId = elksCallIdRef.current;
-            if (!callId) return;
+            const targetNumber = call?.number;
+            if (!callId || !targetNumber) return;
             try {
-              const res = await checkAnswered({ data: { callId } });
+              const res = await checkAnswered({ data: { callId, targetNumber } });
               if (res.ok && res.answered) {
                 if (answerPollRef.current) {
                   window.clearInterval(answerPollRef.current);
@@ -304,7 +305,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         }
       });
     },
-    [startTick, state, stopTick, checkAnswered],
+    [startTick, state, stopTick, checkAnswered, call?.number],
   );
 
   const startCall: SoftphoneCtx["startCall"] = useCallback(
