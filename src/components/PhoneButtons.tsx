@@ -15,7 +15,7 @@ export function PhoneButtons({ phones, companyId, contactName, compact, readOnly
   return (
     <div className={compact ? "inline-flex flex-nowrap items-center gap-1.5 whitespace-nowrap" : "flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-1.5"}>
       {visible.map((p) => (
-        <div key={p} className="inline-flex items-center rounded-full bg-success/10 text-success border border-success/20 overflow-hidden">
+        <div key={p} className="inline-flex w-full sm:w-auto items-center rounded-full bg-success/10 text-success border border-success/20 overflow-hidden">
           <a href={`tel:${p.replace(/\s/g, "")}`} className="px-3 py-1 text-xs font-medium inline-flex items-center gap-1.5 hover:bg-success/20">
             <Phone className="size-3" /> {p}
           </a>
