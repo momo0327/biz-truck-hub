@@ -88,10 +88,17 @@ export function CompaniesProvider({ children }: { children: ReactNode }) {
     const channel = supabase
       .channel("companies-changes")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "companies" }, (payload) => {
-        upsertCompany(payload.new as Company);
+        const row = payload.new as Company & { archived_folder_id?: string | null };
+        if (row.archived_folder_id) return;
+        upsertCompany(row);
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "companies" }, (payload) => {
-        upsertCompany(payload.new as Company);
+        const row = payload.new as Company & { archived_folder_id?: string | null };
+        if (row.archived_folder_id) {
+          removeCompanies([row.id]);
+          return;
+        }
+        upsertCompany(row);
       })
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "companies" }, (payload) => {
         const oldRow = payload.old as { id?: string };
