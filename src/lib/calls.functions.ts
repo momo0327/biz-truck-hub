@@ -216,6 +216,11 @@ export const checkCustomerAnsweredFn = createServerFn({ method: "POST" })
     if (!res.ok) return { ok: false as const, answered: false };
     const json = (await res.json().catch(() => null)) as
       | {
+          from?: unknown;
+          to?: unknown;
+          state?: unknown;
+          start?: unknown;
+          duration?: unknown;
           actions?: Array<{ connect?: unknown; result?: unknown }>;
           legs?: Array<{ from?: unknown; to?: unknown; state?: unknown; start?: unknown; duration?: unknown }>;
         }
@@ -225,6 +230,7 @@ export const checkCustomerAnsweredFn = createServerFn({ method: "POST" })
     // Only trust the customer leg/action. The parent WebRTC leg becomes
     // ongoing as soon as 46elks reaches the browser, which is too early.
     const answered =
+      (!!json && (matchesTarget(json.to) || matchesTarget(json.from)) && hasAnswerSignal(json)) ||
       legs.some((leg) => (matchesTarget(leg.to) || matchesTarget(leg.from)) && hasAnswerSignal(leg)) ||
       actions.some((action) => matchesTarget(action.connect) && action.result === "success");
     return { ok: true as const, answered };
