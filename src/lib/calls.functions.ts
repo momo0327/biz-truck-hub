@@ -35,22 +35,26 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const username = process.env.ELKS_API_USERNAME;
     const password = process.env.ELKS_API_PASSWORD;
 
-    // Prefer the user's own caller ID from their profile; fall back to the global env number.
+    // Per-user: caller-ID "display" number and the 46elks WebRTC URI used to
+    // reach this specific user's softphone. Falls back to env for legacy setups.
     const { data: profile } = await supabase
       .from("profiles")
-      .select("phone_number")
+      .select("phone_number,display_phone_number,elks_webrtc_uri")
       .eq("user_id", userId)
       .maybeSingle();
 
-    const profileNumber = profile?.phone_number ? normalizeE164(profile.phone_number) : "";
-    const envFromNumber = process.env.ELKS_FROM_NUMBER
-      ? normalizeE164(process.env.ELKS_FROM_NUMBER)
-      : "";
-    const fromNumber = profileNumber || envFromNumber;
+    const displayRaw =
+      (profile?.display_phone_number as string | null) ||
+      (profile?.phone_number as string | null) ||
+      process.env.ELKS_FROM_NUMBER ||
+      "";
+    const fromNumber = displayRaw ? normalizeE164(displayRaw) : "";
 
-    const webrtcNumber = process.env.ELKS_WEBRTC_URI
-      ? numberFromWebrtcUri(process.env.ELKS_WEBRTC_URI)
-      : "";
+    const webrtcUri =
+      (profile?.elks_webrtc_uri as string | null)?.trim() ||
+      process.env.ELKS_WEBRTC_URI ||
+      "";
+    const webrtcNumber = webrtcUri ? numberFromWebrtcUri(webrtcUri) : "";
     if (!username || !password || !fromNumber || !webrtcNumber) {
       return { ok: false, error: "46elks credentials not configured" };
     }
