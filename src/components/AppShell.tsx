@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Building2, KanbanSquare, Phone, Settings } from "lucide-react";
+import { LayoutDashboard, Building2, KanbanSquare, Phone, Settings, Calendar as CalendarIcon, Archive } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useUserRole } from "@/lib/roles";
@@ -12,7 +12,9 @@ const nav: readonly ShellNavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/kanban", label: "Pipeline", icon: KanbanSquare },
+  { to: "/calendar", label: "Calendar", icon: CalendarIcon },
   { to: "/calls", label: "Call history", icon: Phone },
+  { to: "/archives", label: "Archives", icon: Archive },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
