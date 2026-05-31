@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanies, type Company } from "@/lib/companies";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
-import { Folder, ArrowLeft, Trash2 } from "lucide-react";
+import { Folder, ArrowLeft, Trash2, ArchiveRestore } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/archives")({ component: ArchivesPage });
