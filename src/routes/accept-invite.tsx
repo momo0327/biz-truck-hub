@@ -48,7 +48,12 @@ function AcceptInvitePage() {
       const displayName = `${firstName.trim()} ${lastName.trim()}`;
       const { error } = await supabase.auth.updateUser({
         password,
-        data: { display_name: displayName, first_name: firstName.trim(), last_name: lastName.trim() },
+        data: {
+          display_name: displayName,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          needs_password_setup: false,
+        },
       });
       if (error) throw error;
 

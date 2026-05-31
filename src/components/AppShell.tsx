@@ -26,6 +26,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [loading, user, navigate]);
 
   useEffect(() => {
+    if (!loading && user && user.user_metadata?.needs_password_setup) {
+      navigate({ to: "/accept-invite" });
+    }
+  }, [loading, user, navigate]);
+
+  useEffect(() => {
     if (!roleLoading && user && isAdmin) navigate({ to: "/admin" });
   }, [roleLoading, user, isAdmin, navigate]);
 
