@@ -78,7 +78,7 @@ function CompaniesPage() {
           <h1 className="font-display text-3xl tracking-wide">Companies</h1>
           <p className="text-sm text-muted-foreground mb-1">{companies.length} imported</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           {selectedIds.size > 0 && (
             <>
               <button
@@ -173,8 +173,8 @@ function CompaniesPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-lg border bg-card overflow-x-auto">
+        <table className="w-full min-w-[860px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3 w-10">
