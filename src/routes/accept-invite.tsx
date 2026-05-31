@@ -17,16 +17,38 @@ function AcceptInvitePage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    // Supabase parses the invite token from the URL hash and sets a session.
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setHasSession(!!s);
+    let cancelled = false;
+    async function verify() {
+      // Wait briefly for supabase-js to parse the invite token from the URL hash.
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        if (!cancelled) {
+          setHasSession(false);
+          setChecking(false);
+        }
+        return;
+      }
+      // Re-validate with the auth server — the JWT may belong to a user that
+      // was deleted (e.g. admin re-invited the same email).
+      const { data: userData, error } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (error || !userData.user) {
+        // Stale session — clear it so the user sees the "expired link" UI.
+        await supabase.auth.signOut().catch(() => {});
+        setHasSession(false);
+      } else {
+        setHasSession(true);
+      }
       setChecking(false);
+    }
+    verify();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      verify();
     });
-    supabase.auth.getSession().then(({ data }) => {
-      setHasSession(!!data.session);
-      setChecking(false);
-    });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   async function submit(e: React.FormEvent) {
@@ -45,6 +67,14 @@ function AcceptInvitePage() {
     }
     setBusy(true);
     try {
+      // Re-verify the session belongs to a real user before attempting updates.
+      const { data: pre, error: preErr } = await supabase.auth.getUser();
+      if (preErr || !pre.user) {
+        throw new Error(
+          "This invitation link is no longer valid. Please ask your admin to send a new invite.",
+        );
+      }
+
       const displayName = `${firstName.trim()} ${lastName.trim()}`;
       const { error } = await supabase.auth.updateUser({
         password,
@@ -55,16 +85,25 @@ function AcceptInvitePage() {
           needs_password_setup: false,
         },
       });
-      if (error) throw error;
+      if (error) {
+        if (
+          /user.*not.*found|sub claim/i.test(error.message) ||
+          (error as any).status === 403
+        ) {
+          await supabase.auth.signOut().catch(() => {});
+          setHasSession(false);
+          throw new Error(
+            "This invitation link is no longer valid. Please ask your admin to send a new invite.",
+          );
+        }
+        throw error;
+      }
 
       // Persist display name to the profile row too.
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData.user) {
-        await supabase
-          .from("profiles")
-          .update({ display_name: displayName })
-          .eq("user_id", userData.user.id);
-      }
+      await supabase
+        .from("profiles")
+        .update({ display_name: displayName })
+        .eq("user_id", pre.user.id);
 
       // Sign out so the user logs in fresh with their new password.
       await supabase.auth.signOut();
@@ -76,6 +115,7 @@ function AcceptInvitePage() {
       setBusy(false);
     }
   }
+
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
