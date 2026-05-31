@@ -16,7 +16,9 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
 
-    const allUsers = await listAllAuthUsers();
+    const rawUsers = await listAllAuthUsers();
+    // Hide users who were invited but never completed account setup.
+    const allUsers = rawUsers.filter((u) => !u.needsPasswordSetup);
     const userIds = allUsers.map((u) => u.id);
     const { profiles, roles, companies, calls } = await fetchOverviewData(userIds);
 
