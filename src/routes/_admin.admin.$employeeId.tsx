@@ -242,6 +242,7 @@ function EmployeeDetail() {
               )}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
