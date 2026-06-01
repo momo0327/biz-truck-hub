@@ -54,7 +54,7 @@ function AdminDashboard() {
     .slice(0, 6);
 
   return (
-    <div className="p-8 max-w-7xl space-y-8">
+    <div className="p-8 w-full space-y-8">
       <header>
         <h1 className="font-display text-3xl">Dashboard</h1>
         <p className="text-sm text-muted-foreground mt-1">
