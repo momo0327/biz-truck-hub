@@ -58,7 +58,7 @@ function EmployeeDetail() {
   const { employee, companies, calls } = data;
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl space-y-6">
+    <div className="p-8 max-w-7xl space-y-6">
       <div>
         <Link
           to="/admin"
@@ -148,8 +148,7 @@ function EmployeeDetail() {
         </div>
 
         {tab === "companies" && (
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[640px]">
+          <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Company</th>
@@ -198,12 +197,10 @@ function EmployeeDetail() {
               )}
             </tbody>
           </table>
-          </div>
         )}
 
         {tab === "calls" && (
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[720px]">
+          <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">When</th>
@@ -242,7 +239,6 @@ function EmployeeDetail() {
               )}
             </tbody>
           </table>
-          </div>
         )}
       </div>
 

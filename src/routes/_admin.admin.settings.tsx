@@ -11,7 +11,7 @@ function AdminSettings() {
   const navigate = useNavigate();
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl space-y-8">
+    <div className="p-8 max-w-2xl space-y-8">
       <header>
         <h1 className="font-display text-3xl">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">
