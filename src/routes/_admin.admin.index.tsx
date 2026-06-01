@@ -203,6 +203,8 @@ function AdminDashboard() {
             </div>
           )}
         </div>
+      </section>
+
       <ScheduleWeekSection />
     </div>
   );
