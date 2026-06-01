@@ -1,9 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getEmployeesOverviewFn } from "@/lib/admin.functions";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  listSchedules,
+  isSameDay,
+  type ScheduledCall,
+} from "@/lib/schedule";
 import {
   Bar,
   BarChart,
