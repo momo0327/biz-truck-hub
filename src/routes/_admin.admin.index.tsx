@@ -203,8 +203,120 @@ function AdminDashboard() {
             </div>
           )}
         </div>
-      </section>
+      <ScheduleWeekSection />
     </div>
+  );
+}
+
+function ScheduleWeekSection() {
+  const [items, setItems] = useState<ScheduledCall[]>([]);
+  const [selected, setSelected] = useState<Date>(new Date());
+  const [loading, setLoading] = useState(true);
+
+  async function refresh() {
+    try {
+      const list = await listSchedules();
+      setItems(list);
+    } catch {
+      // ignore — admin may have no schedules visible
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refresh();
+    const ch = (supabase as any)
+      .channel("admin-dashboard-schedules")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "scheduled_calls" },
+        () => refresh(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, []);
+
+  const datesWithEvents = useMemo(
+    () => items.map((i) => new Date(i.scheduled_at)),
+    [items],
+  );
+  const forSelected = items
+    .filter((i) => isSameDay(new Date(i.scheduled_at), selected))
+    .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
+
+  return (
+    <section className="rounded-lg border bg-card p-5">
+      <div className="mb-4">
+        <h2 className="font-display text-lg">Team calendar</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Scheduled calls across the team.
+        </p>
+      </div>
+      <div className="grid lg:grid-cols-[auto_1fr] gap-6 items-start">
+        <div className="bg-background/40 border rounded-xl p-3">
+          <Calendar
+            mode="single"
+            selected={selected}
+            onSelect={(d) => d && setSelected(d)}
+            modifiers={{ scheduled: datesWithEvents }}
+            modifiersClassNames={{
+              scheduled:
+                "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:size-1 after:rounded-full after:bg-primary",
+            }}
+            className="pointer-events-auto"
+          />
+        </div>
+
+        <div className="bg-background/40 border rounded-xl p-5 min-h-[260px]">
+          <div className="flex items-baseline justify-between mb-3">
+            <h3 className="font-display text-base tracking-wide uppercase">
+              {selected.toLocaleDateString(undefined, {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+              })}
+            </h3>
+            <span className="text-xs text-muted-foreground">
+              {forSelected.length} scheduled
+            </span>
+          </div>
+
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : forSelected.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">Nothing scheduled.</p>
+          ) : (
+            <ul className="divide-y">
+              {forSelected.map((s) => {
+                const d = new Date(s.scheduled_at);
+                return (
+                  <li key={s.id} className="py-3 flex items-center gap-3">
+                    <div className="text-sm font-mono tabular-nums w-14 text-muted-foreground">
+                      {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div
+                        className={`text-sm font-medium truncate ${s.done ? "line-through text-muted-foreground" : ""}`}
+                      >
+                        {s.title}
+                      </div>
+                      {s.note && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          {s.note}
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
