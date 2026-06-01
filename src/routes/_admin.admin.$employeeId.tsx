@@ -58,7 +58,7 @@ function EmployeeDetail() {
   const { employee, companies, calls } = data;
 
   return (
-    <div className="p-8 max-w-7xl space-y-6">
+    <div className="p-8 w-full space-y-6">
       <div>
         <Link
           to="/admin"
