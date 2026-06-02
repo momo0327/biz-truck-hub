@@ -1,10 +1,20 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { Suspense } from "react";
 import { AdminShell } from "@/components/AdminShell";
 
-export const Route = createFileRoute("/_admin")({
-  component: () => (
+function AdminLayout() {
+  const loc = useLocation();
+  return (
     <AdminShell>
-      <Outlet />
+      <Suspense fallback={null}>
+        <div key={loc.pathname} className="contents">
+          <Outlet />
+        </div>
+      </Suspense>
     </AdminShell>
-  ),
+  );
+}
+
+export const Route = createFileRoute("/_admin")({
+  component: AdminLayout,
 });
