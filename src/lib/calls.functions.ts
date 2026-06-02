@@ -142,25 +142,26 @@ export const placeCallFn = createServerFn({ method: "POST" })
     }
     const callId = elksData.id;
 
-    if (data.companyId) {
-      await supabase.from("call_logs").insert({
-        company_id: data.companyId,
-        user_id: userId,
-        note: `Outbound call to ${target}`,
-        elks_call_id: callId ?? null,
-        // Always start as "initiating" — 46elks reports "ongoing" the moment
-        // the API call is created, before the customer has actually answered.
-        // The /api/public/elks-status webhook updates this to success/busy/etc.
-        status: "initiating",
-        to_number: target,
-        direction: "outbound",
-      });
+    await supabase.from("call_logs").insert({
+      company_id: data.companyId ?? null,
+      user_id: userId,
+      note: `Outbound call to ${target}`,
+      elks_call_id: callId ?? null,
+      // Always start as "initiating" — 46elks reports "ongoing" the moment
+      // the API call is created, before the customer has actually answered.
+      // The /api/public/elks-status webhook updates this to success/busy/etc.
+      status: "initiating",
+      to_number: target,
+      direction: "outbound",
+    });
 
+    if (data.companyId) {
       await supabase
         .from("companies")
         .update({ last_contact: new Date().toISOString() })
         .eq("id", data.companyId);
     }
+
 
     return { ok: true, callId };
   });
