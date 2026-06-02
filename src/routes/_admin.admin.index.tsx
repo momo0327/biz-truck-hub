@@ -240,8 +240,8 @@ function StatCard({
 
 // Employee palette: lime green, pink, baby blue, then soft extras for overflow.
 const DONUT_COLORS = [
-  "#a3e635", // lime green
-  "#f9a8d4", // pink
+  "#00CC77", // lime green
+  "#FF4AD6", // pink
   "#7dd3fc", // baby blue
   "#fcd34d", // soft amber
   "#c4b5fd", // lavender
