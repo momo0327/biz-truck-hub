@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { Suspense } from "react";
 import { AppShell } from "@/components/AppShell";
+import { RouteSkeleton } from "@/components/PageSkeletons";
 
 function AppLayout() {
   const loc = useLocation();
@@ -10,7 +11,7 @@ function AppLayout() {
           navigation, so the user sees the next page's own loading skeleton
           right away instead of the previous page sitting frozen while the
           new data loads. */}
-      <Suspense fallback={null}>
+      <Suspense fallback={<RouteSkeleton pathname={loc.pathname} />}>
         <div key={loc.pathname} className="contents">
           <Outlet />
         </div>
