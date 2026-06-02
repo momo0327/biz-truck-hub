@@ -46,10 +46,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (loading || roleLoading || !user || isAdmin) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-muted-foreground">Loading…</div>
+        <div className="text-muted-foreground">{t("shell.loading")}</div>
       </div>
     );
   }
+
+  return (
+    <SoftphoneProvider>
+      <Shell user={user} nav={nav} roleLabel={t("shell.role.senior_agent")}>
+        <CompaniesProvider>{children}</CompaniesProvider>
+      </Shell>
+      <SoftphonePanel />
+    </SoftphoneProvider>
+  );
+}
 
   return (
     <SoftphoneProvider>
