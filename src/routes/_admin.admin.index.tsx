@@ -179,11 +179,11 @@ function AdminDashboard() {
               <div className="flex items-center gap-5 text-sm">
                 <div className="text-right">
                   <div className="font-display font-semibold">{e.stats.calls}</div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Calls</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("admin.dash.calls")}</div>
                 </div>
                 <div className="text-right">
                   <div className="font-display font-semibold">{e.stats.companies}</div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Leads</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("admin.dash.leads")}</div>
                 </div>
                 <div className="text-right">
                   <div className="font-display font-semibold text-success">{e.stats.dealsClosed}</div>
