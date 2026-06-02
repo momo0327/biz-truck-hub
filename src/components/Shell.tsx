@@ -1,9 +1,10 @@
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useRouterState } from "@tanstack/react-router";
 import { LogOut, PanelLeftClose, PanelLeftOpen, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { signOut } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { RouteSkeleton } from "@/components/PageSkeletons";
 import logo from "@/assets/logo.png";
 import {
   AlertDialog,
@@ -36,6 +37,9 @@ export function Shell({
 }) {
   const navigate = useNavigate();
   const loc = useLocation();
+  const pendingPathname = useRouterState({
+    select: (state) => (state.status === "pending" ? state.location.pathname : null),
+  });
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("appshell:collapsed") === "1";
@@ -172,7 +176,9 @@ export function Shell({
           </button>
         </div>
       </aside>
-      <main className="flex-1 min-w-0">{children}</main>
+      <main className="flex-1 min-w-0">
+        {pendingPathname ? <RouteSkeleton pathname={pendingPathname} /> : children}
+      </main>
 
       <AlertDialog open={confirmSignOut} onOpenChange={setConfirmSignOut}>
         <AlertDialogContent>
