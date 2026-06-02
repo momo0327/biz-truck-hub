@@ -6,7 +6,15 @@ import { UserRoleProvider } from "@/lib/roles";
 
 import appCss from "../styles.css?url";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+});
 
 function NotFoundComponent() {
   return (
