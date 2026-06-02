@@ -31,7 +31,7 @@ function AdminDashboard() {
     queryKey: ["admin-employees"],
     queryFn: () => fetchOverview({}),
     refetchInterval: 15000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {

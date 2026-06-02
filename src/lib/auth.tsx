@@ -15,14 +15,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
+    const apply = (s: Session | null) => {
+      setSession((prev) => {
+        // Skip no-op updates (e.g. TOKEN_REFRESHED on tab focus) so consumers
+        // don't re-render and refetch every time the user switches tabs.
+        if (prev?.user?.id === s?.user?.id && prev?.access_token === s?.access_token) {
+          return prev;
+        }
+        return s;
+      });
       setLoading(false);
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    };
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => apply(s));
+    supabase.auth.getSession().then(({ data }) => apply(data.session));
     return () => sub.subscription.unsubscribe();
   }, []);
 
