@@ -239,14 +239,15 @@ function StatCard({
   );
 }
 
+// Employee palette: lime green, pink, baby blue, then soft extras for overflow.
 const DONUT_COLORS = [
-  "var(--primary)",
-  "var(--info)",
-  "var(--success)",
-  "var(--warning)",
-  "var(--stage-negotiating)",
-  "var(--stage-lost)",
-  "var(--muted-foreground)",
+  "#a3e635", // lime green
+  "#f9a8d4", // pink
+  "#7dd3fc", // baby blue
+  "#fcd34d", // soft amber
+  "#c4b5fd", // lavender
+  "#fdba74", // peach
+  "#94a3b8", // slate (Others)
 ];
 
 function CallsByEmployee({ employees }: { employees: { name: string; calls: number }[] }) {
