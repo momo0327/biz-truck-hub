@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import { getEmployeesOverviewFn } from "@/lib/admin.functions";
 import {
   Bar,
@@ -56,10 +57,8 @@ function AdminDashboard() {
   return (
     <div className="p-8 w-full space-y-8">
       <header>
-        <h1 className="font-display text-3xl">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Live overview of all team activity.
-        </p>
+        <p className="text-sm text-muted-foreground">God dag</p>
+        <h1 className="font-display text-3xl mt-1">{firstName}</h1>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
