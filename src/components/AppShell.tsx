@@ -1,22 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
 import { LayoutDashboard, Building2, KanbanSquare, Phone, Settings, Calendar as CalendarIcon, Archive } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { useUserRole } from "@/lib/roles";
+import { useI18n } from "@/lib/i18n";
 import { SoftphoneProvider } from "@/components/softphone/SoftphoneProvider";
 import { SoftphonePanel } from "@/components/softphone/SoftphonePanel";
 import { CompaniesProvider } from "@/lib/companies";
 import { Shell, type ShellNavItem } from "@/components/Shell";
-
-const nav: readonly ShellNavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/companies", label: "Companies", icon: Building2 },
-  { to: "/kanban", label: "Pipeline", icon: KanbanSquare },
-  { to: "/calendar", label: "Calendar", icon: CalendarIcon },
-  { to: "/calls", label: "Call history", icon: Phone },
-  { to: "/archives", label: "Archives", icon: Archive },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
