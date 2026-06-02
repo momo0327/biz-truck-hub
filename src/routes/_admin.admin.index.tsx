@@ -65,7 +65,7 @@ function AdminDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
-          label="Total calls"
+          label={t("admin.dash.total_calls")}
           value={totals.calls.toLocaleString()}
           icon={Phone}
           iconColor="text-primary"
@@ -73,16 +73,16 @@ function AdminDashboard() {
           iconBg="bg-primary/10"
         />
         <StatCard
-          label="Answered"
+          label={t("admin.dash.answered")}
           value={totals.answered.toLocaleString()}
           icon={PhoneCall}
-          subtitle={`${answerRate}% answer rate`}
+          subtitle={t("admin.dash.answer_rate", { rate: answerRate })}
           iconColor="text-success"
           iconBorder="border-success/40"
           iconBg="bg-success/10"
         />
         <StatCard
-          label="Total leads"
+          label={t("admin.dash.total_leads")}
           value={totals.leads.toLocaleString()}
           icon={Users}
           iconColor="text-info"
