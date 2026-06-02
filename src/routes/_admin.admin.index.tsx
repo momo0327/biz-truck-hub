@@ -150,16 +150,16 @@ function AdminDashboard() {
       <section className="rounded-lg border bg-card p-5">
         <div className="flex items-baseline justify-between mb-4">
           <div>
-            <h2 className="font-display text-lg">Top employees</h2>
+            <h2 className="font-display text-lg">{t("admin.dash.top_employees")}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Sorted by total calls made.
+              {t("admin.dash.top_employees_sub")}
             </p>
           </div>
           <Link
             to="/admin/employees"
             className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
           >
-            View all <ArrowUpRight className="size-3" />
+            {t("admin.dash.view_all")} <ArrowUpRight className="size-3" />
           </Link>
         </div>
         <div className="grid gap-2">
