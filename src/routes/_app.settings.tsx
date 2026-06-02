@@ -172,6 +172,27 @@ function SettingsPage() {
               <div className="space-y-5 max-w-xl">
                 <Field label="Email" value={user?.email ?? "—"} />
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">First name</label>
+                    <input
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="Jane"
+                      className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Last name</label>
+                    <input
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Doe"
+                      className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Display number (caller ID)</label>
                   <input
