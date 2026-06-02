@@ -35,6 +35,21 @@ function AdminDashboard() {
     refetchOnWindowFocus: false,
   });
 
+  const { user } = useAuth();
+  const [firstName, setFirstName] = useState("");
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("first_name")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        setFirstName(data?.first_name || user.email?.split("@")[0] || "");
+      });
+  }, [user]);
+
   useEffect(() => {
     const channel = supabase
       .channel("admin-dashboard")
