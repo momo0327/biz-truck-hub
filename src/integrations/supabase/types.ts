@@ -37,7 +37,7 @@ export type Database = {
       }
       call_logs: {
         Row: {
-          company_id: string
+          company_id: string | null
           created_at: string
           direction: string | null
           duration: number | null
@@ -50,7 +50,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          company_id: string
+          company_id?: string | null
           created_at?: string
           direction?: string | null
           duration?: number | null
@@ -63,7 +63,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          company_id?: string
+          company_id?: string | null
           created_at?: string
           direction?: string | null
           duration?: number | null

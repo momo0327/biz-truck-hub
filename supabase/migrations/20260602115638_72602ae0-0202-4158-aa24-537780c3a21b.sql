@@ -1,0 +1,1 @@
+ALTER TABLE public.call_logs ALTER COLUMN company_id DROP NOT NULL;
