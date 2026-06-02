@@ -170,7 +170,9 @@ export type Database = {
           elks_webrtc_password: string | null
           elks_webrtc_uri: string | null
           elks_webrtc_username: string | null
+          first_name: string | null
           id: string
+          last_name: string | null
           phone_number: string | null
           updated_at: string
           user_id: string
@@ -182,7 +184,9 @@ export type Database = {
           elks_webrtc_password?: string | null
           elks_webrtc_uri?: string | null
           elks_webrtc_username?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           phone_number?: string | null
           updated_at?: string
           user_id: string
@@ -194,7 +198,9 @@ export type Database = {
           elks_webrtc_password?: string | null
           elks_webrtc_uri?: string | null
           elks_webrtc_username?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           phone_number?: string | null
           updated_at?: string
           user_id?: string
