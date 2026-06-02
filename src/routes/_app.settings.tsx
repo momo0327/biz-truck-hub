@@ -38,7 +38,7 @@ function SettingsPage() {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("phone_number,display_phone_number,elks_webrtc_uri,elks_webrtc_username,elks_webrtc_password")
+      .select("phone_number,display_phone_number,elks_webrtc_uri,elks_webrtc_username")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
@@ -48,9 +48,23 @@ function SettingsPage() {
         setElksNumber(d.phone_number ?? "");
         setElksUri(d.elks_webrtc_uri ?? "");
         setElksUser(d.elks_webrtc_username ?? "");
-        setElksPass(d.elks_webrtc_password ?? "");
+        // Password is write-only — never read back from the database.
+        setElksPass("");
       });
   }, [user]);
+
+  async function savePhone() {
+    if (!user) return;
+    setSavingPhone(true);
+    const payload: Record<string, string | null> = {
+      display_phone_number: displayPhone.trim() || null,
+      phone_number: elksNumber.trim() || null,
+      elks_webrtc_uri: elksUri.trim() || null,
+      elks_webrtc_username: elksUser.trim() || null,
+    };
+    // Only overwrite the password when the user typed a new one.
+    if (elksPass.trim()) payload.elks_webrtc_password = elksPass.trim();
+
 
   async function savePhone() {
     if (!user) return;
