@@ -71,7 +71,7 @@
   --popover: #FFFFFF;
   --popover-foreground: #0F172A;
 
-  --primary: #0F172A;
+  --primary: #EC4899;
   --primary-foreground: #FFFFFF;
 
   --secondary: #F5F5F7;
@@ -86,14 +86,15 @@
   --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
 
-  --success: #16A34A;
-  --success-foreground: #FFFFFF;
+  --success: #84CC16;
+  --success-foreground: #0F172A;
 
   --warning: #D4A017;
   --warning-foreground: #0F172A;
 
-  --info: #2563EB;
+  --info: #3B82F6;
   --info-foreground: #FFFFFF;
+
 
   --border: #E6E7EA;
   --input: #E6E7EA;
