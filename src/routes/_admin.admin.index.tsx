@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_admin/admin/")({
 
 
 function AdminDashboard() {
+  const { t } = useI18n();
   const fetchOverview = useServerFn(getEmployeesOverviewFn);
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin-employees"],
@@ -34,21 +35,6 @@ function AdminDashboard() {
     refetchInterval: 15000,
     refetchOnWindowFocus: false,
   });
-
-  const { user } = useAuth();
-  const [firstName, setFirstName] = useState("");
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("profiles")
-      .select("first_name")
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data }) => {
-        setFirstName(data?.first_name || user.email?.split("@")[0] || "");
-      });
-  }, [user]);
 
   useEffect(() => {
     const channel = supabase
@@ -72,9 +58,10 @@ function AdminDashboard() {
   return (
     <div className="p-8 w-full space-y-8">
       <header>
-        <p className="text-sm text-muted-foreground">God dag</p>
-        <h1 className="font-display text-3xl mt-1">{firstName}</h1>
+        <h1 className="font-display text-3xl tracking-wide">{t("admin.dash.title")}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{t("admin.dash.subtitle")}</p>
       </header>
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
