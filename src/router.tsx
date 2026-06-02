@@ -1,6 +1,7 @@
 import { createRouter, useRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { supabase } from "@/integrations/supabase/client";
+import { RouteSkeleton } from "@/components/PageSkeletons";
 
 // Inject the current Supabase access token into all server-function requests
 // so middleware-protected server functions (requireSupabaseAuth) work.
@@ -76,6 +77,11 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
   );
 }
 
+function DefaultPendingComponent() {
+  const pathname = typeof window === "undefined" ? undefined : window.location.pathname;
+  return <RouteSkeleton pathname={pathname} />;
+}
+
 export const getRouter = () => {
   const router = createRouter({
     routeTree,
@@ -83,6 +89,9 @@ export const getRouter = () => {
     scrollRestoration: true,
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
+    defaultPendingMs: 0,
+    defaultPendingMinMs: 0,
+    defaultPendingComponent: DefaultPendingComponent,
     defaultErrorComponent: DefaultErrorComponent,
   });
 
