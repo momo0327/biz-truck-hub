@@ -10,7 +10,24 @@ import { CompaniesProvider } from "@/lib/companies";
 import { Shell, type ShellNavItem } from "@/components/Shell";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
   const { user, loading } = useAuth();
+  const { isAdmin, loading: roleLoading } = useUserRole();
+  const navigate = useNavigate();
+
+  const nav = useMemo<readonly ShellNavItem[]>(
+    () => [
+      { to: "/", label: t("nav.dashboard"), icon: LayoutDashboard, exact: true },
+      { to: "/companies", label: t("nav.companies"), icon: Building2 },
+      { to: "/kanban", label: t("nav.pipeline"), icon: KanbanSquare },
+      { to: "/calendar", label: t("nav.calendar"), icon: CalendarIcon },
+      { to: "/calls", label: t("nav.call_history"), icon: Phone },
+      { to: "/archives", label: t("nav.archives"), icon: Archive },
+      { to: "/settings", label: t("nav.settings"), icon: Settings },
+    ],
+    [t],
+  );
+
   const { isAdmin, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
 
