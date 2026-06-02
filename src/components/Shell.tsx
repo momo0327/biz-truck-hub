@@ -36,6 +36,7 @@ export function Shell({
   roleLabel: string;
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const loc = useLocation();
   const pendingPathname = useRouterState({
