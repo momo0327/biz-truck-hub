@@ -185,18 +185,18 @@ export function Shell({
       <AlertDialog open={confirmSignOut} onOpenChange={setConfirmSignOut}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sign out?</AlertDialogTitle>
+            <AlertDialogTitle>{t("shell.sign_out_q")}</AlertDialogTitle>
             <AlertDialogDescription>
-              You will be returned to the login screen.
+              {t("shell.sign_out_desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("shell.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => signOut().then(() => navigate({ to: "/login" }))}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Sign out
+              {t("shell.sign_out")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
