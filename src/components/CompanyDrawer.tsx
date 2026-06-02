@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { X, Loader2, RefreshCw, ExternalLink, Trash2, Calendar as CalendarIcon, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
-import { researchCompanyFn } from "@/server/research.functions";
+import { researchCompanyFn } from "@/lib/research.functions";
 import { STATUS_META, STATUS_ORDER, type Company, type CallLog, type Status } from "@/lib/companies";
 import { PhoneButtons } from "./PhoneButtons";
 import { VehiclesTable, type Vehicle } from "./VehiclesTable";
