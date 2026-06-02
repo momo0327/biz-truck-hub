@@ -1,10 +1,24 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { Suspense } from "react";
 import { AppShell } from "@/components/AppShell";
 
-export const Route = createFileRoute("/_app")({
-  component: () => (
+function AppLayout() {
+  const loc = useLocation();
+  return (
     <AppShell>
-      <Outlet />
+      {/* Key on pathname forces the new route to mount immediately on
+          navigation, so the user sees the next page's own loading skeleton
+          right away instead of the previous page sitting frozen while the
+          new data loads. */}
+      <Suspense fallback={null}>
+        <div key={loc.pathname} className="contents">
+          <Outlet />
+        </div>
+      </Suspense>
     </AppShell>
-  ),
+  );
+}
+
+export const Route = createFileRoute("/_app")({
+  component: AppLayout,
 });
