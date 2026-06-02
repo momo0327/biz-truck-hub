@@ -66,16 +66,6 @@ function SettingsPage() {
     if (elksPass.trim()) payload.elks_webrtc_password = elksPass.trim();
 
 
-  async function savePhone() {
-    if (!user) return;
-    setSavingPhone(true);
-    const payload: Record<string, string | null> = {
-      display_phone_number: displayPhone.trim() || null,
-      phone_number: elksNumber.trim() || null,
-      elks_webrtc_uri: elksUri.trim() || null,
-      elks_webrtc_username: elksUser.trim() || null,
-      elks_webrtc_password: elksPass.trim() || null,
-    };
     const { error } = await supabase.from("profiles").update(payload as any).eq("user_id", user.id);
     setSavingPhone(false);
     if (error) return toast.error(error.message);
