@@ -118,3 +118,10 @@ export function SettingsSkeleton() {
     </div>
   );
 }
+
+export function RouteSkeleton({ pathname }: { pathname?: string }) {
+  if (pathname?.startsWith("/companies")) return <CompaniesSkeleton />;
+  if (pathname?.startsWith("/kanban")) return <KanbanSkeleton />;
+  if (pathname?.startsWith("/settings")) return <SettingsSkeleton />;
+  return <DashboardSkeleton />;
+}
