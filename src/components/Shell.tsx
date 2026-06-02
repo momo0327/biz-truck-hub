@@ -145,11 +145,11 @@ export function Shell({
               "flex items-center gap-2 py-2 rounded-md text-sm hover:bg-sidebar-accent/40 text-sidebar-foreground",
               collapsed ? "justify-center px-1" : "px-3",
             )}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? t("shell.expand_sidebar") : t("shell.collapse_sidebar")}
+            title={collapsed ? t("shell.expand_sidebar") : t("shell.collapse_sidebar")}
           >
             {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-            {!collapsed && "Collapse menu"}
+            {!collapsed && t("shell.collapse_menu")}
           </button>
           <div className="border-t border-sidebar-border" />
           <button
