@@ -77,7 +77,7 @@ function SettingsPage() {
     const { error } = await supabase.from("profiles").update(payload as any).eq("user_id", user.id);
     setSavingPhone(false);
     if (error) return toast.error(error.message);
-    toast.success("Calling profile saved");
+    toast.success(t("settings.saved"));
   }
 
   function exportCsv() {
