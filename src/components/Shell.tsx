@@ -154,7 +154,7 @@ export function Shell({
           <div className="border-t border-sidebar-border" />
           <button
             onClick={() => setConfirmSignOut(true)}
-            title="Sign out"
+            title={t("shell.sign_out")}
             className={cn(
               "w-full flex items-center gap-3 py-2 rounded-md hover:bg-sidebar-accent/40 transition-colors",
               collapsed ? "justify-center px-0" : "px-2",
