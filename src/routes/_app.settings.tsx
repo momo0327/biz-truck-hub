@@ -26,6 +26,8 @@ function SettingsPage() {
   const { user } = useAuth();
   const { companies, loading, refresh } = useCompanies();
   const deleteAll = useServerFn(deleteAllCompaniesFn);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [displayPhone, setDisplayPhone] = useState("");
   const [elksNumber, setElksNumber] = useState("");
   const [elksUri, setElksUri] = useState("");
@@ -38,12 +40,14 @@ function SettingsPage() {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("phone_number,display_phone_number,elks_webrtc_uri,elks_webrtc_username")
+      .select("first_name,last_name,phone_number,display_phone_number,elks_webrtc_uri,elks_webrtc_username")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (!data) return;
         const d = data as any;
+        setFirstName(d.first_name ?? "");
+        setLastName(d.last_name ?? "");
         setDisplayPhone(d.display_phone_number ?? "");
         setElksNumber(d.phone_number ?? "");
         setElksUri(d.elks_webrtc_uri ?? "");
@@ -57,6 +61,8 @@ function SettingsPage() {
     if (!user) return;
     setSavingPhone(true);
     const payload: Record<string, string | null> = {
+      first_name: firstName.trim() || null,
+      last_name: lastName.trim() || null,
       display_phone_number: displayPhone.trim() || null,
       phone_number: elksNumber.trim() || null,
       elks_webrtc_uri: elksUri.trim() || null,
@@ -64,6 +70,7 @@ function SettingsPage() {
     };
     // Only overwrite the password when the user typed a new one.
     if (elksPass.trim()) payload.elks_webrtc_password = elksPass.trim();
+
 
 
     const { error } = await supabase.from("profiles").update(payload as any).eq("user_id", user.id);
