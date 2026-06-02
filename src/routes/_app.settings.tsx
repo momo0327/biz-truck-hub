@@ -167,15 +167,15 @@ function SettingsPage() {
           {tab === "profile" && (
             <div className="space-y-6">
               <div>
-                <h2 className="font-display text-xl tracking-wide">Profile</h2>
-                <p className="text-sm text-muted-foreground mt-1">Your account details.</p>
+                <h2 className="font-display text-xl tracking-wide">{t("settings.profile.title")}</h2>
+                <p className="text-sm text-muted-foreground mt-1">{t("settings.profile.subtitle")}</p>
               </div>
               <div className="space-y-5 max-w-xl">
-                <Field label="Email" value={user?.email ?? "—"} />
+                <Field label={t("settings.email")} value={user?.email ?? "—"} />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">First name</label>
+                    <label className="text-sm font-medium">{t("settings.first_name")}</label>
                     <input
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
@@ -184,7 +184,7 @@ function SettingsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Last name</label>
+                    <label className="text-sm font-medium">{t("settings.last_name")}</label>
                     <input
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
@@ -192,6 +192,19 @@ function SettingsPage() {
                       className="w-full px-3 py-2 rounded-md border bg-background text-sm"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">{t("settings.language")}</label>
+                  <select
+                    value={lang}
+                    onChange={(e) => setLang(e.target.value as Lang)}
+                    className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                  >
+                    <option value="en">{t("settings.lang.english")}</option>
+                    <option value="sv">{t("settings.lang.swedish")}</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground">{t("settings.language.desc")}</p>
                 </div>
 
                 <div className="space-y-1.5">
