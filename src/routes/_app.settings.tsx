@@ -15,6 +15,15 @@ export const Route = createFileRoute("/_app/settings")({ component: SettingsPage
 type TabKey = "profile" | "calling" | "notifications" | "team" | "integrations" | "billing";
 
 function SettingsPage() {
+  const { t, lang, setLang } = useI18n();
+  const TABS: { key: TabKey; label: string; icon: typeof User }[] = [
+    { key: "profile", label: t("settings.tab.profile"), icon: User },
+    { key: "calling", label: t("settings.tab.calling"), icon: Phone },
+    { key: "notifications", label: t("settings.tab.notifications"), icon: Bell },
+    { key: "team", label: t("settings.tab.team"), icon: Users },
+    { key: "integrations", label: t("settings.tab.integrations"), icon: LayoutGrid },
+    { key: "billing", label: t("settings.tab.billing"), icon: BarChart3 },
+  ];
   const { user } = useAuth();
   const { companies, loading, refresh } = useCompanies();
   const deleteAll = useServerFn(deleteAllCompaniesFn);
