@@ -28,8 +28,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     [t],
   );
 
-  const { isAdmin, loading: roleLoading } = useUserRole();
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
