@@ -95,24 +95,24 @@ function AdminDashboard() {
         <section className="rounded-lg border bg-card p-5 lg:col-span-2">
           <div className="flex items-baseline justify-between mb-4">
             <div>
-              <h2 className="font-display text-lg">Calls this week</h2>
+              <h2 className="font-display text-lg">{t("admin.dash.calls_week")}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Daily call volume vs answered calls.
+                {t("admin.dash.calls_week_sub")}
               </p>
             </div>
             <div className="flex items-center gap-4 text-xs">
               <span className="inline-flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full bg-primary" /> Calls
+                <span className="size-2.5 rounded-full bg-primary" /> {t("admin.dash.calls")}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full bg-info" /> Answered
+                <span className="size-2.5 rounded-full bg-info" /> {t("admin.dash.answered")}
               </span>
             </div>
           </div>
           <div className="h-72">
             {isLoading ? (
               <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                Loading…
+                {t("shell.loading")}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
