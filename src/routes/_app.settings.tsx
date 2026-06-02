@@ -276,7 +276,7 @@ function SettingsPage() {
                     disabled={savingPhone}
                     className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50"
                   >
-                    Save calling profile
+                    {t("settings.save_profile")}
                   </button>
                 </div>
               </div>
