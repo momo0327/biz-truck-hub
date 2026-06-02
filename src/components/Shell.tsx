@@ -3,6 +3,7 @@ import { LogOut, PanelLeftClose, PanelLeftOpen, type LucideIcon } from "lucide-r
 import { useEffect, useState } from "react";
 import { signOut } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { RouteSkeleton } from "@/components/PageSkeletons";
 import logo from "@/assets/logo.png";
