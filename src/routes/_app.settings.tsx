@@ -3,6 +3,7 @@ import { useCompanies, STATUS_META } from "@/lib/companies";
 import { SettingsSkeleton } from "@/components/PageSkeletons";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useI18n, type Lang } from "@/lib/i18n";
 import { useServerFn } from "@tanstack/react-start";
 import { deleteAllCompaniesFn } from "@/lib/research.functions";
 import { toast } from "sonner";
@@ -13,16 +14,16 @@ export const Route = createFileRoute("/_app/settings")({ component: SettingsPage
 
 type TabKey = "profile" | "calling" | "notifications" | "team" | "integrations" | "billing";
 
-const TABS: { key: TabKey; label: string; icon: typeof User }[] = [
-  { key: "profile", label: "Profile", icon: User },
-  { key: "calling", label: "Calling", icon: Phone },
-  { key: "notifications", label: "Notifications", icon: Bell },
-  { key: "team", label: "Team & Agents", icon: Users },
-  { key: "integrations", label: "Integrations", icon: LayoutGrid },
-  { key: "billing", label: "Billing", icon: BarChart3 },
-];
-
 function SettingsPage() {
+  const { t, lang, setLang } = useI18n();
+  const TABS: { key: TabKey; label: string; icon: typeof User }[] = [
+    { key: "profile", label: t("settings.tab.profile"), icon: User },
+    { key: "calling", label: t("settings.tab.calling"), icon: Phone },
+    { key: "notifications", label: t("settings.tab.notifications"), icon: Bell },
+    { key: "team", label: t("settings.tab.team"), icon: Users },
+    { key: "integrations", label: t("settings.tab.integrations"), icon: LayoutGrid },
+    { key: "billing", label: t("settings.tab.billing"), icon: BarChart3 },
+  ];
   const { user } = useAuth();
   const { companies, loading, refresh } = useCompanies();
   const deleteAll = useServerFn(deleteAllCompaniesFn);
@@ -76,7 +77,7 @@ function SettingsPage() {
     const { error } = await supabase.from("profiles").update(payload as any).eq("user_id", user.id);
     setSavingPhone(false);
     if (error) return toast.error(error.message);
-    toast.success("Calling profile saved");
+    toast.success(t("settings.saved"));
   }
 
   function exportCsv() {
@@ -133,9 +134,9 @@ function SettingsPage() {
   return (
     <div className="p-8 space-y-6">
       <header className="flex items-end gap-4 flex-wrap">
-        <h1 className="font-display text-3xl tracking-wide">Settings</h1>
+        <h1 className="font-display text-3xl tracking-wide">{t("settings.title")}</h1>
         <p className="text-sm text-muted-foreground mb-1">
-          Account, calling preferences, and integrations
+          {t("settings.subtitle")}
         </p>
       </header>
 
@@ -166,15 +167,15 @@ function SettingsPage() {
           {tab === "profile" && (
             <div className="space-y-6">
               <div>
-                <h2 className="font-display text-xl tracking-wide">Profile</h2>
-                <p className="text-sm text-muted-foreground mt-1">Your account details.</p>
+                <h2 className="font-display text-xl tracking-wide">{t("settings.profile.title")}</h2>
+                <p className="text-sm text-muted-foreground mt-1">{t("settings.profile.subtitle")}</p>
               </div>
               <div className="space-y-5 max-w-xl">
-                <Field label="Email" value={user?.email ?? "—"} />
+                <Field label={t("settings.email")} value={user?.email ?? "—"} />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">First name</label>
+                    <label className="text-sm font-medium">{t("settings.first_name")}</label>
                     <input
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
@@ -183,7 +184,7 @@ function SettingsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Last name</label>
+                    <label className="text-sm font-medium">{t("settings.last_name")}</label>
                     <input
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
@@ -191,6 +192,19 @@ function SettingsPage() {
                       className="w-full px-3 py-2 rounded-md border bg-background text-sm"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">{t("settings.language")}</label>
+                  <select
+                    value={lang}
+                    onChange={(e) => setLang(e.target.value as Lang)}
+                    className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+                  >
+                    <option value="en">{t("settings.lang.english")}</option>
+                    <option value="sv">{t("settings.lang.swedish")}</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground">{t("settings.language.desc")}</p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -262,7 +276,7 @@ function SettingsPage() {
                     disabled={savingPhone}
                     className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50"
                   >
-                    Save calling profile
+                    {t("settings.save_profile")}
                   </button>
                 </div>
               </div>

@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { getEmployeesOverviewFn } from "@/lib/admin.functions";
 import {
   Bar,
@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_admin/admin/")({
 
 
 function AdminDashboard() {
+  const { t } = useI18n();
   const fetchOverview = useServerFn(getEmployeesOverviewFn);
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin-employees"],
@@ -34,21 +35,6 @@ function AdminDashboard() {
     refetchInterval: 15000,
     refetchOnWindowFocus: false,
   });
-
-  const { user } = useAuth();
-  const [firstName, setFirstName] = useState("");
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("profiles")
-      .select("first_name")
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data }) => {
-        setFirstName(data?.first_name || user.email?.split("@")[0] || "");
-      });
-  }, [user]);
 
   useEffect(() => {
     const channel = supabase
@@ -72,13 +58,14 @@ function AdminDashboard() {
   return (
     <div className="p-8 w-full space-y-8">
       <header>
-        <p className="text-sm text-muted-foreground">God dag</p>
-        <h1 className="font-display text-3xl mt-1">{firstName}</h1>
+        <h1 className="font-display text-3xl tracking-wide">{t("admin.dash.title")}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{t("admin.dash.subtitle")}</p>
       </header>
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
-          label="Total calls"
+          label={t("admin.dash.total_calls")}
           value={totals.calls.toLocaleString()}
           icon={Phone}
           iconColor="text-primary"
@@ -86,16 +73,16 @@ function AdminDashboard() {
           iconBg="bg-primary/10"
         />
         <StatCard
-          label="Answered"
+          label={t("admin.dash.answered")}
           value={totals.answered.toLocaleString()}
           icon={PhoneCall}
-          subtitle={`${answerRate}% answer rate`}
+          subtitle={t("admin.dash.answer_rate", { rate: answerRate })}
           iconColor="text-success"
           iconBorder="border-success/40"
           iconBg="bg-success/10"
         />
         <StatCard
-          label="Total leads"
+          label={t("admin.dash.total_leads")}
           value={totals.leads.toLocaleString()}
           icon={Users}
           iconColor="text-info"
@@ -108,24 +95,24 @@ function AdminDashboard() {
         <section className="rounded-lg border bg-card p-5 lg:col-span-2">
           <div className="flex items-baseline justify-between mb-4">
             <div>
-              <h2 className="font-display text-lg">Calls this week</h2>
+              <h2 className="font-display text-lg">{t("admin.dash.calls_week")}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Daily call volume vs answered calls.
+                {t("admin.dash.calls_week_sub")}
               </p>
             </div>
             <div className="flex items-center gap-4 text-xs">
               <span className="inline-flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full bg-primary" /> Calls
+                <span className="size-2.5 rounded-full bg-primary" /> {t("admin.dash.calls")}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full bg-info" /> Answered
+                <span className="size-2.5 rounded-full bg-info" /> {t("admin.dash.answered")}
               </span>
             </div>
           </div>
           <div className="h-72">
             {isLoading ? (
               <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                Loading…
+                {t("shell.loading")}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -163,16 +150,16 @@ function AdminDashboard() {
       <section className="rounded-lg border bg-card p-5">
         <div className="flex items-baseline justify-between mb-4">
           <div>
-            <h2 className="font-display text-lg">Top employees</h2>
+            <h2 className="font-display text-lg">{t("admin.dash.top_employees")}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Sorted by total calls made.
+              {t("admin.dash.top_employees_sub")}
             </p>
           </div>
           <Link
             to="/admin/employees"
             className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
           >
-            View all <ArrowUpRight className="size-3" />
+            {t("admin.dash.view_all")} <ArrowUpRight className="size-3" />
           </Link>
         </div>
         <div className="grid gap-2">
@@ -192,11 +179,11 @@ function AdminDashboard() {
               <div className="flex items-center gap-5 text-sm">
                 <div className="text-right">
                   <div className="font-display font-semibold">{e.stats.calls}</div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Calls</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("admin.dash.calls")}</div>
                 </div>
                 <div className="text-right">
                   <div className="font-display font-semibold">{e.stats.companies}</div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Leads</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("admin.dash.leads")}</div>
                 </div>
                 <div className="text-right">
                   <div className="font-display font-semibold text-success">{e.stats.dealsClosed}</div>

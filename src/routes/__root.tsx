@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth";
 import { UserRoleProvider } from "@/lib/roles";
+import { I18nProvider } from "@/lib/i18n";
 
 import appCss from "../styles.css?url";
 
@@ -102,11 +103,13 @@ function RootComponent() {
   }
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <UserRoleProvider>
-          <Outlet />
-        </UserRoleProvider>
-      </AuthProvider>
+      <I18nProvider>
+        <AuthProvider>
+          <UserRoleProvider>
+            <Outlet />
+          </UserRoleProvider>
+        </AuthProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }

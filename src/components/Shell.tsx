@@ -3,6 +3,7 @@ import { LogOut, PanelLeftClose, PanelLeftOpen, type LucideIcon } from "lucide-r
 import { useEffect, useState } from "react";
 import { signOut } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { RouteSkeleton } from "@/components/PageSkeletons";
 import logo from "@/assets/logo.png";
@@ -35,6 +36,7 @@ export function Shell({
   roleLabel: string;
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const loc = useLocation();
   const pendingPathname = useRouterState({
@@ -143,16 +145,16 @@ export function Shell({
               "flex items-center gap-2 py-2 rounded-md text-sm hover:bg-sidebar-accent/40 text-sidebar-foreground",
               collapsed ? "justify-center px-1" : "px-3",
             )}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? t("shell.expand_sidebar") : t("shell.collapse_sidebar")}
+            title={collapsed ? t("shell.expand_sidebar") : t("shell.collapse_sidebar")}
           >
             {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-            {!collapsed && "Collapse menu"}
+            {!collapsed && t("shell.collapse_menu")}
           </button>
           <div className="border-t border-sidebar-border" />
           <button
             onClick={() => setConfirmSignOut(true)}
-            title="Sign out"
+            title={t("shell.sign_out")}
             className={cn(
               "w-full flex items-center gap-3 py-2 rounded-md hover:bg-sidebar-accent/40 transition-colors",
               collapsed ? "justify-center px-0" : "px-2",
@@ -183,18 +185,18 @@ export function Shell({
       <AlertDialog open={confirmSignOut} onOpenChange={setConfirmSignOut}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sign out?</AlertDialogTitle>
+            <AlertDialogTitle>{t("shell.sign_out_q")}</AlertDialogTitle>
             <AlertDialogDescription>
-              You will be returned to the login screen.
+              {t("shell.sign_out_desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("shell.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => signOut().then(() => navigate({ to: "/login" }))}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Sign out
+              {t("shell.sign_out")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
