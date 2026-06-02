@@ -29,7 +29,7 @@ export function Shell({
   roleLabel,
   children,
 }: {
-  user: { email?: string | null };
+  user: { id?: string; email?: string | null };
   nav: readonly ShellNavItem[];
   roleLabel: string;
   children: React.ReactNode;
@@ -41,12 +41,43 @@ export function Shell({
     return window.localStorage.getItem("appshell:collapsed") === "1";
   });
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [firstName, setFirstName] = useState<string | null>(null);
+  const [lastName, setLastName] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem("appshell:collapsed", collapsed ? "1" : "0");
     }
   }, [collapsed]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    supabase
+      .from("profiles")
+      .select("first_name,last_name")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setFirstName((data as any).first_name ?? null);
+        setLastName((data as any).last_name ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+  const displayName = fullName || user.email?.split("@")[0] || "User";
+  const initials = (fullName
+    ? `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`
+    : user.email ?? "?"
+  )
+    .slice(0, 2)
+    .toUpperCase();
+
+
 
   return (
     <div className="flex min-h-screen bg-background">
