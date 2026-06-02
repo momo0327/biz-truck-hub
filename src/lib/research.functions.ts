@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { researchCompany } from "./research.server";
+import { researchCompany } from "@/server/research.server";
 
 const inputSchema = z.object({ companyId: z.string().uuid() });
 

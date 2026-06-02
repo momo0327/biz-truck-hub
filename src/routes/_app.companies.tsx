@@ -11,7 +11,7 @@ import { DialerButton } from "@/components/DialerButton";
 
 import { useCompanies, STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
 import { CompaniesSkeleton } from "@/components/PageSkeletons";
-import { researchCompanyFn, deleteCompaniesFn } from "@/server/research.functions";
+import { researchCompanyFn, deleteCompaniesFn } from "@/lib/research.functions";
 import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2, Archive as ArchiveIcon } from "lucide-react";
 import { toast } from "sonner";
 

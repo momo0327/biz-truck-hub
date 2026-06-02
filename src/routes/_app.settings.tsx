@@ -4,7 +4,7 @@ import { SettingsSkeleton } from "@/components/PageSkeletons";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useServerFn } from "@tanstack/react-start";
-import { deleteAllCompaniesFn } from "@/server/research.functions";
+import { deleteAllCompaniesFn } from "@/lib/research.functions";
 import { toast } from "sonner";
 import { Download, Trash2, User, Phone, Bell, Users, LayoutGrid, BarChart3 } from "lucide-react";
 import { useEffect, useState } from "react";

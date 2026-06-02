@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useServerFn } from "@tanstack/react-start";
-import { researchCompanyFn } from "@/server/research.functions";
+import { researchCompanyFn } from "@/lib/research.functions";
 import { toast } from "sonner";
 import { Upload, X, Loader2, Sparkles } from "lucide-react";
 
