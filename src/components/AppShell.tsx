@@ -60,13 +60,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </SoftphoneProvider>
   );
 }
-
-  return (
-    <SoftphoneProvider>
-      <Shell user={user} nav={nav} roleLabel="Senior Agent">
-        <CompaniesProvider>{children}</CompaniesProvider>
-      </Shell>
-      <SoftphonePanel />
-    </SoftphoneProvider>
-  );
-}
