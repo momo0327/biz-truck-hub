@@ -3,6 +3,7 @@ import { useCompanies, STATUS_META } from "@/lib/companies";
 import { SettingsSkeleton } from "@/components/PageSkeletons";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useI18n, type Lang } from "@/lib/i18n";
 import { useServerFn } from "@tanstack/react-start";
 import { deleteAllCompaniesFn } from "@/lib/research.functions";
 import { toast } from "sonner";
@@ -12,15 +13,6 @@ import { useEffect, useState } from "react";
 export const Route = createFileRoute("/_app/settings")({ component: SettingsPage });
 
 type TabKey = "profile" | "calling" | "notifications" | "team" | "integrations" | "billing";
-
-const TABS: { key: TabKey; label: string; icon: typeof User }[] = [
-  { key: "profile", label: "Profile", icon: User },
-  { key: "calling", label: "Calling", icon: Phone },
-  { key: "notifications", label: "Notifications", icon: Bell },
-  { key: "team", label: "Team & Agents", icon: Users },
-  { key: "integrations", label: "Integrations", icon: LayoutGrid },
-  { key: "billing", label: "Billing", icon: BarChart3 },
-];
 
 function SettingsPage() {
   const { user } = useAuth();
