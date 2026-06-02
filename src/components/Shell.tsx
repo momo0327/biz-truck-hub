@@ -156,14 +156,14 @@ export function Shell({
           >
             <span className="relative shrink-0">
               <span className="inline-flex items-center justify-center size-9 rounded-full bg-white text-[11px] font-semibold text-primary">
-                {(user.email ?? "?").slice(0, 2).toUpperCase()}
+                {initials}
               </span>
               <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-success ring-2 ring-sidebar" />
             </span>
             {!collapsed && (
               <span className="min-w-0 flex-1 text-left">
                 <span className="block text-sm font-semibold text-sidebar-accent-foreground truncate">
-                  {user.email?.split("@")[0] ?? "User"}
+                  {displayName}
                 </span>
                 <span className="block text-xs text-sidebar-foreground/60 truncate">{roleLabel}</span>
               </span>
