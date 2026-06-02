@@ -9,7 +9,13 @@ const inputSchema = z.object({
 });
 
 function normalize(num: string) {
-  return num.replace(/[^\d+]/g, "");
+  // Strip invisible/bidi/zero-width chars AND anything that isn't a digit or +.
+  // Pasted numbers (esp. from PDFs / web pages) often carry U+202A..U+202E
+  // direction marks or NBSPs that make 46elks reject the "from" number as
+  // invalid even though it looks fine to a human.
+  return num
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF\u00A0\s]/g, "")
+    .replace(/[^\d+]/g, "");
 }
 
 function normalizeE164(num: string) {
