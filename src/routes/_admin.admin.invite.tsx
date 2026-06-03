@@ -13,19 +13,21 @@ function InviteEmployee() {
   const invite = useServerFn(inviteEmployeeFn);
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"user" | "admin">("user");
   const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
-      const res = await invite({ data: { email } });
+      const res = await invite({ data: { email, role } });
       if (!res.ok) {
         toast.error(res.error);
         return;
       }
       toast.success(`Invitation sent to ${email}`);
       setEmail("");
+      setRole("user");
       navigate({ to: "/admin/employees" });
     } catch (err: any) {
       toast.error(err.message ?? "Failed to send invite");
@@ -37,7 +39,7 @@ function InviteEmployee() {
   return (
     <div className="p-8 max-w-2xl space-y-8">
       <header>
-        <h1 className="font-display text-3xl">Invite employee</h1>
+        <h1 className="font-display text-3xl">Invite user</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Send an email invitation. The recipient sets their name and password before they can sign in.
         </p>
@@ -52,7 +54,7 @@ function InviteEmployee() {
               type="email"
               required
               autoFocus
-              placeholder="employee@example.com"
+              placeholder="user@example.com"
               value={email}
               onChange={(ev) => setEmail(ev.target.value)}
               className="w-full pl-10 pr-3 py-2.5 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -62,6 +64,32 @@ function InviteEmployee() {
             They'll receive a one-time setup link to choose their name and password.
           </p>
         </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">Role</label>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { value: "user", label: "Employee", desc: "Standard agent access" },
+              { value: "admin", label: "Admin", desc: "Full admin dashboard access" },
+            ] as const).map((opt) => {
+              const active = role === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setRole(opt.value)}
+                  className={`text-left rounded-md border p-3 transition ${
+                    active ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "hover:bg-muted"
+                  }`}
+                >
+                  <div className="text-sm font-medium">{opt.label}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{opt.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="flex justify-end gap-2 pt-2">
           <button
             type="button"
