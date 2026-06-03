@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { ImportDialog } from "@/components/ImportDialog";
 import { AddCompanyDialog } from "@/components/AddCompanyDialog";
@@ -28,6 +28,7 @@ function CompaniesPage() {
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [visibleCount, setVisibleCount] = useState(100);
   const research = useServerFn(researchCompanyFn);
   const deleteMany = useServerFn(deleteCompaniesFn);
 
@@ -36,14 +37,19 @@ function CompaniesPage() {
     {} as Record<Status, number>,
   );
 
-  const filtered = companies.filter((c) => {
+  const filtered = useMemo(() => companies.filter((c) => {
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
     const matchesSearch =
       !q ||
       c.name.toLowerCase().includes(q.toLowerCase()) ||
       c.org_number?.includes(q);
     return matchesStatus && matchesSearch;
-  });
+  }), [companies, statusFilter, q]);
+
+  // Reset window when filters change so we don't render a stale large slice.
+  useEffect(() => { setVisibleCount(100); }, [statusFilter, q]);
+
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
   async function researchOne(id: string) {
     setBusyIds((s) => new Set(s).add(id));
@@ -206,7 +212,7 @@ function CompaniesPage() {
 
           </thead>
           <tbody className="divide-y">
-            {filtered.map((c) => {
+            {visible.map((c) => {
               const meta = STATUS_META[c.status];
               const busy = busyIds.has(c.id);
               const city = c.address?.split(",")[0]?.trim() || "";
@@ -264,7 +270,18 @@ function CompaniesPage() {
                   No companies. Click <strong>Import</strong> to add your Excel list.
                 </td>
               </tr>
-
+            )}
+            {visible.length < filtered.length && (
+              <tr>
+                <td colSpan={6} className="px-4 py-4 text-center">
+                  <button
+                    onClick={() => setVisibleCount((n) => n + 200)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-md border bg-card text-sm hover:bg-muted"
+                  >
+                    Load more ({filtered.length - visible.length} remaining)
+                  </button>
+                </td>
+              </tr>
             )}
           </tbody>
         </table>

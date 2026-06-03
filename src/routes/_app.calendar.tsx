@@ -7,10 +7,11 @@ import {
   deleteSchedule,
   toggleScheduleDone,
   isSameDay,
+  getWeekFromToday,
   type ScheduledCall,
 } from "@/lib/schedule";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2, Check } from "lucide-react";
+import { Trash2, Check, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/calendar")({ component: CalendarPage });
@@ -145,6 +146,75 @@ function CalendarPage() {
           )}
         </div>
       </div>
+
+      <WeekPreview schedules={items} companyById={companyById} />
     </div>
+  );
+}
+
+function WeekPreview({
+  schedules,
+  companyById,
+}: {
+  schedules: ScheduledCall[];
+  companyById: Map<string, string>;
+}) {
+  const week = getWeekFromToday();
+  return (
+    <section className="bg-card border rounded-xl p-6">
+      <header className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="font-display text-xl tracking-wide uppercase">This week</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Your scheduled calls for the next 7 days.
+          </p>
+        </div>
+      </header>
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        {week.map((day, idx) => {
+          const dayItems = schedules
+            .filter((s) => isSameDay(new Date(s.scheduled_at), day))
+            .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
+          const isToday = idx === 0;
+          return (
+            <div
+              key={day.toISOString()}
+              className={`rounded-lg border bg-background/50 p-3 flex flex-col gap-2 min-h-[120px] ${isToday ? "border-primary/50" : ""}`}
+            >
+              <div className="flex items-baseline justify-between">
+                <div className="text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground">
+                  {day.toLocaleDateString(undefined, { weekday: "short" })}
+                </div>
+                <div className={`text-lg font-display ${isToday ? "text-primary" : ""}`}>
+                  {day.getDate()}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                {dayItems.length === 0 && (
+                  <div className="text-[11px] text-muted-foreground italic">—</div>
+                )}
+                {dayItems.slice(0, 3).map((s) => (
+                  <div
+                    key={s.id}
+                    className="block bg-card border rounded-md px-2 py-1.5"
+                  >
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground tabular-nums">
+                      <CalendarIcon className="size-2.5" />
+                      {new Date(s.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                    <div className="text-xs font-medium truncate">
+                      {companyById.get(s.company_id) ?? s.title}
+                    </div>
+                  </div>
+                ))}
+                {dayItems.length > 3 && (
+                  <div className="text-[10px] text-muted-foreground">+{dayItems.length - 3} more</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
