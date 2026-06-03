@@ -152,7 +152,7 @@ export async function fetchEmployeeDetail(employeeId: string) {
   };
 }
 
-export async function inviteUser(email: string) {
+export async function inviteUser(email: string, role: "admin" | "user" = "user") {
   const host = getRequestHost();
   const proto = getRequestHeader("x-forwarded-proto") || "https";
   const redirectTo = `${proto}://${host}/accept-invite`;
@@ -176,7 +176,7 @@ export async function inviteUser(email: string) {
 
   const { data: invite, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
     redirectTo,
-    data: { needs_password_setup: true },
+    data: { needs_password_setup: true, invited_role: role },
   });
   if (error) {
     if ((error as any).status === 422 || /already.*registered|exists/i.test(error.message)) {
@@ -184,5 +184,15 @@ export async function inviteUser(email: string) {
     }
     return { ok: false as const, error: error.message };
   }
-  return { ok: true as const, userId: invite.user?.id ?? null };
+
+  const newUserId = invite.user?.id ?? null;
+  if (newUserId && role === "admin") {
+    // The handle_new_user_role trigger inserts the default 'user' role.
+    // Add the admin role on top so the invitee signs in with full access.
+    await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: newUserId, role: "admin" }, { onConflict: "user_id,role" });
+  }
+
+  return { ok: true as const, userId: newUserId };
 }
