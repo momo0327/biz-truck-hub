@@ -108,6 +108,7 @@ export const inviteEmployeeFn = createServerFn({ method: "POST" })
     z
       .object({
         email: z.string().trim().email().max(255).toLowerCase(),
+        role: z.enum(["admin", "user"]).default("user"),
       })
       .parse(d),
   )
@@ -115,7 +116,7 @@ export const inviteEmployeeFn = createServerFn({ method: "POST" })
     const { assertAdmin, inviteUser } = await import("./admin.server");
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
-    return inviteUser(data.email);
+    return inviteUser(data.email, data.role);
   });
 
 export const deleteEmployeeFn = createServerFn({ method: "POST" })
