@@ -7,10 +7,12 @@ import {
   deleteSchedule,
   toggleScheduleDone,
   isSameDay,
+  getWeekFromToday,
   type ScheduledCall,
 } from "@/lib/schedule";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2, Check } from "lucide-react";
+import { Trash2, Check, Calendar as CalendarIcon, ArrowRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/calendar")({ component: CalendarPage });
