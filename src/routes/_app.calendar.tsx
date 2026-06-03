@@ -11,8 +11,7 @@ import {
   type ScheduledCall,
 } from "@/lib/schedule";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2, Check, Calendar as CalendarIcon, ArrowRight } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Trash2, Check, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/calendar")({ component: CalendarPage });
