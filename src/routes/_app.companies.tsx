@@ -212,7 +212,7 @@ function CompaniesPage() {
 
           </thead>
           <tbody className="divide-y">
-            {filtered.map((c) => {
+            {visible.map((c) => {
               const meta = STATUS_META[c.status];
               const busy = busyIds.has(c.id);
               const city = c.address?.split(",")[0]?.trim() || "";
