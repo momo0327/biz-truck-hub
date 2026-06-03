@@ -37,14 +37,19 @@ function CompaniesPage() {
     {} as Record<Status, number>,
   );
 
-  const filtered = companies.filter((c) => {
+  const filtered = useMemo(() => companies.filter((c) => {
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
     const matchesSearch =
       !q ||
       c.name.toLowerCase().includes(q.toLowerCase()) ||
       c.org_number?.includes(q);
     return matchesStatus && matchesSearch;
-  });
+  }), [companies, statusFilter, q]);
+
+  // Reset window when filters change so we don't render a stale large slice.
+  useEffect(() => { setVisibleCount(100); }, [statusFilter, q]);
+
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
   async function researchOne(id: string) {
     setBusyIds((s) => new Set(s).add(id));
