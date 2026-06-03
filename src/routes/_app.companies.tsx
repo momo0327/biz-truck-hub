@@ -270,7 +270,18 @@ function CompaniesPage() {
                   No companies. Click <strong>Import</strong> to add your Excel list.
                 </td>
               </tr>
-
+            )}
+            {visible.length < filtered.length && (
+              <tr>
+                <td colSpan={6} className="px-4 py-4 text-center">
+                  <button
+                    onClick={() => setVisibleCount((n) => n + 200)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-md border bg-card text-sm hover:bg-muted"
+                  >
+                    Load more ({filtered.length - visible.length} remaining)
+                  </button>
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
