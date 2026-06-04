@@ -122,7 +122,7 @@ function Dashboard() {
           )}
           {calls.map((c) => {
             const isOutbound = c.direction !== "inbound";
-            const isMissed = ["no-answer", "missed", "failed"].includes(c.status ?? "");
+            const isMissed = ["no-answer", "noanswer", "missed", "failed", "busy"].includes(c.status ?? "");
             const Icon = isMissed ? PhoneMissed : isOutbound ? PhoneOutgoing : PhoneIncoming;
             const tone = isMissed
               ? "bg-destructive/10 text-destructive"
