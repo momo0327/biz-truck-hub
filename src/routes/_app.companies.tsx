@@ -69,11 +69,23 @@ function CompaniesPage() {
     if (!targets.length) return toast.info("Nothing to research");
     if (!confirm(`Research ${targets.length} companies? This may take a while.`)) return;
     setBulkBusy(true);
-    for (const c of targets) {
-      await researchOne(c.id);
+    // Run up to 4 in parallel — Firecrawl + AI gateway tolerate this and it
+    // cuts wall-clock time ~4x for large batches.
+    const CONCURRENCY = 4;
+    const queue = [...targets];
+    let done = 0;
+    async function worker() {
+      while (queue.length) {
+        const c = queue.shift();
+        if (!c) break;
+        await researchOne(c.id);
+        done++;
+        if (done % 10 === 0) toast.message(`Researched ${done}/${targets.length}`);
+      }
     }
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
     setBulkBusy(false);
-    toast.success("Research batch finished");
+    toast.success(`Research batch finished (${done})`);
   }
 
   if (loading) return <CompaniesSkeleton />;

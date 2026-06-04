@@ -2,10 +2,8 @@ import { useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { useServerFn } from "@tanstack/react-start";
-import { researchCompanyFn } from "@/lib/research.functions";
 import { toast } from "sonner";
-import { Upload, X, Loader2, Sparkles } from "lucide-react";
+import { Upload, X, Loader2 } from "lucide-react";
 
 type Row = { name: string; org_number: string | null };
 
@@ -33,7 +31,7 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
   const [fileName, setFileName] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const research = useServerFn(researchCompanyFn);
+  
 
   async function handleFile(file: File) {
     setFileName(file.name);
@@ -78,31 +76,23 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
     if (!user || !rows.length) return;
     setBusy(true);
     try {
-      const payload = rows.map((r) => ({ ...r, user_id: user.id }));
-      const { data: inserted, error } = await supabase
-        .from("companies")
-        .insert(payload)
-        .select("id");
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      toast.success(`Imported ${inserted?.length ?? 0} companies — researching now…`);
-      onImported();
-
-      const ids = (inserted ?? []).map((r) => r.id);
-      setProgress({ done: 0, total: ids.length });
-
-      // Run research sequentially to avoid rate-limit issues
-      for (let i = 0; i < ids.length; i++) {
-        try {
-          await research({ data: { companyId: ids[i] } });
-        } catch (e: any) {
-          console.error("Research failed for", ids[i], e);
+      // Insert in batches of 500 to avoid request-size / timeout issues on
+      // large imports (2000+ rows).
+      const BATCH = 500;
+      let insertedCount = 0;
+      for (let i = 0; i < rows.length; i += BATCH) {
+        const slice = rows.slice(i, i + BATCH).map((r) => ({ ...r, user_id: user.id }));
+        const { data, error } = await supabase.from("companies").insert(slice).select("id");
+        if (error) {
+          toast.error(error.message);
+          return;
         }
-        setProgress({ done: i + 1, total: ids.length });
+        insertedCount += data?.length ?? 0;
+        setProgress({ done: insertedCount, total: rows.length });
       }
-      toast.success("Research complete");
+      toast.success(
+        `Imported ${insertedCount} companies. Use "Research all" on the Companies page when you're ready — research runs on demand to avoid long waits.`,
+      );
       onImported();
       onClose();
     } finally {
@@ -122,7 +112,7 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
             <h3 className="font-display text-xl">Import companies</h3>
             <p className="text-sm text-muted-foreground">
               Upload an Excel file. Only the <strong>Namn</strong> and <strong>Organisationsnr</strong> columns
-              are used — duplicates are merged, then AI research runs automatically.
+              are used. Rows are imported quickly — run AI research later from the Companies page.
             </p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground" disabled={busy}>
@@ -167,7 +157,7 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                <Sparkles className="size-3" /> Researching companies…
+                <Upload className="size-3" /> Importing companies…
               </span>
               <span>
                 {progress.done} / {progress.total}
@@ -196,7 +186,7 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
             className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-            {busy ? "Working…" : `Import & research ${rows.length || ""}`}
+            {busy ? "Importing…" : `Import ${rows.length || ""}`}
           </button>
         </div>
       </div>
