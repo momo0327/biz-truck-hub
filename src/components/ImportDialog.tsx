@@ -157,7 +157,7 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                <Sparkles className="size-3" /> Researching companies…
+                <Upload className="size-3" /> Importing companies…
               </span>
               <span>
                 {progress.done} / {progress.total}
