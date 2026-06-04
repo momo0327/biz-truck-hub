@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { ImportDialog } from "@/components/ImportDialog";
 import { AddCompanyDialog } from "@/components/AddCompanyDialog";
@@ -7,6 +7,8 @@ import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { ArchiveDialog } from "@/components/ArchiveDialog";
 import { PhoneButtons } from "@/components/PhoneButtons";
 import { DialerButton } from "@/components/DialerButton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 
 
 import { useCompanies, STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
@@ -25,6 +27,8 @@ function CompaniesPage() {
   const [selected, setSelected] = useState<Company | null>(null);
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  const cancelRef = useRef(false);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -68,6 +72,8 @@ function CompaniesPage() {
     const targets = filtered.filter((c) => !c.researched_at);
     if (!targets.length) return toast.info("Nothing to research");
     if (!confirm(`Research ${targets.length} companies? This may take a while.`)) return;
+    cancelRef.current = false;
+    setBulkProgress({ done: 0, total: targets.length });
     setBulkBusy(true);
     // Run up to 4 in parallel — Firecrawl + AI gateway tolerate this and it
     // cuts wall-clock time ~4x for large batches.
@@ -76,16 +82,18 @@ function CompaniesPage() {
     let done = 0;
     async function worker() {
       while (queue.length) {
+        if (cancelRef.current) break;
         const c = queue.shift();
         if (!c) break;
         await researchOne(c.id);
         done++;
-        if (done % 10 === 0) toast.message(`Researched ${done}/${targets.length}`);
+        setBulkProgress({ done, total: targets.length });
       }
     }
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
     setBulkBusy(false);
-    toast.success(`Research batch finished (${done})`);
+    if (cancelRef.current) toast.message(`Research cancelled (${done}/${targets.length})`);
+    else toast.success(`Research batch finished (${done})`);
   }
 
   if (loading) return <CompaniesSkeleton />;
@@ -331,6 +339,39 @@ function CompaniesPage() {
           }}
         />
       )}
+      <Dialog open={bulkBusy}>
+        <DialogContent
+          className="sm:max-w-md"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Loader2 className="size-4 animate-spin" /> Researching companies
+            </DialogTitle>
+            <DialogDescription>
+              Please don't close this window. Scraping and enriching company data — this can take a while.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Progress value={bulkProgress.total ? (bulkProgress.done / bulkProgress.total) * 100 : 0} />
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>{bulkProgress.done} / {bulkProgress.total}</span>
+              <span>{bulkProgress.total ? Math.round((bulkProgress.done / bulkProgress.total) * 100) : 0}%</span>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => { cancelRef.current = true; }}
+                disabled={cancelRef.current}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-destructive/30 text-destructive text-sm hover:bg-destructive/10 disabled:opacity-50"
+              >
+                {cancelRef.current ? "Cancelling…" : "Cancel"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
