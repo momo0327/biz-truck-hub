@@ -156,11 +156,9 @@ function CallsHistoryPage() {
     const term = q.trim().toLowerCase();
     return calls.filter((c) => {
       const name = (c.company_id && companyById.get(c.company_id)) || "";
-      if (filter === "inbound" && c.direction !== "inbound") return false;
       if (filter === "outbound" && c.direction === "inbound") return false;
-      if (filter === "missed" && !["no-answer", "missed", "failed"].includes(c.status ?? "")) return false;
-      if (filter === "voicemail" && c.status !== "voicemail") return false;
-      if (filter === "recorded" && !(c.duration ?? 0)) return false;
+      if (filter === "answered" && !isAnswered(c)) return false;
+      if (filter === "not_answered" && !isNotAnswered(c)) return false;
       if (!term) return true;
       return (
         name.toLowerCase().includes(term) ||
