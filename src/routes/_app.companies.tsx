@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { ImportDialog } from "@/components/ImportDialog";
 import { AddCompanyDialog } from "@/components/AddCompanyDialog";
@@ -7,6 +7,8 @@ import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { ArchiveDialog } from "@/components/ArchiveDialog";
 import { PhoneButtons } from "@/components/PhoneButtons";
 import { DialerButton } from "@/components/DialerButton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 
 
 import { useCompanies, STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
