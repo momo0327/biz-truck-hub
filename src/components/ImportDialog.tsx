@@ -54,6 +54,9 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
         if (rawName == null || String(rawName).trim() === "") continue;
         const name = String(rawName).trim();
         const org = orgIdx !== -1 ? normalizeOrg(r[orgIdx] != null ? String(r[orgIdx]) : null) : null;
+        if (!org) continue;
+        const firstDigit = org.replace(/\D/g, "")[0];
+        if (!firstDigit || !["2", "3", "5"].includes(firstDigit)) continue;
         collected.push({ name, org_number: org });
       }
     }
