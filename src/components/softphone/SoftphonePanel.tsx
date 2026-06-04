@@ -43,12 +43,14 @@ export function SoftphonePanel() {
     durationSec,
     sipStatus,
     sipError,
+    outcome,
     hangup,
     toggleMute,
     sendDtmf,
     setOpen,
     notes,
     setNotes,
+    markOutcome,
   } = useSoftphone();
   const [showKeypad, setShowKeypad] = useState(false);
   const [minimized, setMinimized] = useState(false);
