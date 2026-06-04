@@ -369,16 +369,48 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
               </div>
             )}
             <ul className="space-y-2">
-              {calls.map((c) => (
-                <li key={c.id} className="text-sm border-l-2 border-primary/30 pl-3">
-                  <div>{c.note || (c.to_number ? `Call to ${c.to_number}` : "Call")}</div>
-                  <div className="text-xs text-muted-foreground flex gap-2">
-                    <span>{new Date(c.created_at).toLocaleString()}</span>
-                    {c.status && <span className="uppercase tracking-wide">· {c.status}</span>}
-                    {typeof c.duration === "number" && c.duration > 0 && <span>· {c.duration}s</span>}
-                  </div>
-                </li>
-              ))}
+              {calls.map((c) => {
+                const answered = c.status === "answered" || c.status === "success" || (c.duration ?? 0) > 0;
+                const notAnswered = !answered && ["no-answer", "noanswer", "missed", "failed", "busy"].includes(c.status ?? "");
+                async function setOutcome(next: "answered" | "no-answer") {
+                  const { data, error } = await supabase
+                    .from("call_logs")
+                    .update({ status: next })
+                    .eq("id", c.id)
+                    .select()
+                    .single();
+                  if (error) return toast.error(error.message);
+                  setCalls((prev) => prev.map((x) => (x.id === c.id ? (data as CallLog) : x)));
+                }
+                return (
+                  <li key={c.id} className="text-sm border-l-2 border-primary/30 pl-3">
+                    <div>{c.note || (c.to_number ? `Call to ${c.to_number}` : "Call")}</div>
+                    <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-2 mt-0.5">
+                      <span>{new Date(c.created_at).toLocaleString()}</span>
+                      <span className={`uppercase tracking-wide ${notAnswered ? "text-destructive" : answered ? "text-success" : ""}`}>
+                        · {answered ? "answered" : notAnswered ? "not answered" : (c.status ?? "pending")}
+                      </span>
+                      {typeof c.duration === "number" && c.duration > 0 && <span>· {c.duration}s</span>}
+                    </div>
+                    {!readOnly && (
+                      <div className="flex gap-1.5 mt-1.5">
+                        <button
+                          onClick={() => setOutcome("answered")}
+                          className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded border ${answered ? "bg-success text-success-foreground border-success" : "bg-success/10 text-success border-success/30 hover:bg-success/20"}`}
+                        >
+                          ✓ Answered
+                        </button>
+                        <button
+                          onClick={() => setOutcome("no-answer")}
+                          className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded border ${notAnswered ? "bg-destructive text-destructive-foreground border-destructive" : "bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20"}`}
+                        >
+                          ✕ Not answered
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
               {calls.length === 0 && <li className="text-sm text-muted-foreground italic">No calls logged.</li>}
             </ul>
           </section>
