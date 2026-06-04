@@ -169,7 +169,7 @@ function AcceptInvitePage() {
       // Persist display name to the profile row too.
       await supabase
         .from("profiles")
-        .update({ display_name: displayName })
+        .update({ display_name: displayName, first_name: firstName.trim(), last_name: lastName.trim() })
         .eq("user_id", pre.user.id);
 
       // Sign out so the user logs in fresh with their new password.
