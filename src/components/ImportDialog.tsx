@@ -78,31 +78,23 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
     if (!user || !rows.length) return;
     setBusy(true);
     try {
-      const payload = rows.map((r) => ({ ...r, user_id: user.id }));
-      const { data: inserted, error } = await supabase
-        .from("companies")
-        .insert(payload)
-        .select("id");
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      toast.success(`Imported ${inserted?.length ?? 0} companies — researching now…`);
-      onImported();
-
-      const ids = (inserted ?? []).map((r) => r.id);
-      setProgress({ done: 0, total: ids.length });
-
-      // Run research sequentially to avoid rate-limit issues
-      for (let i = 0; i < ids.length; i++) {
-        try {
-          await research({ data: { companyId: ids[i] } });
-        } catch (e: any) {
-          console.error("Research failed for", ids[i], e);
+      // Insert in batches of 500 to avoid request-size / timeout issues on
+      // large imports (2000+ rows).
+      const BATCH = 500;
+      let insertedCount = 0;
+      for (let i = 0; i < rows.length; i += BATCH) {
+        const slice = rows.slice(i, i + BATCH).map((r) => ({ ...r, user_id: user.id }));
+        const { data, error } = await supabase.from("companies").insert(slice).select("id");
+        if (error) {
+          toast.error(error.message);
+          return;
         }
-        setProgress({ done: i + 1, total: ids.length });
+        insertedCount += data?.length ?? 0;
+        setProgress({ done: insertedCount, total: rows.length });
       }
-      toast.success("Research complete");
+      toast.success(
+        `Imported ${insertedCount} companies. Use "Research all" on the Companies page when you're ready — research runs on demand to avoid long waits.`,
+      );
       onImported();
       onClose();
     } finally {
