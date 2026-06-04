@@ -4,7 +4,7 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   PhoneMissed,
-  Voicemail,
+  // Voicemail removed
   Search,
   Check,
   X,
@@ -17,7 +17,20 @@ export const Route = createFileRoute("/_app/calls")({
   component: CallsHistoryPage,
 });
 
-type CallFilter = "all" | "inbound" | "outbound" | "missed" | "voicemail" | "recorded";
+type CallFilter = "all" | "outbound" | "answered" | "not_answered";
+
+const ANSWERED_STATUSES = new Set(["answered", "success", "completed"]);
+const NOT_ANSWERED_STATUSES = new Set(["no-answer", "noanswer", "missed", "failed", "busy", "voicemail"]);
+function isAnswered(c: { status?: string | null; duration?: number | null }) {
+  if (c.status && ANSWERED_STATUSES.has(c.status)) return true;
+  if ((c.duration ?? 0) > 0) return true;
+  return false;
+}
+function isNotAnswered(c: { status?: string | null; duration?: number | null }) {
+  if (isAnswered(c)) return false;
+  if (c.status && NOT_ANSWERED_STATUSES.has(c.status)) return true;
+  return false;
+}
 
 function initials(name: string) {
   return name
@@ -131,11 +144,9 @@ function CallsHistoryPage() {
   const counts = useMemo(() => {
     return {
       all: calls.length,
-      inbound: calls.filter((c) => c.direction === "inbound").length,
       outbound: calls.filter((c) => c.direction !== "inbound").length,
-      missed: calls.filter((c) => c.status === "no-answer" || c.status === "missed" || c.status === "failed").length,
-      voicemail: calls.filter((c) => c.status === "voicemail").length,
-      recorded: calls.filter((c) => (c.duration ?? 0) > 0).length,
+      answered: calls.filter(isAnswered).length,
+      not_answered: calls.filter(isNotAnswered).length,
     };
   }, [calls]);
 
@@ -143,11 +154,9 @@ function CallsHistoryPage() {
     const term = q.trim().toLowerCase();
     return calls.filter((c) => {
       const name = (c.company_id && companyById.get(c.company_id)) || "";
-      if (filter === "inbound" && c.direction !== "inbound") return false;
       if (filter === "outbound" && c.direction === "inbound") return false;
-      if (filter === "missed" && !["no-answer", "missed", "failed"].includes(c.status ?? "")) return false;
-      if (filter === "voicemail" && c.status !== "voicemail") return false;
-      if (filter === "recorded" && !(c.duration ?? 0)) return false;
+      if (filter === "answered" && !isAnswered(c)) return false;
+      if (filter === "not_answered" && !isNotAnswered(c)) return false;
       if (!term) return true;
       return (
         name.toLowerCase().includes(term) ||
@@ -200,11 +209,9 @@ function CallsHistoryPage() {
           {(
             [
               ["all", "All", counts.all],
-              ["inbound", "Inbound", counts.inbound],
               ["outbound", "Outbound", counts.outbound],
-              ["missed", "Missed", counts.missed],
-              ["voicemail", "Voicemail", counts.voicemail],
-              ["recorded", "Recorded", counts.recorded],
+              ["answered", "Answered", counts.answered],
+              ["not_answered", "Not answered", counts.not_answered],
             ] as const
           ).map(([key, label, n]) => {
             const active = filter === key;
@@ -267,22 +274,20 @@ function CallsHistoryPage() {
                 </tr>
                 {rows.map((c) => {
                   const isOutbound = c.direction !== "inbound";
-                  const isMissed = ["no-answer", "missed", "failed"].includes(c.status ?? "");
-                  const isVoicemail = c.status === "voicemail";
-                  const DirIcon = isMissed ? PhoneMissed : isOutbound ? PhoneOutgoing : PhoneIncoming;
-                  const dirColor = isMissed
+                  const answered = isAnswered(c);
+                  const notAnswered = isNotAnswered(c);
+                  const DirIcon = notAnswered ? PhoneMissed : isOutbound ? PhoneOutgoing : PhoneIncoming;
+                  const dirColor = notAnswered
                     ? "bg-destructive/10 text-destructive"
-                    : isOutbound
-                      ? "bg-muted text-muted-foreground"
-                      : "bg-success/15 text-success";
+                    : answered
+                      ? "bg-success/15 text-success"
+                      : "bg-muted text-muted-foreground";
                   const name = (c.company_id && companyById.get(c.company_id)) || "Unknown";
-                  const outcome = isVoicemail
-                    ? { label: "voicemail", tone: "bg-muted text-foreground", icon: Voicemail }
-                    : isMissed
-                      ? { label: "no answer", tone: "bg-muted text-foreground", icon: X }
-                      : c.status === "callback"
-                        ? { label: "callback", tone: "bg-primary text-primary-foreground", icon: PhoneCall }
-                        : { label: "answered", tone: "bg-success/15 text-success", icon: Check };
+                  const outcome = answered
+                    ? { label: "answered", tone: "bg-success/15 text-success", icon: Check }
+                    : notAnswered
+                      ? { label: "not answered", tone: "bg-destructive/10 text-destructive", icon: X }
+                      : { label: c.status ?? "pending", tone: "bg-muted text-foreground", icon: PhoneCall };
                   const OutIcon = outcome.icon;
                   return (
                     <tr key={c.id} className="border-t hover:bg-muted/30">

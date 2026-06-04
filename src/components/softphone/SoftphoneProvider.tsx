@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useServerFn } from "@tanstack/react-start";
 import { Inviter, Registerer, SessionState, UserAgent, type Session } from "sip.js";
 import { getWebrtcCredentials } from "@/lib/webrtc.functions";
-import { placeCallFn, hangupCallFn } from "@/lib/calls.functions";
+import { placeCallFn, hangupCallFn, setCallOutcomeFn } from "@/lib/calls.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export type CallState = "idle" | "dialing" | "ringing" | "in-call" | "ended";
@@ -24,6 +24,7 @@ interface SoftphoneCtx {
   durationSec: number;
   sipStatus: SipStatus;
   sipError: string | null;
+  outcome: "answered" | "no-answer" | null;
   startCall: (opts: { number: string; contactName?: string; companyId?: string }) => void;
   hangup: () => void;
   toggleMute: () => void;
@@ -31,6 +32,7 @@ interface SoftphoneCtx {
   setOpen: (v: boolean) => void;
   notes: string;
   setNotes: (v: string) => void;
+  markOutcome: (outcome: "answered" | "no-answer") => Promise<void>;
 }
 
 type SessionMedia = Session & {
@@ -72,9 +74,12 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [notes, setNotes] = useState("");
   const [sipStatus, setSipStatus] = useState<SipStatus>("disconnected");
   const [sipError, setSipError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<"answered" | "no-answer" | null>(null);
   const placeCall = useServerFn(placeCallFn);
   const hangupServerCall = useServerFn(hangupCallFn);
+  const setOutcomeServer = useServerFn(setCallOutcomeFn);
   const elksCallIdRef = useRef<string | null>(null);
+  const logIdRef = useRef<string | null>(null);
 
   const uaRef = useRef<UserAgent | null>(null);
   const registererRef = useRef<Registerer | null>(null);
@@ -331,6 +336,8 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       setDurationSec(0);
       setNotes("");
       setOpen(true);
+      setOutcome(null);
+      logIdRef.current = null;
       setCall({ ...opts, startedAt: Date.now(), direction: "outbound" });
 
       const ua = uaRef.current;
@@ -358,7 +365,8 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         .then((res) => {
           if (!res.ok) throw new Error(res.error);
           elksCallIdRef.current = res.callId ?? null;
-          console.log("[softphone] 46elks outbound bridge started", { callId: res.callId });
+          logIdRef.current = res.logId ?? null;
+          console.log("[softphone] 46elks outbound bridge started", { callId: res.callId, logId: res.logId });
         })
         .catch((err) => {
           console.error("46elks outbound bridge failed", err);
@@ -462,6 +470,17 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const markOutcome = useCallback(async (next: "answered" | "no-answer") => {
+    setOutcome(next);
+    const id = logIdRef.current;
+    if (!id) return;
+    try {
+      await setOutcomeServer({ data: { logId: id, outcome: next } });
+    } catch (e) {
+      console.error("[softphone] markOutcome failed", e);
+    }
+  }, [setOutcomeServer]);
+
   return (
     <Ctx.Provider
       value={{
@@ -472,6 +491,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         durationSec,
         sipStatus,
         sipError,
+        outcome,
         startCall,
         hangup,
         toggleMute,
@@ -479,6 +499,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         setOpen,
         notes,
         setNotes,
+        markOutcome,
       }}
     >
       {children}

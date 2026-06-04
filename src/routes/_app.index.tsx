@@ -57,7 +57,7 @@ function Dashboard() {
     total: companies.length,
     researched: companies.filter((c) => c.researched_at).length,
     callsToday: companies.filter((c) => c.last_contact && new Date(c.last_contact).toDateString() === today).length,
-    inProgress: companies.filter((c) => ["called_no_answer", "follow_up", "in_negotiation"].includes(c.status)).length,
+    inProgress: companies.filter((c) => ["follow_up", "sending_pictures", "in_negotiation", "price_disagreement"].includes(c.status)).length,
     closed: companies.filter((c) => c.status === "deal_made").length,
   };
 
@@ -122,7 +122,7 @@ function Dashboard() {
           )}
           {calls.map((c) => {
             const isOutbound = c.direction !== "inbound";
-            const isMissed = ["no-answer", "missed", "failed"].includes(c.status ?? "");
+            const isMissed = ["no-answer", "noanswer", "missed", "failed", "busy"].includes(c.status ?? "");
             const Icon = isMissed ? PhoneMissed : isOutbound ? PhoneOutgoing : PhoneIncoming;
             const tone = isMissed
               ? "bg-destructive/10 text-destructive"
@@ -140,7 +140,7 @@ function Dashboard() {
                   <div className="text-[11px] font-mono text-muted-foreground">{c.to_number ?? "—"}</div>
                 </div>
                 <div className="text-xs text-muted-foreground hidden sm:block capitalize">
-                  {c.status ?? "—"}
+                  {isMissed ? "not answered" : (c.duration ?? 0) > 0 || c.status === "answered" || c.status === "success" ? "answered" : (c.status ?? "—")}
                 </div>
                 <div className="text-xs text-muted-foreground tabular-nums">
                   {new Date(c.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

@@ -297,6 +297,8 @@ export type Database = {
         | "in_negotiation"
         | "deal_made"
         | "not_interested"
+        | "sending_pictures"
+        | "price_disagreement"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -432,6 +434,8 @@ export const Constants = {
         "in_negotiation",
         "deal_made",
         "not_interested",
+        "sending_pictures",
+        "price_disagreement",
       ],
     },
   },
