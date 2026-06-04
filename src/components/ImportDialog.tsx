@@ -188,7 +188,7 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
             className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-            {busy ? "Working…" : `Import & research ${rows.length || ""}`}
+            {busy ? "Importing…" : `Import ${rows.length || ""}`}
           </button>
         </div>
       </div>
