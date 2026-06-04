@@ -142,7 +142,7 @@ export const placeCallFn = createServerFn({ method: "POST" })
     }
     const callId = elksData.id;
 
-    await supabase.from("call_logs").insert({
+    const { data: inserted } = await supabase.from("call_logs").insert({
       company_id: data.companyId ?? null,
       user_id: userId,
       note: `Outbound call to ${target}`,
@@ -153,7 +153,7 @@ export const placeCallFn = createServerFn({ method: "POST" })
       status: "initiating",
       to_number: target,
       direction: "outbound",
-    });
+    }).select("id").single();
 
     if (data.companyId) {
       await supabase
@@ -163,7 +163,23 @@ export const placeCallFn = createServerFn({ method: "POST" })
     }
 
 
-    return { ok: true, callId };
+    return { ok: true, callId, logId: inserted?.id ?? null };
+  });
+
+export const setCallOutcomeFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({
+    logId: z.string().uuid(),
+    outcome: z.enum(["answered", "no-answer"]),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase
+      .from("call_logs")
+      .update({ status: data.outcome })
+      .eq("id", data.logId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
   });
 
 // Tell 46elks to hang up an in-progress call. Used when the user hangs up the
