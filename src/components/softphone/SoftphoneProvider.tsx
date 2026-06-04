@@ -336,6 +336,8 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       setDurationSec(0);
       setNotes("");
       setOpen(true);
+      setOutcome(null);
+      logIdRef.current = null;
       setCall({ ...opts, startedAt: Date.now(), direction: "outbound" });
 
       const ua = uaRef.current;
