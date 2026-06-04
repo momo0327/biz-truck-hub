@@ -27,6 +27,8 @@ function CompaniesPage() {
   const [selected, setSelected] = useState<Company | null>(null);
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  const cancelRef = useRef(false);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
