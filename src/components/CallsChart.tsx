@@ -18,7 +18,7 @@ const SERIES = [
   { key: "no_answer", label: "No Answer", color: "var(--muted-foreground)" },
   { key: "interested", label: "Interested", color: "var(--primary)" },
   { key: "deal_made", label: "Deal Made", color: "var(--success)" },
-  { key: "not_interested", label: "Not Interested", color: "var(--destructive)" },
+  { key: "not_interested", label: "Ej intresserad", color: "var(--destructive)" },
 ] as const;
 
 export function CallsChart({ companies, days = 14 }: Props) {

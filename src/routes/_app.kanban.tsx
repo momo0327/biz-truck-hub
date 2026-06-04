@@ -56,7 +56,7 @@ function PipelinePage() {
       </header>
 
       {/* Top stage summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {totals.map(({ status, count }) => {
           const meta = STATUS_META[status];
           return (
@@ -89,7 +89,7 @@ function PipelinePage() {
         </header>
 
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
             {PIPELINE_ORDER.map((status) => {
               const meta = STATUS_META[status];
               const items = companies.filter((c) => c.status === status);
