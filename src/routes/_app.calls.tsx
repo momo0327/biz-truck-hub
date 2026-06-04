@@ -17,7 +17,20 @@ export const Route = createFileRoute("/_app/calls")({
   component: CallsHistoryPage,
 });
 
-type CallFilter = "all" | "inbound" | "outbound" | "missed" | "voicemail" | "recorded";
+type CallFilter = "all" | "outbound" | "answered" | "not_answered";
+
+const ANSWERED_STATUSES = new Set(["answered", "success", "completed"]);
+const NOT_ANSWERED_STATUSES = new Set(["no-answer", "noanswer", "missed", "failed", "busy", "voicemail"]);
+function isAnswered(c: { status?: string | null; duration?: number | null }) {
+  if (c.status && ANSWERED_STATUSES.has(c.status)) return true;
+  if ((c.duration ?? 0) > 0) return true;
+  return false;
+}
+function isNotAnswered(c: { status?: string | null; duration?: number | null }) {
+  if (isAnswered(c)) return false;
+  if (c.status && NOT_ANSWERED_STATUSES.has(c.status)) return true;
+  return false;
+}
 
 function initials(name: string) {
   return name
