@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { Upload, X, Loader2, Sparkles } from "lucide-react";
+import { Upload, X, Loader2 } from "lucide-react";
 
 type Row = { name: string; org_number: string | null };
 
