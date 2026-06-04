@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Phone, PhoneOff, Mic, MicOff, X, Minus, Delete, GripHorizontal } from "lucide-react";
+import { Phone, PhoneOff, Mic, MicOff, X, Minus, Delete, GripHorizontal, Check, PhoneMissed } from "lucide-react";
 import { useSoftphone, type CallState } from "./SoftphoneProvider";
 import { cn } from "@/lib/utils";
 
