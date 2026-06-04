@@ -470,6 +470,17 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const markOutcome = useCallback(async (next: "answered" | "no-answer") => {
+    setOutcome(next);
+    const id = logIdRef.current;
+    if (!id) return;
+    try {
+      await setOutcomeServer({ data: { logId: id, outcome: next } });
+    } catch (e) {
+      console.error("[softphone] markOutcome failed", e);
+    }
+  }, [setOutcomeServer]);
+
   return (
     <Ctx.Provider
       value={{
@@ -480,6 +491,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         durationSec,
         sipStatus,
         sipError,
+        outcome,
         startCall,
         hangup,
         toggleMute,
@@ -487,6 +499,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         setOpen,
         notes,
         setNotes,
+        markOutcome,
       }}
     >
       {children}
