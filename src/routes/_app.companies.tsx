@@ -339,6 +339,39 @@ function CompaniesPage() {
           }}
         />
       )}
+      <Dialog open={bulkBusy}>
+        <DialogContent
+          className="sm:max-w-md"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Loader2 className="size-4 animate-spin" /> Researching companies
+            </DialogTitle>
+            <DialogDescription>
+              Please don't close this window. Scraping and enriching company data — this can take a while.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Progress value={bulkProgress.total ? (bulkProgress.done / bulkProgress.total) * 100 : 0} />
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>{bulkProgress.done} / {bulkProgress.total}</span>
+              <span>{bulkProgress.total ? Math.round((bulkProgress.done / bulkProgress.total) * 100) : 0}%</span>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => { cancelRef.current = true; }}
+                disabled={cancelRef.current}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-destructive/30 text-destructive text-sm hover:bg-destructive/10 disabled:opacity-50"
+              >
+                {cancelRef.current ? "Cancelling…" : "Cancel"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
