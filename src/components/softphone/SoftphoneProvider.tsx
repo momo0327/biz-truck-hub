@@ -74,9 +74,12 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [notes, setNotes] = useState("");
   const [sipStatus, setSipStatus] = useState<SipStatus>("disconnected");
   const [sipError, setSipError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<"answered" | "no-answer" | null>(null);
   const placeCall = useServerFn(placeCallFn);
   const hangupServerCall = useServerFn(hangupCallFn);
+  const setOutcomeServer = useServerFn(setCallOutcomeFn);
   const elksCallIdRef = useRef<string | null>(null);
+  const logIdRef = useRef<string | null>(null);
 
   const uaRef = useRef<UserAgent | null>(null);
   const registererRef = useRef<Registerer | null>(null);
