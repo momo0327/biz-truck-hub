@@ -42,13 +42,15 @@ async function firecrawlSearch(query: string, limit = 6) {
   return res.json();
 }
 
-async function firecrawlScrape(url: string) {
+async function firecrawlScrape(url: string, opts?: { waitFor?: number }) {
   const key = FIRECRAWL_KEY();
   if (!key) throw new Error("FIRECRAWL_API_KEY not configured");
+  const body: any = { url, formats: ["markdown"], onlyMainContent: true };
+  if (opts?.waitFor) body.waitFor = opts.waitFor;
   const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) return null;
   return res.json();
@@ -148,19 +150,47 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
   let totalFleetFromMerinfo: string | undefined;
   let merinfo = results.find((r) => /merinfo\.se\/foretag\//i.test(r.url));
 
-  // Fallback: if firecrawl search didn't surface merinfo, query merinfo's own
-  // search directly using the org number. This is by far the most reliable
-  // way to get the company's /fordon page and is critical for fleet accuracy.
-  if (!merinfo && orgNumber) {
+  // Fallback chain: if firecrawl search didn't surface merinfo, try
+  // increasingly direct lookups. Critical for fleet accuracy — without the
+  // /fordon page we only get whatever the AI can guess from the summary.
+  async function findMerinfoFallback(): Promise<{ url: string } | null> {
+    if (!orgNumber) return null;
     const cleanedOrg = orgNumber.replace(/\D/g, "");
+
+    // (a) Targeted Firecrawl search restricted to merinfo
+    try {
+      const r = await firecrawlSearch(`site:merinfo.se/foretag ${cleanedOrg}`, 5);
+      const hits = pickResults(r);
+      const hit = hits.find((h) => /merinfo\.se\/foretag\//i.test(h.url));
+      if (hit) return { url: hit.url };
+    } catch (e) { console.warn("merinfo targeted search failed", e); }
+
+    // (b) Generic search with the org number — Google often surfaces merinfo
+    try {
+      const r = await firecrawlSearch(`merinfo ${cleanedOrg} fordon`, 5);
+      const hits = pickResults(r);
+      const hit = hits.find((h) => /merinfo\.se\/foretag\//i.test(h.url));
+      if (hit) return { url: hit.url };
+    } catch (e) { console.warn("merinfo generic search failed", e); }
+
+    // (c) Scrape merinfo's own search page (JS-rendered, so wait for hydration)
     const searchUrl = `https://www.merinfo.se/sok?q=${cleanedOrg}`;
-    const searchScrape = await firecrawlScrape(searchUrl).catch(() => null);
+    const searchScrape = await firecrawlScrape(searchUrl, { waitFor: 3000 }).catch(() => null);
     const searchMd = searchScrape?.data?.markdown || searchScrape?.markdown || "";
     const m = searchMd.match(/https:\/\/www\.merinfo\.se\/foretag\/[^\s)"']+/i);
-    if (m) {
-      const url = m[0].replace(/\/(fordon|telefonnummer|adresser|styrelse-koncern|verklig-huvudman|nyckeltal|kontakt|ekonomi|styrelse)(\/.*)?$/i, "");
+    if (m) return { url: m[0] };
+
+    return null;
+  }
+
+  if (!merinfo) {
+    const fallback = await findMerinfoFallback();
+    if (fallback) {
+      const url = fallback.url.replace(/\/(fordon|telefonnummer|adresser|styrelse-koncern|verklig-huvudman|nyckeltal|kontakt|ekonomi|styrelse)(\/.*)?$/i, "");
       merinfo = { url };
       results.push({ url, title: "Merinfo (direct lookup)" });
+    } else {
+      console.warn("[research] merinfo /foretag page not found for", name, orgNumber);
     }
   }
 
