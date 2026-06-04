@@ -24,6 +24,7 @@ interface SoftphoneCtx {
   durationSec: number;
   sipStatus: SipStatus;
   sipError: string | null;
+  outcome: "answered" | "no-answer" | null;
   startCall: (opts: { number: string; contactName?: string; companyId?: string }) => void;
   hangup: () => void;
   toggleMute: () => void;
@@ -31,6 +32,7 @@ interface SoftphoneCtx {
   setOpen: (v: boolean) => void;
   notes: string;
   setNotes: (v: string) => void;
+  markOutcome: (outcome: "answered" | "no-answer") => Promise<void>;
 }
 
 type SessionMedia = Session & {
