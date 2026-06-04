@@ -203,17 +203,22 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
     // Build /fordon URL (strip any trailing path, ensure single trailing slash)
     const base = merinfo.url.replace(/\/(fordon|telefonnummer|adresser|styrelse-koncern|verklig-huvudman|nyckeltal|kontakt|ekonomi|styrelse)(\/.*)?$/i, "").replace(/\/$/, "");
 
-    // Paginate: page 1, 2, 3... up to 10 pages safety cap (250 vehicles)
-    for (let page = 1; page <= 10; page++) {
+    // Paginate: up to 20 pages (500 vehicles). Merinfo shows 25/page.
+    // Trust "Totalt antal fordon" from page 1 since pagination links are
+    // often missing from firecrawl markdown output.
+    let expectedTotal = 0;
+    for (let page = 1; page <= 20; page++) {
       const fordonUrl = page === 1 ? `${base}/fordon` : `${base}/fordon?page=${page}`;
-      const fordon = await firecrawlScrape(fordonUrl).catch(() => null);
+      const fordon = await firecrawlScrape(fordonUrl, { waitFor: 2500 }).catch(() => null);
       const fordonMd = fordon?.data?.markdown || fordon?.markdown;
       if (!fordonMd) break;
 
-      // Capture fleet total once
       if (!totalFleetFromMerinfo) {
         const totalMatch = fordonMd.match(/Totalt antal fordon:\s*(\d+)/i);
-        if (totalMatch) totalFleetFromMerinfo = totalMatch[1];
+        if (totalMatch) {
+          totalFleetFromMerinfo = totalMatch[1];
+          expectedTotal = parseInt(totalMatch[1], 10) || 0;
+        }
       }
 
       const pageVehicles = parseMerinfoVehicles(fordonMd);
@@ -222,9 +227,9 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
 
       results.push({ url: fordonUrl, title: `Merinfo - Fordon page ${page}`, markdown: fordonMd });
 
-      // Stop if no "Nästa" (next) link
-      if (!/[?&]page=\d+["')\]]/i.test(fordonMd) && page > 1) break;
-      if (!/Nästa|page=\d+/i.test(fordonMd)) break;
+      // Stop when we've collected everything, or the last page is partial.
+      if (expectedTotal > 0 && parsedVehicles.length >= expectedTotal) break;
+      if (pageVehicles.length < 25) break;
     }
 
     // Dedupe vehicles by registration
