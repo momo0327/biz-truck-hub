@@ -8,21 +8,21 @@ export type Status = Database["public"]["Enums"]["company_status"];
 
 export const STATUS_META: Record<Status, { label: string; emoji: string; tone: string; accent: string; dot: string }> = {
   new: { label: "Ny", emoji: "•", tone: "bg-muted text-foreground", accent: "var(--stage-new)", dot: "bg-[var(--stage-new)]" },
+  not_interested: { label: "Ej intresserad", emoji: "•", tone: "bg-destructive/10 text-destructive", accent: "var(--stage-lost)", dot: "bg-[var(--stage-lost)]" },
   follow_up: { label: "Intresserad", emoji: "•", tone: "bg-info/10 text-info", accent: "var(--stage-contacted)", dot: "bg-[var(--stage-contacted)]" },
-  sending_pictures: { label: "Ska skicka bilder", emoji: "•", tone: "bg-warning/15 text-warning-foreground", accent: "var(--stage-qualified)", dot: "bg-[var(--stage-qualified)]" },
+  sending_pictures: { label: "Skickar bilder", emoji: "•", tone: "bg-warning/15 text-warning-foreground", accent: "var(--stage-qualified)", dot: "bg-[var(--stage-qualified)]" },
   in_negotiation: { label: "Förhandlar", emoji: "•", tone: "bg-[color-mix(in_oklab,var(--stage-negotiating)_15%,transparent)] text-[var(--stage-negotiating)]", accent: "var(--stage-negotiating)", dot: "bg-[var(--stage-negotiating)]" },
-  price_disagreement: { label: "Kom ej överens (pris)", emoji: "•", tone: "bg-warning/15 text-warning-foreground", accent: "var(--stage-lost)", dot: "bg-[var(--stage-lost)]" },
+  price_disagreement: { label: "Ej överens", emoji: "•", tone: "bg-warning/15 text-warning-foreground", accent: "var(--stage-lost)", dot: "bg-[var(--stage-lost)]" },
   deal_made: { label: "Köpt", emoji: "•", tone: "bg-success/15 text-success", accent: "var(--stage-closing)", dot: "bg-[var(--stage-closing)]" },
-  not_interested: { label: "Inte intresserad", emoji: "•", tone: "bg-destructive/10 text-destructive", accent: "var(--stage-lost)", dot: "bg-[var(--stage-lost)]" },
   called_no_answer: { label: "Kontaktad", emoji: "•", tone: "bg-muted text-muted-foreground", accent: "var(--stage-contacted)", dot: "bg-[var(--stage-contacted)]" },
 };
 
 export const STATUS_ORDER: Status[] = [
-  "new", "follow_up", "sending_pictures", "in_negotiation", "price_disagreement", "deal_made", "not_interested",
+  "new", "not_interested", "follow_up", "sending_pictures", "in_negotiation", "price_disagreement", "deal_made",
 ];
 
 export const PIPELINE_ORDER: Status[] = [
-  "new", "follow_up", "sending_pictures", "in_negotiation", "price_disagreement", "deal_made",
+  "new", "not_interested", "follow_up", "sending_pictures", "in_negotiation", "price_disagreement", "deal_made",
 ];
 
 type CompaniesContextValue = {
