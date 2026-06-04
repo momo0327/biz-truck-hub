@@ -114,7 +114,7 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
             <h3 className="font-display text-xl">Import companies</h3>
             <p className="text-sm text-muted-foreground">
               Upload an Excel file. Only the <strong>Namn</strong> and <strong>Organisationsnr</strong> columns
-              are used — duplicates are merged, then AI research runs automatically.
+              are used. Rows are imported quickly — run AI research later from the Companies page.
             </p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground" disabled={busy}>
