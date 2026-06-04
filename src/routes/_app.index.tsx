@@ -140,7 +140,7 @@ function Dashboard() {
                   <div className="text-[11px] font-mono text-muted-foreground">{c.to_number ?? "—"}</div>
                 </div>
                 <div className="text-xs text-muted-foreground hidden sm:block capitalize">
-                  {c.status ?? "—"}
+                  {isMissed ? "not answered" : (c.duration ?? 0) > 0 || c.status === "answered" || c.status === "success" ? "answered" : (c.status ?? "—")}
                 </div>
                 <div className="text-xs text-muted-foreground tabular-nums">
                   {new Date(c.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
