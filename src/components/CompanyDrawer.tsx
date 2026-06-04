@@ -210,9 +210,6 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
 
           <section className="space-y-2">
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Fleet</h4>
-            {company.trucks_info && (
-              <p className="text-xs text-muted-foreground">{company.trucks_info}</p>
-            )}
             <VehiclesTable vehicles={((company.vehicles as unknown) as Vehicle[]) ?? []} />
           </section>
 
