@@ -57,7 +57,7 @@ function Dashboard() {
     total: companies.length,
     researched: companies.filter((c) => c.researched_at).length,
     callsToday: companies.filter((c) => c.last_contact && new Date(c.last_contact).toDateString() === today).length,
-    inProgress: companies.filter((c) => ["called_no_answer", "follow_up", "in_negotiation"].includes(c.status)).length,
+    inProgress: companies.filter((c) => ["follow_up", "sending_pictures", "in_negotiation", "price_disagreement"].includes(c.status)).length,
     closed: companies.filter((c) => c.status === "deal_made").length,
   };
 
