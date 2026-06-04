@@ -365,7 +365,8 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         .then((res) => {
           if (!res.ok) throw new Error(res.error);
           elksCallIdRef.current = res.callId ?? null;
-          console.log("[softphone] 46elks outbound bridge started", { callId: res.callId });
+          logIdRef.current = res.logId ?? null;
+          console.log("[softphone] 46elks outbound bridge started", { callId: res.callId, logId: res.logId });
         })
         .catch((err) => {
           console.error("46elks outbound bridge failed", err);
