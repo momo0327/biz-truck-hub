@@ -146,7 +146,24 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
   // The /fordon page is paginated (25 vehicles per page), so loop until empty.
   let parsedVehicles: Vehicle[] = [];
   let totalFleetFromMerinfo: string | undefined;
-  const merinfo = results.find((r) => /merinfo\.se\/foretag\//i.test(r.url));
+  let merinfo = results.find((r) => /merinfo\.se\/foretag\//i.test(r.url));
+
+  // Fallback: if firecrawl search didn't surface merinfo, query merinfo's own
+  // search directly using the org number. This is by far the most reliable
+  // way to get the company's /fordon page and is critical for fleet accuracy.
+  if (!merinfo && orgNumber) {
+    const cleanedOrg = orgNumber.replace(/\D/g, "");
+    const searchUrl = `https://www.merinfo.se/sok?q=${cleanedOrg}`;
+    const searchScrape = await firecrawlScrape(searchUrl).catch(() => null);
+    const searchMd = searchScrape?.data?.markdown || searchScrape?.markdown || "";
+    const m = searchMd.match(/https:\/\/www\.merinfo\.se\/foretag\/[^\s)"']+/i);
+    if (m) {
+      const url = m[0].replace(/\/(fordon|telefonnummer|adresser|styrelse-koncern|verklig-huvudman|nyckeltal|kontakt|ekonomi|styrelse)(\/.*)?$/i, "");
+      merinfo = { url };
+      results.push({ url, title: "Merinfo (direct lookup)" });
+    }
+  }
+
   if (merinfo) {
     // Scrape main merinfo page (phones, address, contact)
     const main = await firecrawlScrape(merinfo.url).catch(() => null);
