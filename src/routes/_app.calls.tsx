@@ -4,7 +4,7 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   PhoneMissed,
-  Voicemail,
+  // Voicemail removed
   Search,
   Check,
   X,
