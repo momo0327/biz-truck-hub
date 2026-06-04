@@ -223,10 +223,10 @@ function CompaniesPage() {
                   className="size-4 cursor-pointer"
                 />
               </th>
-              <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Company</th>
-              <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Primary Contact</th>
-              <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Phone</th>
-              <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Status</th>
+              <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase w-[30%]">Company</th>
+              <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase w-[22%]">Primary Contact</th>
+              <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase w-[22%]">Phone</th>
+              <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase w-[18%]">Status</th>
               <th className="text-right px-4 py-3 w-[60px]"></th>
             </tr>
 
