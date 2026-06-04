@@ -144,11 +144,9 @@ function CallsHistoryPage() {
   const counts = useMemo(() => {
     return {
       all: calls.length,
-      inbound: calls.filter((c) => c.direction === "inbound").length,
       outbound: calls.filter((c) => c.direction !== "inbound").length,
-      missed: calls.filter((c) => c.status === "no-answer" || c.status === "missed" || c.status === "failed").length,
-      voicemail: calls.filter((c) => c.status === "voicemail").length,
-      recorded: calls.filter((c) => (c.duration ?? 0) > 0).length,
+      answered: calls.filter(isAnswered).length,
+      not_answered: calls.filter(isNotAnswered).length,
     };
   }, [calls]);
 
