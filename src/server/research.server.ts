@@ -42,13 +42,15 @@ async function firecrawlSearch(query: string, limit = 6) {
   return res.json();
 }
 
-async function firecrawlScrape(url: string) {
+async function firecrawlScrape(url: string, opts?: { waitFor?: number }) {
   const key = FIRECRAWL_KEY();
   if (!key) throw new Error("FIRECRAWL_API_KEY not configured");
+  const body: any = { url, formats: ["markdown"], onlyMainContent: true };
+  if (opts?.waitFor) body.waitFor = opts.waitFor;
   const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) return null;
   return res.json();
