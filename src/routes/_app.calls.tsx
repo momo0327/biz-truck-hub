@@ -274,22 +274,20 @@ function CallsHistoryPage() {
                 </tr>
                 {rows.map((c) => {
                   const isOutbound = c.direction !== "inbound";
-                  const isMissed = ["no-answer", "missed", "failed"].includes(c.status ?? "");
-                  const isVoicemail = c.status === "voicemail";
-                  const DirIcon = isMissed ? PhoneMissed : isOutbound ? PhoneOutgoing : PhoneIncoming;
-                  const dirColor = isMissed
+                  const answered = isAnswered(c);
+                  const notAnswered = isNotAnswered(c);
+                  const DirIcon = notAnswered ? PhoneMissed : isOutbound ? PhoneOutgoing : PhoneIncoming;
+                  const dirColor = notAnswered
                     ? "bg-destructive/10 text-destructive"
-                    : isOutbound
-                      ? "bg-muted text-muted-foreground"
-                      : "bg-success/15 text-success";
+                    : answered
+                      ? "bg-success/15 text-success"
+                      : "bg-muted text-muted-foreground";
                   const name = (c.company_id && companyById.get(c.company_id)) || "Unknown";
-                  const outcome = isVoicemail
-                    ? { label: "voicemail", tone: "bg-muted text-foreground", icon: Voicemail }
-                    : isMissed
-                      ? { label: "no answer", tone: "bg-muted text-foreground", icon: X }
-                      : c.status === "callback"
-                        ? { label: "callback", tone: "bg-primary text-primary-foreground", icon: PhoneCall }
-                        : { label: "answered", tone: "bg-success/15 text-success", icon: Check };
+                  const outcome = answered
+                    ? { label: "answered", tone: "bg-success/15 text-success", icon: Check }
+                    : notAnswered
+                      ? { label: "not answered", tone: "bg-destructive/10 text-destructive", icon: X }
+                      : { label: c.status ?? "pending", tone: "bg-muted text-foreground", icon: PhoneCall };
                   const OutIcon = outcome.icon;
                   return (
                     <tr key={c.id} className="border-t hover:bg-muted/30">
