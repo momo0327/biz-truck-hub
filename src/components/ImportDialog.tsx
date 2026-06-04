@@ -31,7 +31,7 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
   const [fileName, setFileName] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const research = useServerFn(researchCompanyFn);
+  
 
   async function handleFile(file: File) {
     setFileName(file.name);
