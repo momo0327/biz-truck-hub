@@ -238,7 +238,7 @@ function CompaniesPage() {
               const city = c.address?.split(",")[0]?.trim() || "";
               return (
                 <tr key={c.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelected(c)}>
-                  <td className="px-4 py-5 w-10" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-6 w-10" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selectedIds.has(c.id)}
@@ -253,25 +253,25 @@ function CompaniesPage() {
                       className="size-4 cursor-pointer"
                     />
                   </td>
-                  <td className="px-4 py-5">
+                  <td className="px-4 py-6">
                     <div className="font-medium truncate">{c.name}</div>
                     <div className="text-xs text-muted-foreground truncate">
                       {[city, c.org_number].filter(Boolean).join(" · ") || "—"}
                     </div>
                   </td>
-                  <td className="px-4 py-5">
+                  <td className="px-4 py-6">
                     <div className="font-medium text-sm">{c.contact_person || "—"}</div>
                   </td>
-                  <td className="px-4 py-5" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-6" onClick={(e) => e.stopPropagation()}>
                     <PhoneButtons phones={c.phones ?? []} companyId={c.id} contactName={c.name} compact readOnly />
                   </td>
-                  <td className="px-4 py-5">
+                  <td className="px-4 py-6">
                     <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full ${meta.tone}`}>
                       <span className={`size-1.5 rounded-full ${meta.dot}`} />
                       {meta.label}
                     </span>
                   </td>
-                  <td className="px-3 py-5 text-right w-[60px]" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-3 py-6 text-right w-[60px]" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => researchOne(c.id)}
                       disabled={busy}
