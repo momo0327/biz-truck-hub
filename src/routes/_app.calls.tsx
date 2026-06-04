@@ -209,11 +209,9 @@ function CallsHistoryPage() {
           {(
             [
               ["all", "All", counts.all],
-              ["inbound", "Inbound", counts.inbound],
               ["outbound", "Outbound", counts.outbound],
-              ["missed", "Missed", counts.missed],
-              ["voicemail", "Voicemail", counts.voicemail],
-              ["recorded", "Recorded", counts.recorded],
+              ["answered", "Answered", counts.answered],
+              ["not_answered", "Not answered", counts.not_answered],
             ] as const
           ).map(([key, label, n]) => {
             const active = filter === key;
