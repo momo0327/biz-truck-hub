@@ -319,12 +319,22 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
                   customerAnsweredRef.current = true;
                   setCustomerStatus("answered");
                   setOutcome("answered");
+                  if (logIdRef.current) {
+                    setOutcomeServer({ data: { logId: logIdRef.current, outcome: "answered" } }).catch((err) =>
+                      console.error("[softphone] mark answered failed", err),
+                    );
+                  }
                   setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
                   startTick();
                   stopStatusPoll();
                 } else if (res.finished) {
                   setCustomerStatus("no-answer");
                   setOutcome("no-answer");
+                  if (logIdRef.current) {
+                    setOutcomeServer({ data: { logId: logIdRef.current, outcome: "no-answer" } }).catch((err) =>
+                      console.error("[softphone] mark no-answer failed", err),
+                    );
+                  }
                   stopStatusPoll();
                 }
               })
@@ -354,7 +364,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         }
       });
     },
-    [getCallStatus, startTick, stopStatusPoll, stopTick],
+    [getCallStatus, setOutcomeServer, startTick, stopStatusPoll, stopTick],
   );
 
   const startCall: SoftphoneCtx["startCall"] = useCallback(
@@ -517,6 +527,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
   const markOutcome = useCallback(async (next: "answered" | "no-answer") => {
     setOutcome(next);
+    setCustomerStatus(next);
     const id = logIdRef.current;
     if (!id) return;
     try {
