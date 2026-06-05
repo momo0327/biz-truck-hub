@@ -77,7 +77,7 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
       const b = byDate.get(key);
       if (!b) return;
       b.calls++;
-      if (ANSWERED_CALL_STATUSES.has((c.status ?? "").toLowerCase())) b.answered++;
+      if (isAnswered(c)) b.answered++;
     });
     // sync mutated values back into the array
     let i = 6;
