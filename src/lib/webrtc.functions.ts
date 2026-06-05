@@ -29,13 +29,7 @@ export const getWebrtcCredentials = createServerFn({ method: "GET" })
       };
     }
 
-    if (!username || !password || !uri || !wsRaw) {
-      return {
-        ok: false as const,
-        error:
-          "WebRTC credentials not configured — add your 46elks WebRTC username, password and URI in Settings → Profile.",
-      };
-    }
+
 
     const urlMatch = wsRaw.match(/(?:wss?|https?):\/\/[^\s"'<>]+/i);
     let ws = urlMatch?.[0] ?? wsRaw;
