@@ -277,12 +277,76 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             attach();
           }
 
-          // Once the SIP leg is up, treat the call as connected. 46elks bridges
-          // the customer leg right after we answer the WebRTC INVITE, so audio
-          // is flowing as soon as we attach the remote stream above.
-          setState("in-call");
-          setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-          startTick();
+          const isOutbound = outboundActiveRef.current;
+          if (!isOutbound) {
+            // Inbound calls are real audio the moment we accept.
+            setState("in-call");
+            setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+            startTick();
+            return;
+          }
+
+          // Outbound: keep state as "ringing" (header shows "Calling…") until
+          // we detect real voice on the inbound stream. 46elks plays ringback
+          // (a steady tone with regular gaps) while the customer's phone
+          // rings; voice has much higher amplitude variance than ringback.
+          setState("ringing");
+          if (answerPollRef.current) window.clearInterval(answerPollRef.current);
+          const remoteTrack =
+            pc?.getReceivers().find((r) => r.track && r.track.kind === "audio")?.track ?? null;
+          if (!pc || !remoteTrack) {
+            // No analyser possible — fall back to immediate connected.
+            setState("in-call");
+            setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+            startTick();
+          } else {
+            const AudioCtor: typeof AudioContext =
+              (window as unknown as { AudioContext: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext ||
+              (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            const audioCtx = new AudioCtor();
+            const source = audioCtx.createMediaStreamSource(new MediaStream([remoteTrack]));
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 1024;
+            source.connect(analyser);
+            const buf = new Uint8Array(analyser.fftSize);
+            const startedAt = Date.now();
+            const levels: number[] = [];
+            const WINDOW = 20; // ~2s of 100ms samples
+            answerPollRef.current = window.setInterval(() => {
+              analyser.getByteTimeDomainData(buf);
+              // RMS amplitude around the 128 midpoint
+              let sumSq = 0;
+              for (let i = 0; i < buf.length; i++) {
+                const v = (buf[i] - 128) / 128;
+                sumSq += v * v;
+              }
+              const rms = Math.sqrt(sumSq / buf.length);
+              levels.push(rms);
+              if (levels.length > WINDOW) levels.shift();
+              if (levels.length < WINDOW) return;
+
+              const mean = levels.reduce((a, b) => a + b, 0) / levels.length;
+              let varSum = 0;
+              for (const l of levels) varSum += (l - mean) * (l - mean);
+              const stddev = Math.sqrt(varSum / levels.length);
+              const loudCount = levels.filter((l) => l > 0.04).length;
+
+              // Voice: meaningful loudness AND high variance.
+              // Ringback: loud but very low variance (steady tone).
+              const elapsed = Date.now() - startedAt;
+              const isVoice = elapsed > 600 && loudCount >= 6 && stddev > 0.025;
+              if (isVoice) {
+                if (answerPollRef.current) {
+                  window.clearInterval(answerPollRef.current);
+                  answerPollRef.current = null;
+                }
+                audioCtx.close().catch(() => {});
+                setState("in-call");
+                setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+                startTick();
+              }
+            }, 100);
+          }
         } else if (s === SessionState.Terminated) {
           if (answerPollRef.current) {
             window.clearInterval(answerPollRef.current);
