@@ -21,7 +21,17 @@ export const Route = createFileRoute("/api/public/elks-status")({
         const duration = payload.duration ? parseInt(payload.duration, 10) : null;
 
         if (callId) {
-          const update: { status: string | null; duration?: number } = { status: state ?? null };
+          // Derive a normalized outcome so admin charts / history don't need
+          // a manual "answered/not answered" click. If the call had any talk
+          // time the customer picked up; otherwise treat known failure
+          // states as not-answered.
+          let normalized: string | null = state ?? null;
+          if (duration !== null && !Number.isNaN(duration) && duration > 0) {
+            normalized = "answered";
+          } else if (state && ["noanswer", "busy", "failed"].includes(state)) {
+            normalized = "no-answer";
+          }
+          const update: { status: string | null; duration?: number } = { status: normalized };
           if (duration !== null && !Number.isNaN(duration)) update.duration = duration;
           await supabaseAdmin
             .from("call_logs")

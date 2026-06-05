@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Phone, PhoneOff, Mic, MicOff, X, Minus, Delete, GripHorizontal, Check, PhoneMissed } from "lucide-react";
+import { Phone, PhoneOff, Mic, MicOff, X, Minus, Delete, GripHorizontal } from "lucide-react";
 import { useSoftphone, type CallState } from "./SoftphoneProvider";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +50,6 @@ export function SoftphonePanel() {
     setOpen,
     notes,
     setNotes,
-    markOutcome,
   } = useSoftphone();
   const [showKeypad, setShowKeypad] = useState(false);
   const [minimized, setMinimized] = useState(false);
@@ -226,35 +225,16 @@ export function SoftphonePanel() {
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-              Mark outcome
+          {state === "ended" && (
+            <div className="rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              {outcome === "answered"
+                ? "Outcome: answered (auto-detected)"
+                : outcome === "no-answer"
+                  ? "Outcome: not answered (auto-detected)"
+                  : "Outcome will be saved automatically once the call ends."}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => markOutcome("answered")}
-                className={cn(
-                  "flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors",
-                  outcome === "answered"
-                    ? "bg-success text-success-foreground border-success"
-                    : "bg-success/10 text-success border-success/30 hover:bg-success/20",
-                )}
-              >
-                <Check className="size-4" /> Answered
-              </button>
-              <button
-                onClick={() => markOutcome("no-answer")}
-                className={cn(
-                  "flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors",
-                  outcome === "no-answer"
-                    ? "bg-destructive text-destructive-foreground border-destructive"
-                    : "bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20",
-                )}
-              >
-                <PhoneMissed className="size-4" /> Not answered
-              </button>
-            </div>
-          </div>
+          )}
+
 
 
           <div className="space-y-1.5">
