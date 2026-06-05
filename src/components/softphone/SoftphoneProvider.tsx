@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useServerFn } from "@tanstack/react-start";
 import { Inviter, Registerer, SessionState, UserAgent, type Session } from "sip.js";
 import { getWebrtcCredentials } from "@/lib/webrtc.functions";
-import { placeCallFn, hangupCallFn, setCallOutcomeFn } from "@/lib/calls.functions";
+import { placeCallFn, hangupCallFn, setCallOutcomeFn, getCallStatusFn } from "@/lib/calls.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export type CallState = "idle" | "dialing" | "ringing" | "in-call" | "ended";
@@ -16,6 +16,8 @@ export interface ActiveCall {
   direction: "outbound" | "inbound";
 }
 
+export type CustomerCallStatus = "pending" | "ringing" | "answered" | "no-answer";
+
 interface SoftphoneCtx {
   state: CallState;
   call: ActiveCall | null;
@@ -24,6 +26,7 @@ interface SoftphoneCtx {
   durationSec: number;
   sipStatus: SipStatus;
   sipError: string | null;
+  customerStatus: CustomerCallStatus;
   outcome: "answered" | "no-answer" | null;
   startCall: (opts: { number: string; contactName?: string; companyId?: string }) => void;
   hangup: () => void;
@@ -74,10 +77,12 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [notes, setNotes] = useState("");
   const [sipStatus, setSipStatus] = useState<SipStatus>("disconnected");
   const [sipError, setSipError] = useState<string | null>(null);
+  const [customerStatus, setCustomerStatus] = useState<CustomerCallStatus>("pending");
   const [outcome, setOutcome] = useState<"answered" | "no-answer" | null>(null);
   const placeCall = useServerFn(placeCallFn);
   const hangupServerCall = useServerFn(hangupCallFn);
   const setOutcomeServer = useServerFn(setCallOutcomeFn);
+  const getCallStatus = useServerFn(getCallStatusFn);
   const elksCallIdRef = useRef<string | null>(null);
   const logIdRef = useRef<string | null>(null);
 
@@ -89,6 +94,9 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const outboundActiveRef = useRef(false);
   const trunkNumberRef = useRef<string | null>(null);
   const answerPollRef = useRef<number | null>(null);
+  const statusPollRef = useRef<number | null>(null);
+  const targetNumberRef = useRef<string | null>(null);
+  const customerAnsweredRef = useRef(false);
   const fetchCreds = useServerFn(getWebrtcCredentials);
 
   const stopTick = useCallback(() => {
