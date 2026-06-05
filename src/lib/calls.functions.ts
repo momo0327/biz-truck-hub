@@ -52,25 +52,17 @@ export const placeCallFn = createServerFn({ method: "POST" })
     const displayRaw =
       (profile?.display_phone_number as string | null) ||
       (profile?.phone_number as string | null) ||
+      process.env.ELKS_FROM_NUMBER ||
       "";
     const fromNumber = displayRaw ? normalizeE164(displayRaw) : "";
 
-    const webrtcUri = (profile?.elks_webrtc_uri as string | null)?.trim() || "";
+    const webrtcUri =
+      (profile?.elks_webrtc_uri as string | null)?.trim() ||
+      process.env.ELKS_WEBRTC_URI ||
+      "";
     const webrtcNumber = webrtcUri ? numberFromWebrtcUri(webrtcUri) : "";
-    if (!username || !password) {
+    if (!username || !password || !fromNumber || !webrtcNumber) {
       return { ok: false, error: "46elks credentials not configured" };
-    }
-    if (!fromNumber) {
-      return {
-        ok: false,
-        error: "Add your phone number in Settings → Profile before placing calls.",
-      };
-    }
-    if (!webrtcNumber) {
-      return {
-        ok: false,
-        error: "Add your WebRTC URI in Settings → Profile before placing calls.",
-      };
     }
     if (!/^\+\d{8,15}$/.test(fromNumber)) {
       return {

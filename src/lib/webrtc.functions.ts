@@ -16,9 +16,15 @@ export const getWebrtcCredentials = createServerFn({ method: "GET" })
       .eq("user_id", userId)
       .maybeSingle();
 
-    const username = (profile?.elks_webrtc_username as string | null)?.trim();
-    const password = (profile?.elks_webrtc_password as string | null)?.trim();
-    const uri = (profile?.elks_webrtc_uri as string | null)?.trim();
+    const username =
+      (profile?.elks_webrtc_username as string | null)?.trim() ||
+      process.env.ELKS_WEBRTC_USERNAME?.trim();
+    const password =
+      (profile?.elks_webrtc_password as string | null)?.trim() ||
+      process.env.ELKS_WEBRTC_PASSWORD?.trim();
+    const uri =
+      (profile?.elks_webrtc_uri as string | null)?.trim() ||
+      process.env.ELKS_WEBRTC_URI?.trim();
     const wsRaw = process.env.ELKS_WEBRTC_WS_URL?.trim();
 
     if (!username || !password || !uri || !wsRaw) {
@@ -28,8 +34,6 @@ export const getWebrtcCredentials = createServerFn({ method: "GET" })
           "WebRTC credentials not configured — add your 46elks WebRTC username, password and URI in Settings → Profile.",
       };
     }
-
-
 
     const urlMatch = wsRaw.match(/(?:wss?|https?):\/\/[^\s"'<>]+/i);
     let ws = urlMatch?.[0] ?? wsRaw;
