@@ -56,9 +56,6 @@ function AdminDashboard() {
 
   const totals = data?.totals ?? { calls: 0, answered: 0, leads: 0 };
   const weekly = data?.weekly ?? [];
-  const answerRate = totals.calls > 0 ? Math.round((totals.answered / totals.calls) * 100) : 0;
-  const totals = data?.totals ?? { calls: 0, answered: 0, leads: 0 };
-  const weekly = data?.weekly ?? [];
   const today = weekly.length > 0 ? weekly[weekly.length - 1] : { calls: 0, answered: 0 };
   const todayAnswerRate = today.calls > 0 ? Math.round((today.answered / today.calls) * 100) : 0;
   const [weekDialogOpen, setWeekDialogOpen] = useState(false);
