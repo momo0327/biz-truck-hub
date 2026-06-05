@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { getEmployeesOverviewFn } from "@/lib/admin.functions";
@@ -19,6 +19,13 @@ import {
   YAxis,
 } from "recharts";
 import { Phone, PhoneCall, Users, ArrowUpRight } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 
 export const Route = createFileRoute("/_admin/admin/")({
@@ -49,7 +56,9 @@ function AdminDashboard() {
 
   const totals = data?.totals ?? { calls: 0, answered: 0, leads: 0 };
   const weekly = data?.weekly ?? [];
-  const answerRate = totals.calls > 0 ? Math.round((totals.answered / totals.calls) * 100) : 0;
+  const today = weekly.length > 0 ? weekly[weekly.length - 1] : { calls: 0, answered: 0 };
+  const todayAnswerRate = today.calls > 0 ? Math.round((today.answered / today.calls) * 100) : 0;
+  const [weekDialogOpen, setWeekDialogOpen] = useState(false);
   const topEmployees = (data?.employees ?? [])
     .slice()
     .sort((a, b) => b.stats.calls - a.stats.calls)
@@ -65,21 +74,23 @@ function AdminDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
-          label={t("admin.dash.total_calls")}
-          value={totals.calls.toLocaleString()}
+          label={`${t("admin.dash.total_calls")} (today)`}
+          value={today.calls.toLocaleString()}
           icon={Phone}
           iconColor="text-primary"
           iconBorder="border-primary/40"
           iconBg="bg-primary/10"
+          onClick={() => setWeekDialogOpen(true)}
         />
         <StatCard
-          label={t("admin.dash.answered")}
-          value={totals.answered.toLocaleString()}
+          label={`${t("admin.dash.answered")} (today)`}
+          value={today.answered.toLocaleString()}
           icon={PhoneCall}
-          subtitle={t("admin.dash.answer_rate", { rate: answerRate })}
+          subtitle={t("admin.dash.answer_rate", { rate: todayAnswerRate })}
           iconColor="text-success"
           iconBorder="border-success/40"
           iconBg="bg-success/10"
+          onClick={() => setWeekDialogOpen(true)}
         />
         <StatCard
           label={t("admin.dash.total_leads")}
@@ -90,6 +101,13 @@ function AdminDashboard() {
           iconBg="bg-info/10"
         />
       </div>
+
+      <WeeklyBreakdownDialog
+        open={weekDialogOpen}
+        onOpenChange={setWeekDialogOpen}
+        weekly={weekly}
+      />
+
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <section className="rounded-lg border bg-card p-5 lg:col-span-2">
@@ -211,6 +229,7 @@ function StatCard({
   iconColor,
   iconBorder,
   iconBg,
+  onClick,
 }: {
   label: string;
   value: string;
@@ -219,9 +238,17 @@ function StatCard({
   iconColor: string;
   iconBorder: string;
   iconBg: string;
+  onClick?: () => void;
 }) {
+  const interactive = !!onClick;
+  const Comp: React.ElementType = interactive ? "button" : "div";
   return (
-    <div className="rounded-xl border bg-card p-6">
+    <Comp
+      onClick={onClick}
+      className={`w-full text-left rounded-xl border bg-card p-6 ${
+        interactive ? "hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer" : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-4">
         <span
           className={`inline-flex items-center justify-center size-11 rounded-lg border ${iconBorder} ${iconBg}`}
@@ -236,9 +263,62 @@ function StatCard({
       {subtitle && (
         <div className="mt-1 text-xs text-muted-foreground">{subtitle}</div>
       )}
-    </div>
+    </Comp>
   );
 }
+
+function WeeklyBreakdownDialog({
+  open,
+  onOpenChange,
+  weekly,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  weekly: { day: string; calls: number; answered: number }[];
+}) {
+  const totalCalls = weekly.reduce((s, d) => s + d.calls, 0);
+  const totalAnswered = weekly.reduce((s, d) => s + d.answered, 0);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>This week's calls</DialogTitle>
+          <DialogDescription>
+            Daily breakdown for the last 7 days · {totalCalls} calls, {totalAnswered} answered
+          </DialogDescription>
+        </DialogHeader>
+        <ul className="divide-y rounded-md border">
+          {weekly.map((d, i) => {
+            const rate = d.calls > 0 ? Math.round((d.answered / d.calls) * 100) : 0;
+            const isToday = i === weekly.length - 1;
+            return (
+              <li key={`${d.day}-${i}`} className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm">{d.day}</span>
+                  {isToday && (
+                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                      Today
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="font-display font-semibold">{d.calls}</span>
+                  <span className="text-muted-foreground">calls</span>
+                  <span className="font-display font-semibold text-success">{d.answered}</span>
+                  <span className="text-muted-foreground text-xs">({rate}%)</span>
+                </div>
+              </li>
+            );
+          })}
+          {weekly.length === 0 && (
+            <li className="px-4 py-6 text-center text-sm text-muted-foreground">No data yet.</li>
+          )}
+        </ul>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 // Employee palette: lime green, pink, baby blue, then soft extras for overflow.
 const DONUT_COLORS = [
