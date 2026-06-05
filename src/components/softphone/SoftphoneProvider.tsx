@@ -355,7 +355,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           outboundActiveRef.current = false;
         });
     },
-    [sipStatus, startTick, placeCall],
+    [sipStatus, sipError, placeCall],
   );
 
   const hangup = useCallback(async () => {
