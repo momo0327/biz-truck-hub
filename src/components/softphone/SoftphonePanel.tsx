@@ -50,7 +50,6 @@ export function SoftphonePanel() {
     setOpen,
     notes,
     setNotes,
-    markOutcome,
   } = useSoftphone();
   const [showKeypad, setShowKeypad] = useState(false);
   const [minimized, setMinimized] = useState(false);
