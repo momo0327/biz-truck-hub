@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const ANSWERED_CALL_STATUSES = new Set(["success", "answered", "completed"]);
+const isAnswered = (c: { status?: string | null; duration?: number | null }) =>
+  ANSWERED_CALL_STATUSES.has((c.status ?? "").toLowerCase()) || (c.duration ?? 0) > 0;
 
 export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
