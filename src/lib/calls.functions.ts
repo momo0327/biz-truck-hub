@@ -182,43 +182,6 @@ export const setCallOutcomeFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const getCallStatusFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({
-    callId: z.string().min(1),
-    targetNumber: z.string().min(4),
-  }).parse(d))
-  .handler(async ({ data }) => {
-    const username = process.env.ELKS_API_USERNAME;
-    const password = process.env.ELKS_API_PASSWORD;
-    if (!username || !password) return { ok: false, error: "46elks not configured" };
-
-    const auth = Buffer.from(`${username}:${password}`).toString("base64");
-    const res = await fetch(`https://api.46elks.com/a1/calls/${encodeURIComponent(data.callId)}`, {
-      headers: { Authorization: `Basic ${auth}` },
-    });
-    const text = await res.text();
-    if (!res.ok) return { ok: false, error: `46elks: ${res.status} ${text.slice(0, 200)}` };
-
-    const parsed = JSON.parse(text) as {
-      state?: string;
-      duration?: number | string;
-      actions?: Array<{ connect?: string; result?: string; why?: string }>;
-      legs?: Array<{ to?: string; state?: string; start?: string; duration?: number | string }>;
-    };
-    const target = normalizeE164(data.targetNumber);
-    const targetLeg = parsed.legs?.find((leg) => normalizeE164(leg.to ?? "") === target);
-    const legDuration = Number(targetLeg?.duration ?? 0);
-    const connectAction = parsed.actions?.find((action) => normalizeE164(action.connect ?? "") === target);
-    const targetAnswered =
-      Boolean(targetLeg?.start) ||
-      legDuration > 0 ||
-      connectAction?.result === "success";
-    const finished = parsed.state !== "ongoing" && parsed.state !== undefined;
-
-    return { ok: true, targetAnswered, finished, state: parsed.state ?? null };
-  });
-
 // Tell 46elks to hang up an in-progress call. Used when the user hangs up the
 // browser leg before (or after) the customer answers — without this the
 // customer's phone keeps ringing because 46elks already dispatched the call.

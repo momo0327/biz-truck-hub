@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Phone, PhoneOff, Mic, MicOff, X, Minus, Delete, GripHorizontal, Check, PhoneMissed } from "lucide-react";
-import { useSoftphone, type CallState, type CustomerCallStatus } from "./SoftphoneProvider";
+import { useSoftphone, type CallState } from "./SoftphoneProvider";
 import { cn } from "@/lib/utils";
 
 const STATE_LABEL: Record<CallState, string> = {
@@ -24,13 +24,6 @@ const STATE_DOT: Record<CallState, string> = {
   ended: "bg-destructive",
 };
 
-const CUSTOMER_STATUS_LABEL: Record<CustomerCallStatus, string> = {
-  pending: "Connecting…",
-  ringing: "Client phone ringing…",
-  answered: "Client answered",
-  "no-answer": "Client did not answer",
-};
-
 function fmt(sec: number) {
   const m = Math.floor(sec / 60)
     .toString()
@@ -50,7 +43,6 @@ export function SoftphonePanel() {
     durationSec,
     sipStatus,
     sipError,
-    customerStatus,
     outcome,
     hangup,
     toggleMute,
@@ -131,11 +123,7 @@ export function SoftphonePanel() {
           <GripHorizontal className="size-3.5 text-muted-foreground/60" />
           <span className={cn("size-2 rounded-full shrink-0", STATE_DOT[state])} />
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {call.direction === "outbound" && state === "in-call"
-              ? CUSTOMER_STATUS_LABEL[customerStatus]
-              : call.direction === "outbound" && state === "ringing"
-                ? "Calling…"
-                : STATE_LABEL[state]}
+            {call.direction === "outbound" && state === "ringing" ? "Calling…" : STATE_LABEL[state]}
           </span>
         </div>
         <div className="flex items-center gap-0.5">
@@ -175,7 +163,7 @@ export function SoftphonePanel() {
             </div>
             {call.contactName && <div className="text-xs text-muted-foreground">{call.number}</div>}
             <div className="text-2xl font-mono tabular-nums pt-1">
-              {state === "in-call" && customerStatus === "answered" ? fmt(durationSec) : "—:—"}
+              {state === "in-call" ? fmt(durationSec) : "—:—"}
             </div>
             {dtmfTrail && (
               <div className="text-xs text-muted-foreground font-mono tracking-widest">

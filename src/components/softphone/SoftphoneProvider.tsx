@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useServerFn } from "@tanstack/react-start";
 import { Inviter, Registerer, SessionState, UserAgent, type Session } from "sip.js";
 import { getWebrtcCredentials } from "@/lib/webrtc.functions";
-import { placeCallFn, hangupCallFn, setCallOutcomeFn, getCallStatusFn } from "@/lib/calls.functions";
+import { placeCallFn, hangupCallFn, setCallOutcomeFn } from "@/lib/calls.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export type CallState = "idle" | "dialing" | "ringing" | "in-call" | "ended";
@@ -16,8 +16,6 @@ export interface ActiveCall {
   direction: "outbound" | "inbound";
 }
 
-export type CustomerCallStatus = "pending" | "ringing" | "answered" | "no-answer";
-
 interface SoftphoneCtx {
   state: CallState;
   call: ActiveCall | null;
@@ -26,7 +24,6 @@ interface SoftphoneCtx {
   durationSec: number;
   sipStatus: SipStatus;
   sipError: string | null;
-  customerStatus: CustomerCallStatus;
   outcome: "answered" | "no-answer" | null;
   startCall: (opts: { number: string; contactName?: string; companyId?: string }) => void;
   hangup: () => void;
@@ -77,12 +74,10 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [notes, setNotes] = useState("");
   const [sipStatus, setSipStatus] = useState<SipStatus>("disconnected");
   const [sipError, setSipError] = useState<string | null>(null);
-  const [customerStatus, setCustomerStatus] = useState<CustomerCallStatus>("pending");
   const [outcome, setOutcome] = useState<"answered" | "no-answer" | null>(null);
   const placeCall = useServerFn(placeCallFn);
   const hangupServerCall = useServerFn(hangupCallFn);
   const setOutcomeServer = useServerFn(setCallOutcomeFn);
-  const getCallStatus = useServerFn(getCallStatusFn);
   const elksCallIdRef = useRef<string | null>(null);
   const logIdRef = useRef<string | null>(null);
 
@@ -94,9 +89,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const outboundActiveRef = useRef(false);
   const trunkNumberRef = useRef<string | null>(null);
   const answerPollRef = useRef<number | null>(null);
-  const statusPollRef = useRef<number | null>(null);
-  const targetNumberRef = useRef<string | null>(null);
-  const customerAnsweredRef = useRef(false);
   const fetchCreds = useServerFn(getWebrtcCredentials);
 
   const stopTick = useCallback(() => {
@@ -111,13 +103,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     setDurationSec(0);
     tickRef.current = window.setInterval(() => setDurationSec((d) => d + 1), 1000);
   }, [stopTick]);
-
-  const stopStatusPoll = useCallback(() => {
-    if (statusPollRef.current) {
-      window.clearInterval(statusPollRef.current);
-      statusPollRef.current = null;
-    }
-  }, []);
 
   // Lazy-init the audio element
   useEffect(() => {
@@ -292,79 +277,30 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             attach();
           }
 
-          const isOutbound = outboundActiveRef.current;
-          if (!isOutbound) {
-            // Inbound calls are real audio the moment we accept.
-            setCustomerStatus("answered");
-            setState("in-call");
-            setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-            startTick();
-            return;
-          }
-
-          // Outbound: the browser leg is connected, but the customer leg may
-          // still be ringing. Keep audio connected, then poll the provider call
-          // details for the target leg instead of guessing from ringback audio.
+          // Once the SIP leg is up, treat the call as connected. 46elks bridges
+          // the customer leg right after we answer the WebRTC INVITE, so audio
+          // is flowing as soon as we attach the remote stream above.
           setState("in-call");
-          setCustomerStatus("ringing");
-          stopStatusPoll();
-          statusPollRef.current = window.setInterval(() => {
-            const callId = elksCallIdRef.current;
-            const targetNumber = targetNumberRef.current;
-            if (!callId || !targetNumber || customerAnsweredRef.current) return;
-            getCallStatus({ data: { callId, targetNumber } })
-              .then((res) => {
-                if (!res.ok) return;
-                if (res.targetAnswered) {
-                  customerAnsweredRef.current = true;
-                  setCustomerStatus("answered");
-                  setOutcome("answered");
-                  if (logIdRef.current) {
-                    setOutcomeServer({ data: { logId: logIdRef.current, outcome: "answered" } }).catch((err) =>
-                      console.error("[softphone] mark answered failed", err),
-                    );
-                  }
-                  setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-                  startTick();
-                  stopStatusPoll();
-                } else if (res.finished) {
-                  setCustomerStatus("no-answer");
-                  setOutcome("no-answer");
-                  if (logIdRef.current) {
-                    setOutcomeServer({ data: { logId: logIdRef.current, outcome: "no-answer" } }).catch((err) =>
-                      console.error("[softphone] mark no-answer failed", err),
-                    );
-                  }
-                  stopStatusPoll();
-                }
-              })
-              .catch((err) => console.warn("[softphone] call status poll failed", err));
-          }, 1500);
+          setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+          startTick();
         } else if (s === SessionState.Terminated) {
           if (answerPollRef.current) {
             window.clearInterval(answerPollRef.current);
             answerPollRef.current = null;
           }
-          stopStatusPoll();
           stopTick();
-          if (outboundActiveRef.current && !customerAnsweredRef.current) {
-            setCustomerStatus("no-answer");
-            setOutcome("no-answer");
-          }
           setState("ended");
           sessionRef.current = null;
           outboundActiveRef.current = false;
           if (audioRef.current) audioRef.current.srcObject = null;
           window.setTimeout(() => {
             setState((cur) => (cur === "ended" ? "idle" : cur));
-            setCall(null);
-            setCustomerStatus("pending");
-            customerAnsweredRef.current = false;
+            setCall((c) => (state === "ended" ? null : c));
           }, 1500);
         }
       });
     },
-    [getCallStatus, setOutcomeServer, startTick, stopStatusPoll, stopTick],
+    [startTick, state, stopTick],
   );
 
   const startCall: SoftphoneCtx["startCall"] = useCallback(
@@ -374,9 +310,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       setDurationSec(0);
       setNotes("");
       setOpen(true);
-      setCustomerStatus("pending");
       setOutcome(null);
-      customerAnsweredRef.current = false;
       logIdRef.current = null;
       setCall({ ...opts, startedAt: Date.now(), direction: "outbound" });
 
@@ -403,7 +337,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
       setState("dialing");
       const normalized = normalizeForSip(opts.number);
-      targetNumberRef.current = normalized;
       console.log("[softphone] startCall", {
         rawNumber: opts.number,
         normalized,
@@ -456,12 +389,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       hangupServerCall({ data: { callId } }).catch((err) => {
         console.error("[softphone] 46elks hangup failed", err);
       });
-    }
-
-    stopStatusPoll();
-    if (activeCall?.direction === "outbound" && !customerAnsweredRef.current) {
-      setCustomerStatus("no-answer");
-      setOutcome("no-answer");
     }
 
     if (session) {
@@ -527,7 +454,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
   const markOutcome = useCallback(async (next: "answered" | "no-answer") => {
     setOutcome(next);
-    setCustomerStatus(next);
     const id = logIdRef.current;
     if (!id) return;
     try {
@@ -547,7 +473,6 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         durationSec,
         sipStatus,
         sipError,
-        customerStatus,
         outcome,
         startCall,
         hangup,
