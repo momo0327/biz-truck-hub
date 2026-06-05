@@ -358,6 +358,14 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       logIdRef.current = null;
       setCall({ ...opts, startedAt: Date.now(), direction: "outbound" });
 
+      // Prime audio playback within the user gesture so the browser allows
+      // autoplay once the remote stream arrives.
+      if (audioRef.current) {
+        audioRef.current.muted = false;
+        audioRef.current.volume = 1;
+        audioRef.current.play().catch(() => {});
+      }
+
       const ua = uaRef.current;
       if (!ua || sipStatus !== "registered") {
         // Fallback: mock progression so the UI is still usable
