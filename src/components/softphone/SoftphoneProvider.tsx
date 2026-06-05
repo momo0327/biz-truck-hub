@@ -364,7 +364,9 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       setDurationSec(0);
       setNotes("");
       setOpen(true);
+      setCustomerStatus("pending");
       setOutcome(null);
+      customerAnsweredRef.current = false;
       logIdRef.current = null;
       setCall({ ...opts, startedAt: Date.now(), direction: "outbound" });
 
@@ -391,6 +393,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
       setState("dialing");
       const normalized = normalizeForSip(opts.number);
+      targetNumberRef.current = normalized;
       console.log("[softphone] startCall", {
         rawNumber: opts.number,
         normalized,
