@@ -324,14 +324,12 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
       const ua = uaRef.current;
       if (!ua || sipStatus !== "registered") {
-        // Fallback: mock progression so the UI is still usable
-        setState("dialing");
-        window.setTimeout(() => setState("ringing"), 1200);
-        window.setTimeout(() => {
-          setState("in-call");
-          setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-          startTick();
-        }, 3000);
+        setSipError(
+          sipError ||
+            "Softphone not ready — add your phone number and WebRTC credentials in Settings → Profile.",
+        );
+        setState("ended");
+        outboundActiveRef.current = false;
         return;
       }
 
@@ -357,7 +355,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           outboundActiveRef.current = false;
         });
     },
-    [sipStatus, startTick, placeCall],
+    [sipStatus, sipError, placeCall],
   );
 
   const hangup = useCallback(async () => {
