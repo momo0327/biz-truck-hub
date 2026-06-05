@@ -277,56 +277,12 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
             attach();
           }
 
-          const isOutbound = outboundActiveRef.current;
-          if (!isOutbound) {
-            // Inbound calls are already real audio on accept.
-            setState("in-call");
-            setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-            startTick();
-            return;
-          }
-
-          // Outbound: poll inbound RTP packets. Customer is considered "on the
-          // line" once we see steady packet growth over a short window
-          // (filters out brief setup pings and any short comfort noise).
-          setState("ringing");
-          if (answerPollRef.current) window.clearInterval(answerPollRef.current);
-          let lastPackets = 0;
-          let growingSamples = 0;
-          const startedPollAt = Date.now();
-          answerPollRef.current = window.setInterval(async () => {
-            if (!pc || session.state !== SessionState.Established) return;
-            try {
-              const stats = await pc.getStats();
-              let packets = 0;
-              stats.forEach((report) => {
-                if (
-                  report.type === "inbound-rtp" &&
-                  (report as RTCInboundRtpStreamStats).kind === "audio"
-                ) {
-                  packets += (report as RTCInboundRtpStreamStats).packetsReceived ?? 0;
-                }
-              });
-              const grew = packets > lastPackets + 5;
-              lastPackets = packets;
-              if (grew) growingSamples += 1;
-              else growingSamples = 0;
-
-              // ~1.5s of sustained inbound audio = customer answered.
-              // Also guard with a min time so we don't flip on initial SDP frames.
-              if (growingSamples >= 3 && Date.now() - startedPollAt > 1200) {
-                if (answerPollRef.current) {
-                  window.clearInterval(answerPollRef.current);
-                  answerPollRef.current = null;
-                }
-                setState("in-call");
-                setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-                startTick();
-              }
-            } catch (err) {
-              console.warn("[softphone] getStats failed", err);
-            }
-          }, 500);
+          // Once the SIP leg is up, treat the call as connected. 46elks bridges
+          // the customer leg right after we answer the WebRTC INVITE, so audio
+          // is flowing as soon as we attach the remote stream above.
+          setState("in-call");
+          setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+          startTick();
         } else if (s === SessionState.Terminated) {
           if (answerPollRef.current) {
             window.clearInterval(answerPollRef.current);
