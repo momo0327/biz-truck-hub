@@ -112,6 +112,13 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     tickRef.current = window.setInterval(() => setDurationSec((d) => d + 1), 1000);
   }, [stopTick]);
 
+  const stopStatusPoll = useCallback(() => {
+    if (statusPollRef.current) {
+      window.clearInterval(statusPollRef.current);
+      statusPollRef.current = null;
+    }
+  }, []);
+
   // Lazy-init the audio element
   useEffect(() => {
     const a = document.createElement("audio");
