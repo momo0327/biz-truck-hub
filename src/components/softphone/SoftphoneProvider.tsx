@@ -252,11 +252,29 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
           const pc = (session as SessionMedia).sessionDescriptionHandler?.peerConnection;
           if (pc && audioRef.current) {
             const remote = new MediaStream();
+            const attach = () => {
+              if (!audioRef.current) return;
+              audioRef.current.srcObject = remote;
+              audioRef.current.muted = false;
+              audioRef.current.volume = 1;
+              audioRef.current.play().catch((err) => console.warn("[softphone] audio.play failed", err));
+            };
+            // Attach any receivers already negotiated
             pc.getReceivers().forEach((r) => {
-              if (r.track) remote.addTrack(r.track);
+              if (r.track && r.track.kind === "audio") remote.addTrack(r.track);
             });
-            audioRef.current.srcObject = remote;
-            audioRef.current.play().catch(() => {});
+            // And any tracks that arrive after SDP negotiation completes
+            pc.ontrack = (ev) => {
+              console.log("[softphone] ontrack", ev.track.kind, ev.streams.length);
+              if (ev.track.kind !== "audio") return;
+              if (!remote.getTracks().includes(ev.track)) remote.addTrack(ev.track);
+              attach();
+            };
+            // Ensure our mic track is actually enabled (sendrecv)
+            pc.getSenders().forEach((s) => {
+              if (s.track && s.track.kind === "audio") s.track.enabled = true;
+            });
+            attach();
           }
 
           const isOutbound = outboundActiveRef.current;
