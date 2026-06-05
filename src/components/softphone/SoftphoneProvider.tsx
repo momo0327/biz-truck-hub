@@ -448,6 +448,12 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
+    stopStatusPoll();
+    if (activeCall?.direction === "outbound" && !customerAnsweredRef.current) {
+      setCustomerStatus("no-answer");
+      setOutcome("no-answer");
+    }
+
     if (session) {
       try {
         switch (session.state) {
@@ -530,6 +536,7 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
         durationSec,
         sipStatus,
         sipError,
+        customerStatus,
         outcome,
         startCall,
         hangup,
