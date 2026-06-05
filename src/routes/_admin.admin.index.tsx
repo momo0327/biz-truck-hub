@@ -57,6 +57,11 @@ function AdminDashboard() {
   const totals = data?.totals ?? { calls: 0, answered: 0, leads: 0 };
   const weekly = data?.weekly ?? [];
   const answerRate = totals.calls > 0 ? Math.round((totals.answered / totals.calls) * 100) : 0;
+  const totals = data?.totals ?? { calls: 0, answered: 0, leads: 0 };
+  const weekly = data?.weekly ?? [];
+  const today = weekly.length > 0 ? weekly[weekly.length - 1] : { calls: 0, answered: 0 };
+  const todayAnswerRate = today.calls > 0 ? Math.round((today.answered / today.calls) * 100) : 0;
+  const [weekDialogOpen, setWeekDialogOpen] = useState(false);
   const topEmployees = (data?.employees ?? [])
     .slice()
     .sort((a, b) => b.stats.calls - a.stats.calls)
@@ -72,21 +77,23 @@ function AdminDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
-          label={t("admin.dash.total_calls")}
-          value={totals.calls.toLocaleString()}
+          label={`${t("admin.dash.total_calls")} (today)`}
+          value={today.calls.toLocaleString()}
           icon={Phone}
           iconColor="text-primary"
           iconBorder="border-primary/40"
           iconBg="bg-primary/10"
+          onClick={() => setWeekDialogOpen(true)}
         />
         <StatCard
-          label={t("admin.dash.answered")}
-          value={totals.answered.toLocaleString()}
+          label={`${t("admin.dash.answered")} (today)`}
+          value={today.answered.toLocaleString()}
           icon={PhoneCall}
-          subtitle={t("admin.dash.answer_rate", { rate: answerRate })}
+          subtitle={t("admin.dash.answer_rate", { rate: todayAnswerRate })}
           iconColor="text-success"
           iconBorder="border-success/40"
           iconBg="bg-success/10"
+          onClick={() => setWeekDialogOpen(true)}
         />
         <StatCard
           label={t("admin.dash.total_leads")}
@@ -97,6 +104,13 @@ function AdminDashboard() {
           iconBg="bg-info/10"
         />
       </div>
+
+      <WeeklyBreakdownDialog
+        open={weekDialogOpen}
+        onOpenChange={setWeekDialogOpen}
+        weekly={weekly}
+      />
+
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <section className="rounded-lg border bg-card p-5 lg:col-span-2">
