@@ -154,7 +154,7 @@ export async function fetchEmployeeDetail(employeeId: string) {
 
 export async function inviteUser(email: string, role: "admin" | "user" = "user") {
   const host = getRequestHost();
-  const proto = getRequestHeader("x-forwarded-proto") || "https";
+  const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : (getRequestHeader("x-forwarded-proto") || "https");
   const redirectTo = `${proto}://${host}/accept-invite`;
 
   // If a previous invite to the same email never completed account setup,

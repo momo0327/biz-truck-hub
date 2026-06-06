@@ -53,7 +53,7 @@ AS $$
 BEGIN
   INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, 'user')
     ON CONFLICT DO NOTHING;
-  IF NEW.email = 'arriahmed673@gmail.com' THEN
+  IF NEW.email = 'mohamedsafe0427@gmail.com' THEN
     INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, 'admin')
       ON CONFLICT DO NOTHING;
   END IF;

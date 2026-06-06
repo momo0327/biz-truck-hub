@@ -1,6 +1,6 @@
 // Server-only helpers: research a Swedish company via Firecrawl + Lovable AI.
 const FIRECRAWL_KEY = () => process.env.FIRECRAWL_API_KEY;
-const LOVABLE_KEY = () => process.env.LOVABLE_API_KEY;
+const OPENROUTER_KEY = () => process.env.OPENROUTER_API_KEY;
 
 export type Vehicle = {
   registration?: string;
@@ -111,8 +111,8 @@ function parseMerinfoVehicles(md: string): Vehicle[] {
 }
 
 export async function researchCompany(name: string, orgNumber?: string | null): Promise<ResearchResult> {
-  const lovKey = LOVABLE_KEY();
-  if (!lovKey) throw new Error("LOVABLE_API_KEY not configured");
+  const lovKey = OPENROUTER_KEY();
+  if (!lovKey) throw new Error("OPENROUTER_API_KEY not configured");
 
   // 1) Broad search to find pages mentioning the company
   const queries = [
@@ -275,9 +275,9 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
   const regexPhones = extractSwedishPhones(context);
 
   // 3) Ask AI to extract structured info
-  const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${lovKey}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${lovKey}`, "Content-Type": "application/json", "HTTP-Referer": "https://localhost", "X-Title": "biz-truck-hub" },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       max_tokens: 2000,
