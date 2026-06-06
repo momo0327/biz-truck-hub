@@ -1,9 +1,0 @@
-{
-  "outputDirectory": "dist/client",
-  "rewrites": [
-    {
-      "source": "/:path((?!.*\\..*).*)",
-      "destination": "/dist/server/server.js"
-    }
-  ]
-}
