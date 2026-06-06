@@ -1,12 +1,5 @@
 {
   "outputDirectory": "dist/client",
-  "functions": {
-    "dist/server/server.js": {
-      "runtime": "nodejs20.x",
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
     {
       "source": "/:path((?!.*\\..*).*)",
