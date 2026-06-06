@@ -4,4 +4,8 @@
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
+  "pages_build_output_dir": "./dist",
+  "build": {
+    "command": "npm run build"
+  }
 }
