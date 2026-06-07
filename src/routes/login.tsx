@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
+import truckImg from "@/assets/16122-052.jpg";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -34,25 +35,27 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      <div className="hidden lg:flex flex-col justify-between p-10 bg-sidebar text-sidebar-foreground">
-        <img src={logo} alt="Auto Wahab Export" className="h-24 w-auto object-contain self-start brightness-0 invert" />
-        <div>
-          <h1 className="font-display text-4xl leading-tight max-w-md">
-            Find. Call. Close.
-          </h1>
-          <p className="mt-3 opacity-70 max-w-md">
-            Research Swedish trucking fleets, dial leads with one click, and
-            track deals from first contact to close.
+    <div className="min-h-screen flex">
+      {/* Left: truck image */}
+      <div className="hidden lg:block lg:w-3/5 relative">
+        <img src={truckImg} alt="" className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-black/40" />
+        <img src={logo} alt="Auto Wahab Export" className="absolute top-8 left-8 h-10 w-auto object-contain brightness-0 invert" />
+        <div className="absolute bottom-1/8 left-10 right-10">
+          <h2 className="font-display text-5xl text-white leading-tight">
+            Customer Relations Management <br /> system for Auto Wahab Export
+          </h2>
+          <p className="mt-3 text-white/70 text-lg">
+            Research fleets, dial leads with one click, and track <br /> every deal from first contact to close.
           </p>
         </div>
-        <div className="text-xs opacity-50">Built for callers, not spreadsheets.</div>
       </div>
-      <div className="flex items-center justify-center p-8">
-        <form onSubmit={submit} className="w-full max-w-sm space-y-5">
+      {/* Right: form */}
+      <div className="flex flex-col justify-center items-start w-full lg:w-2/5 px-12 py-12 bg-white">
+        <form onSubmit={submit} className="w-full space-y-5">
           <div>
-            <h2 className="font-display text-2xl">Welcome back</h2>
-            <p className="text-sm text-muted-foreground mt-1">Sign in to your CRM</p>
+            <h2 className="font-display text-4xl">Welcome back</h2>
+            <p className="text-sm text-muted-foreground mt-2">Sign in to your CRM</p>
           </div>
           <div className="space-y-3">
             <input
@@ -80,7 +83,7 @@ function LoginPage() {
           >
             {busy ? "Please wait…" : "Sign in"}
           </button>
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-xs text-muted-foreground">
             New accounts are created by invitation only.
           </p>
         </form>
