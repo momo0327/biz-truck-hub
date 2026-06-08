@@ -1,6 +1,5 @@
-// Server-only helpers: research a Swedish company via Firecrawl + Lovable AI.
+// Server-only helpers: research a Swedish company via Firecrawl.
 const FIRECRAWL_KEY = () => process.env.FIRECRAWL_API_KEY;
-const OPENROUTER_KEY = () => process.env.OPENROUTER_API_KEY;
 
 export type Vehicle = {
   registration?: string;
@@ -110,9 +109,76 @@ function parseMerinfoVehicles(md: string): Vehicle[] {
   return vehicles;
 }
 
+const NOISE_WORDS = ["behandlingen", "personuppgifter", "dataskydd", "integritetspolicy", "cookies", "samtycke", "tillgänglig", "närvarande"];
+
+function isRealName(s: string): boolean {
+  const lower = s.toLowerCase();
+  if (NOISE_WORDS.some((w) => lower.includes(w))) return false;
+  if (s.split(/[\s,]+/).filter(Boolean).length < 2) return false;
+  if (s.length > 60) return false;
+  return true;
+}
+
+// Convert "Lastname, Firstname Middle" → "Firstname Middle Lastname"
+function normalizeSwedishName(s: string): string {
+  const m = s.match(/^([A-ZÅÄÖ][a-zåäö\-]+),\s*([A-ZÅÄÖ][a-zåäö\- A-ZÅÄÖ]+)$/);
+  if (m) return `${m[2].trim()} ${m[1].trim()}`;
+  return s;
+}
+
+// Regex for "Lastname, Firstname" with optional middle names
+const LASTNAME_FIRSTNAME_RE = /([A-ZÅÄÖ][a-zåäö\-]+),\s*([A-ZÅÄÖ][a-zåäö\-]+(?:\s+[A-ZÅÄÖ][a-zåäö\-]+)*)/;
+
+function extractContactPerson(md: string): string | undefined {
+  const patterns = [
+    /verkst[äa]llande direkt[öo]r[:\s]+([A-ZÅÄÖ][a-zåäö]+(?: [A-ZÅÄÖ][a-zåäö]+)+)/i,
+    /styrelseordf[öo]rande[:\s]+([A-ZÅÄÖ][a-zåäö]+(?: [A-ZÅÄÖ][a-zåäö]+)+)/i,
+    /\bvd[:\s]+([A-ZÅÄÖ][a-zåäö]+(?: [A-ZÅÄÖ][a-zåäö]+)+)/i,
+    /kontaktperson[:\s]+([A-ZÅÄÖ][a-zåäö]+(?: [A-ZÅÄÖ][a-zåäö]+)+)/i,
+    /ansvarig[:\s]+([A-ZÅÄÖ][a-zåäö]+(?: [A-ZÅÄÖ][a-zåäö]+)+)/i,
+  ];
+  for (const re of patterns) {
+    const m = md.match(re);
+    if (m?.[1] && isRealName(m[1])) return normalizeSwedishName(m[1].trim());
+  }
+  // Match "Lastname, Firstname Middle" anywhere in the text (verklig-huvudman)
+  const vhMatch = md.match(LASTNAME_FIRSTNAME_RE);
+  if (vhMatch) {
+    const full = `${vhMatch[1]}, ${vhMatch[2]}`;
+    if (isRealName(full)) return normalizeSwedishName(full);
+  }
+  return undefined;
+}
+
+function extractAddress(md: string): string | undefined {
+  // Strip "Adress" label that merinfo puts directly before the street name
+  const cleaned = md.replace(/\bAdress\s*/g, "");
+  // Match "Street Name 12, 123 45 City" or "Street Name 12\n123 45 City"
+  const m = cleaned.match(/([A-ZÅÄÖ][a-zåäöA-ZÅÄÖ ]+\s+\d+[A-Za-z]?)[,\n\r]+\s*(\d{3}\s*\d{2}\s+[A-ZÅÄÖ][a-zåäö]+)/);
+  if (m) return `${m[1].trim()}, ${m[2].trim()}`;
+  // Fallback: just postal code + city
+  const m2 = cleaned.match(/(\d{3}\s*\d{2})\s+([A-ZÅÄÖ][a-zåäö]{2,})/);
+  if (m2) return `${m2[1]} ${m2[2]}`;
+  return undefined;
+}
+
+function extractWebsite(results: Array<{ url: string }>): string | undefined {
+  const excluded = ["allabolag.se", "hitta.se", "eniro.se", "merinfo.se", "linkedin.com", "facebook.com", "instagram.com", "twitter.com", "google.com", "bing.com"];
+  const own = results.find((r) => {
+    const u = r.url.toLowerCase();
+    return excluded.every((e) => !u.includes(e));
+  });
+  if (!own) return undefined;
+  try {
+    const u = new URL(own.url);
+    return `${u.protocol}//${u.hostname}`;
+  } catch {
+    return own.url;
+  }
+}
+
 export async function researchCompany(name: string, orgNumber?: string | null): Promise<ResearchResult> {
-  const lovKey = OPENROUTER_KEY();
-  if (!lovKey) throw new Error("OPENROUTER_API_KEY not configured");
+  if (!FIRECRAWL_KEY()) throw new Error("FIRECRAWL_API_KEY not configured");
 
   // 1) Broad search to find pages mentioning the company
   const queries = [
@@ -200,8 +266,17 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
     const mainMd = main?.data?.markdown || main?.markdown;
     if (mainMd) merinfo.markdown = mainMd;
 
-    // Build /fordon URL (strip any trailing path, ensure single trailing slash)
+    // Build base URL (strip any trailing subpage path)
     const base = merinfo.url.replace(/\/(fordon|telefonnummer|adresser|styrelse-koncern|verklig-huvudman|nyckeltal|kontakt|ekonomi|styrelse)(\/.*)?$/i, "").replace(/\/$/, "");
+
+    // Scrape /verklig-huvudman for the beneficial owner (real person behind the company)
+    const vhScrape = await firecrawlScrape(`${base}/verklig-huvudman`).catch(() => null);
+    const vhMd = vhScrape?.data?.markdown || vhScrape?.markdown;
+    if (vhMd) {
+      results.push({ url: `${base}/verklig-huvudman`, markdown: vhMd });
+      // Merge into merinfo markdown so extractContactPerson can use it
+      merinfo.markdown = (merinfo.markdown ?? "") + "\n\n" + vhMd;
+    }
 
     // Paginate: up to 20 pages (500 vehicles). Merinfo shows 25/page.
     // Trust "Totalt antal fordon" from page 1 since pagination links are
@@ -264,122 +339,41 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
   const sources = results.map((r) => r.url).filter(Boolean);
 
   const context = results
-    .map((r, i) => {
-      const md = (r.markdown ?? r.description ?? "").slice(0, 4000);
-      return `--- Source ${i + 1}: ${r.url}\n${md}`;
-    })
+    .map((r) => (r.markdown ?? r.description ?? ""))
     .join("\n\n")
     .slice(0, 24000);
 
-  // Regex fallback for phones
-  const regexPhones = extractSwedishPhones(context);
+  // Extract phones via regex from all scraped content
+  const phones = Array.from(new Set(extractSwedishPhones(context))).slice(0, 10);
 
-  // 3) Ask AI to extract structured info
-  const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${lovKey}`, "Content-Type": "application/json", "HTTP-Referer": "https://localhost", "X-Title": "biz-truck-hub" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      max_tokens: 2000,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You extract Swedish company info for a truck-buying CRM. Output ONLY via save_company_info. Phones MUST be Swedish format (+46... or 0...). The merinfo.se /fordon page lists every vehicle the company owns with registration plates, brand, model, type and year — you MUST list EVERY single vehicle as a separate object in the `vehicles` array (one per row). Also write a short SUMMARY into trucks_info (brands and types) and the total count into fleet_size. List EVERY phone number found across sources.",
-        },
-        {
-          role: "user",
-          content: `Company: ${name}\nOrg number: ${orgNumber ?? "unknown"}\n\nWeb sources (note: any URL ending in /fordon is the official vehicle registry list — extract every row):\n${context}\n\nExtract: own website domain, all phone numbers, contact person, address, full vehicles list (one entry per registration plate), summary of trucks, total fleet size.`,
-        },
-      ],
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: "save_company_info",
-            description: "Return structured info extracted about the company.",
-            parameters: {
-              type: "object",
-              properties: {
-                website: { type: "string", description: "Their own website URL." },
-                phones: { type: "array", items: { type: "string" }, description: "All phone numbers found, Swedish format." },
-                trucks_info: { type: "string", description: "Short summary of fleet (1-3 sentences)." },
-                fleet_size: { type: "string", description: "Total number of vehicles, e.g. '12'." },
-                contact_person: { type: "string" },
-                address: { type: "string" },
-                vehicles: {
-                  type: "array",
-                  description: "Every vehicle from the merinfo /fordon page or other sources. One object per vehicle.",
-                  items: {
-                    type: "object",
-                    properties: {
-                      registration: { type: "string", description: "Registration plate, e.g. ABC123." },
-                      brand: { type: "string", description: "Brand/make, e.g. Volvo, Scania." },
-                      model: { type: "string" },
-                      type: { type: "string", description: "Vehicle type in Swedish: lastbil, släp, personbil, buss, traktor etc." },
-                      year: { type: "string", description: "Model year." },
-                      fuel: { type: "string", description: "Fuel type, e.g. diesel, el, bensin." },
-                      weight: { type: "string", description: "Total weight if listed." },
-                    },
-                    required: ["registration"],
-                    additionalProperties: false,
-                  },
-                },
-              },
-              required: ["phones", "trucks_info", "vehicles"],
-              additionalProperties: false,
-            },
-          },
-        },
-      ],
-      tool_choice: { type: "function", function: { name: "save_company_info" } },
-    }),
-  });
+  // Extract contact person and address from merinfo main page
+  const merinfoMd = merinfo?.markdown ?? "";
+  const contactPerson = extractContactPerson(merinfoMd) ?? extractContactPerson(context);
+  const address = extractAddress(merinfoMd) ?? extractAddress(context);
+  const website = extractWebsite(results);
 
-  if (!aiRes.ok) {
-    const text = await aiRes.text();
-    if (aiRes.status === 429) throw new Error("AI rate limit exceeded. Try again shortly.");
-    if (aiRes.status === 402) throw new Error("AI credits exhausted. Add credits in Workspace > Usage.");
-    throw new Error(`AI gateway error ${aiRes.status}: ${text}`);
+  // Build a simple fleet summary from parsed vehicles
+  const brandCounts: Record<string, number> = {};
+  for (const v of parsedVehicles) {
+    if (v.brand) brandCounts[v.brand] = (brandCounts[v.brand] ?? 0) + 1;
   }
-
-  const json = await aiRes.json();
-  const call = json.choices?.[0]?.message?.tool_calls?.[0];
-  let parsed: Partial<ResearchResult> = { phones: [], vehicles: [] };
-  let toolCallRaw: string | undefined;
-  if (call?.function?.arguments) {
-    toolCallRaw = call.function.arguments;
-    try { parsed = JSON.parse(call.function.arguments); } catch { /* ignore */ }
-  }
-
-  // Merge AI phones with regex phones (AI can miss some, regex can find junk; both ok)
-  const aiPhones = (parsed.phones ?? []).map((p) => p.trim()).filter(Boolean);
-  const phones = Array.from(new Set([...aiPhones, ...regexPhones])).slice(0, 10);
-
-  const aiVehicles = (parsed.vehicles ?? []).filter((v) => v && (v.registration || v.brand || v.model));
-
-  // Prefer deterministic merinfo-parsed vehicles; merge any extra AI-found
-  // vehicles (by registration plate) that the parser missed.
-  const seenRegs = new Set(parsedVehicles.map((v) => (v.registration ?? "").toUpperCase()));
-  const merged = [...parsedVehicles];
-  for (const v of aiVehicles) {
-    const r = (v.registration ?? "").toUpperCase();
-    if (r && !seenRegs.has(r)) {
-      merged.push(v);
-      seenRegs.add(r);
-    }
-  }
-  const vehicles = merged;
+  const brandSummary = Object.entries(brandCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([brand, count]) => `${count} ${brand}`)
+    .join(", ");
+  const trucks_info = parsedVehicles.length > 0
+    ? `Fleet of ${parsedVehicles.length} vehicles${brandSummary ? `: ${brandSummary}` : ""}.`
+    : undefined;
 
   return {
-    website: parsed.website || ownSite?.url,
+    website,
     phones,
-    trucks_info: parsed.trucks_info,
-    fleet_size: parsed.fleet_size ?? totalFleetFromMerinfo ?? (vehicles.length ? String(vehicles.length) : undefined),
-    contact_person: parsed.contact_person,
-    address: parsed.address,
-    vehicles,
+    trucks_info,
+    fleet_size: totalFleetFromMerinfo ?? (parsedVehicles.length ? String(parsedVehicles.length) : undefined),
+    contact_person: contactPerson,
+    address,
+    vehicles: parsedVehicles,
     sources,
-    debug: { query: queries.join(" | "), contextChars: context.length, toolCallRaw },
+    debug: { query: queries.join(" | "), contextChars: context.length },
   };
 }
