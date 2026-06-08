@@ -21,12 +21,26 @@ export const Route = createFileRoute("/api/public/elks-status")({
         const duration = payload.duration ? parseInt(payload.duration, 10) : null;
 
         if (callId) {
-          const update: { status: string | null; duration?: number } = { status: state ?? null };
-          if (duration !== null && !Number.isNaN(duration)) update.duration = duration;
-          await supabaseAdmin
+          // Only update duration from the webhook — never overwrite a user-set
+          // outcome (answered / no-answer). The user's manual click is the source
+          // of truth; 46elks "success" just means the call connected technically.
+          const { data: existing } = await supabaseAdmin
             .from("call_logs")
-            .update(update)
-            .eq("elks_call_id", callId);
+            .select("status")
+            .eq("elks_call_id", callId)
+            .maybeSingle();
+
+          const userSetOutcome = existing?.status === "answered" || existing?.status === "no-answer";
+          const update: { status?: string | null; duration?: number } = {};
+          if (!userSetOutcome) update.status = state ?? null;
+          if (duration !== null && !Number.isNaN(duration)) update.duration = duration;
+
+          if (Object.keys(update).length > 0) {
+            await supabaseAdmin
+              .from("call_logs")
+              .update(update)
+              .eq("elks_call_id", callId);
+          }
         }
 
         return new Response("ok");
