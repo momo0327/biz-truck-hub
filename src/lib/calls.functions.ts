@@ -176,7 +176,7 @@ export const setCallOutcomeFn = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { error } = await supabase
       .from("call_logs")
-      .update({ status: data.outcome })
+      .update({ outcome: data.outcome })
       .eq("id", data.logId);
     if (error) return { ok: false, error: error.message };
     return { ok: true };

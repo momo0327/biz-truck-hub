@@ -3,6 +3,11 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const ANSWERED_CALL_STATUSES = new Set(["success", "answered", "completed"]);
+function isCallAnswered(c: { status?: string | null; outcome?: string | null }) {
+  if (c.outcome === "answered") return true;
+  if (c.outcome === "no-answer") return false;
+  return ANSWERED_CALL_STATUSES.has((c.status ?? "").toLowerCase());
+}
 
 export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -53,7 +58,7 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
 
     const totals = {
       calls: calls.length,
-      answered: calls.filter((c) => ANSWERED_CALL_STATUSES.has((c.status ?? "").toLowerCase())).length,
+      answered: calls.filter(isCallAnswered).length,
       leads: companies.length,
     };
 
@@ -75,7 +80,7 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
       const b = byDate.get(key);
       if (!b) return;
       b.calls++;
-      if (ANSWERED_CALL_STATUSES.has((c.status ?? "").toLowerCase())) b.answered++;
+      if (isCallAnswered(c)) b.answered++;
     });
     // sync mutated values back into the array
     let i = 6;

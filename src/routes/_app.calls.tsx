@@ -21,12 +21,16 @@ type CallFilter = "all" | "outbound" | "answered" | "not_answered";
 
 const ANSWERED_STATUSES = new Set(["answered", "success", "completed"]);
 const NOT_ANSWERED_STATUSES = new Set(["no-answer", "noanswer", "missed", "failed", "busy", "voicemail"]);
-function isAnswered(c: { status?: string | null; duration?: number | null }) {
+function isAnswered(c: { status?: string | null; outcome?: string | null; duration?: number | null }) {
+  if (c.outcome === "answered") return true;
+  if (c.outcome === "no-answer") return false;
   if (c.status && ANSWERED_STATUSES.has(c.status)) return true;
   if ((c.duration ?? 0) > 0) return true;
   return false;
 }
-function isNotAnswered(c: { status?: string | null; duration?: number | null }) {
+function isNotAnswered(c: { status?: string | null; outcome?: string | null; duration?: number | null }) {
+  if (c.outcome === "no-answer") return true;
+  if (c.outcome === "answered") return false;
   if (isAnswered(c)) return false;
   if (c.status && NOT_ANSWERED_STATUSES.has(c.status)) return true;
   return false;
