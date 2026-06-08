@@ -122,13 +122,15 @@ function Dashboard() {
           )}
           {calls.map((c) => {
             const isOutbound = c.direction !== "inbound";
-            const isMissed = ["no-answer", "noanswer", "missed", "failed", "busy"].includes(c.status ?? "");
-            const Icon = isMissed ? PhoneMissed : isOutbound ? PhoneOutgoing : PhoneIncoming;
-            const tone = isMissed
+            const answered = c.outcome === "answered" || (!c.outcome && (["answered", "success", "completed"].includes(c.status ?? "") || (c.duration ?? 0) > 0));
+            const notAnswered = c.outcome === "no-answer" || (!c.outcome && ["no-answer", "noanswer", "missed", "failed", "busy"].includes(c.status ?? ""));
+            const Icon = notAnswered ? PhoneMissed : isOutbound ? PhoneOutgoing : PhoneIncoming;
+            const tone = notAnswered
               ? "bg-destructive/10 text-destructive"
-              : isOutbound
-                ? "bg-muted text-muted-foreground"
-                : "bg-success/15 text-success";
+              : answered
+                ? "bg-success/15 text-success"
+                : "bg-muted text-muted-foreground";
+            const label = notAnswered ? "not answered" : answered ? "answered" : (c.status ?? "—");
             const name = (c.company_id && companyById.get(c.company_id)) || "Unknown";
             return (
               <li key={c.id} className="py-3 flex items-center gap-3">
@@ -140,7 +142,7 @@ function Dashboard() {
                   <div className="text-[11px] font-mono text-muted-foreground">{c.to_number ?? "—"}</div>
                 </div>
                 <div className="text-xs text-muted-foreground hidden sm:block capitalize">
-                  {isMissed ? "not answered" : (c.duration ?? 0) > 0 || c.status === "answered" || c.status === "success" ? "answered" : (c.status ?? "—")}
+                  {label}
                 </div>
                 <div className="text-xs text-muted-foreground tabular-nums">
                   {new Date(c.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
