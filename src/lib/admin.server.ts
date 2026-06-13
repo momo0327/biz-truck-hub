@@ -123,23 +123,25 @@ export async function fetchOverviewData(userIds: string[]) {
 }
 
 export async function fetchEmployeeDetail(employeeId: string) {
-  const [{ data: user }, { data: profile }, { data: companies }, { data: calls }] =
-    await Promise.all([
-      supabaseAdmin.auth.admin.getUserById(employeeId),
-      supabaseAdmin.from("profiles").select("*").eq("user_id", employeeId).maybeSingle(),
-      supabaseAdmin
-        .from("companies")
-        .select("*")
-        .eq("user_id", employeeId)
-        .order("last_contact", { ascending: false, nullsFirst: false }),
+  const [{ data: user }, { data: profile }, { data: calls }] = await Promise.all([
+    supabaseAdmin.auth.admin.getUserById(employeeId),
+    supabaseAdmin.from("profiles").select("*").eq("user_id", employeeId).maybeSingle(),
+    supabaseAdmin
+      .from("call_logs")
+      .select("id, company_id, to_number, direction, duration, status, note, outcome, created_at")
+      .eq("user_id", employeeId)
+      .order("created_at", { ascending: false })
+      .limit(500),
+  ]);
 
-      supabaseAdmin
-        .from("call_logs")
-        .select("id, company_id, to_number, direction, duration, status, note, outcome, created_at")
-        .eq("user_id", employeeId)
-        .order("created_at", { ascending: false })
-        .limit(500),
-    ]);
+  const companies = await fetchAll<any>(() =>
+    supabaseAdmin
+      .from("companies")
+      .select("*")
+      .eq("user_id", employeeId)
+      .order("last_contact", { ascending: false, nullsFirst: false }),
+  );
+
   return {
     employee: {
       id: employeeId,
@@ -147,7 +149,7 @@ export async function fetchEmployeeDetail(employeeId: string) {
       displayName: profile?.display_name ?? null,
       phoneNumber: profile?.phone_number ?? null,
     },
-    companies: companies ?? [],
+    companies,
     calls: calls ?? [],
   };
 }

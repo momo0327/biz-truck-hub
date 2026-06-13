@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { getEmployeeDetailFn, deleteEmployeeFn } from "@/lib/admin.functions";
 import { STATUS_META, type Company } from "@/lib/companies";
@@ -26,6 +26,12 @@ function EmployeeDetail() {
   });
 
   const [tab, setTab] = useState<Tab>("companies");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const allCompanies = useMemo(() => (data?.companies ?? []) as Company[], [data]);
+  const filteredCompanies = useMemo(
+    () => statusFilter === "all" ? allCompanies : allCompanies.filter((c) => c.status === statusFilter),
+    [allCompanies, statusFilter],
+  );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -55,7 +61,7 @@ function EmployeeDetail() {
     return <div className="p-8 text-muted-foreground text-sm">Loading…</div>;
   }
 
-  const { employee, companies, calls } = data;
+  const { employee, calls } = data;
 
   return (
     <div className="p-8 w-full space-y-6">
@@ -140,7 +146,7 @@ function EmployeeDetail() {
       <div className="rounded-lg border bg-card overflow-hidden">
         <div className="flex items-center gap-1 border-b px-2 bg-muted/30">
           <TabButton active={tab === "companies"} onClick={() => setTab("companies")} icon={Building2}>
-            Companies ({companies.length})
+            Companies ({allCompanies.length})
           </TabButton>
           <TabButton active={tab === "calls"} onClick={() => setTab("calls")} icon={PhoneCall}>
             Call log ({calls.length})
@@ -148,55 +154,76 @@ function EmployeeDetail() {
         </div>
 
         {tab === "companies" && (
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Company</th>
-                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Primary Contact</th>
-                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Phone</th>
-                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Status</th>
-                <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Last contact</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {(companies as Company[]).map((c) => {
-                const meta = STATUS_META[c.status];
-                const city = c.address?.split(",")[0]?.trim() || "";
+          <>
+            <div className="flex gap-2 flex-wrap px-4 py-3 border-b bg-muted/20 overflow-x-auto">
+              {(["all", ...Object.keys(STATUS_META)] as string[]).map((s) => {
+                const count = s === "all" ? allCompanies.length : allCompanies.filter((c) => c.status === s).length;
+                const meta = s === "all" ? null : STATUS_META[s as keyof typeof STATUS_META];
                 return (
-                  <tr key={c.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelected(c)}>
-                    <td className="px-4 py-3">
-                      <div className="font-medium truncate">{c.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {[city, c.org_number].filter(Boolean).join(" · ") || "—"}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-sm">{c.contact_person || "—"}</div>
-                    </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <PhoneButtons phones={c.phones ?? []} companyId={c.id} contactName={c.name} compact />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full ${meta.tone}`}>
-                        <span className={`size-1.5 rounded-full ${meta.dot}`} />
-                        {meta.label}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                      {c.last_contact ? new Date(c.last_contact).toLocaleString() : "—"}
-                    </td>
-                  </tr>
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                      statusFilter === s
+                        ? "bg-foreground text-background"
+                        : "bg-muted hover:bg-muted/70 text-foreground"
+                    }`}
+                  >
+                    {meta ? meta.label : "All"} <span className="opacity-60">{count}</span>
+                  </button>
                 );
               })}
-              {companies.length === 0 && (
+            </div>
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground text-sm">
-                    No companies imported yet.
-                  </td>
+                  <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Company</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Primary Contact</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Phone</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Status</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-medium tracking-[0.18em] uppercase">Last contact</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y">
+                {filteredCompanies.map((c) => {
+                  const meta = STATUS_META[c.status as keyof typeof STATUS_META] ?? { label: c.status ?? "—", tone: "bg-muted text-foreground", dot: "bg-muted-foreground" };
+                  const city = c.address?.split(",")[0]?.trim() || "";
+                  return (
+                    <tr key={c.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelected(c)}>
+                      <td className="px-4 py-3">
+                        <div className="font-medium truncate">{c.name}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {[city, c.org_number].filter(Boolean).join(" · ") || "—"}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-sm">{c.contact_person || "—"}</div>
+                      </td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <PhoneButtons phones={c.phones ?? []} companyId={c.id} contactName={c.name} compact />
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full ${meta.tone}`}>
+                          <span className={`size-1.5 rounded-full ${meta.dot}`} />
+                          {meta.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                        {c.last_contact ? new Date(c.last_contact).toLocaleString() : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filteredCompanies.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground text-sm">
+                      No companies found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </>
         )}
 
         {tab === "calls" && (
