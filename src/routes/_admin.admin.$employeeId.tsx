@@ -23,6 +23,7 @@ function EmployeeDetail() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-employee", employeeId],
     queryFn: () => fetchDetail({ data: { employeeId } }),
+    staleTime: Infinity,
   });
 
   const [tab, setTab] = useState<Tab>("companies");
@@ -32,10 +33,12 @@ function EmployeeDetail() {
     () => STATUS_ORDER.reduce((acc, s) => ({ ...acc, [s]: allCompanies.filter((c) => c.status === s).length }), {} as Record<Status, number>),
     [allCompanies],
   );
-  const filteredCompanies = useMemo(
-    () => statusFilter === "all" ? allCompanies : allCompanies.filter((c) => c.status === statusFilter),
-    [allCompanies, statusFilter],
-  );
+  const filteredCompanies = useMemo(() => {
+    if (statusFilter === "all") return allCompanies;
+    const result = allCompanies.filter((c) => c.status === statusFilter);
+    console.log("[filter]", statusFilter, "→", result.length, "of", allCompanies.length, "| sample statuses:", [...new Set(allCompanies.map(c => c.status))]);
+    return result;
+  }, [allCompanies, statusFilter]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [deleting, setDeleting] = useState(false);
