@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { getEmployeeDetailFn, deleteEmployeeFn } from "@/lib/admin.functions";
 import { STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
@@ -33,12 +33,14 @@ function EmployeeDetail() {
     () => STATUS_ORDER.reduce((acc, s) => ({ ...acc, [s]: allCompanies.filter((c) => c.status === s).length }), {} as Record<Status, number>),
     [allCompanies],
   );
-  const filteredCompanies = useMemo(() => {
-    if (statusFilter === "all") return allCompanies;
-    const result = allCompanies.filter((c) => c.status === statusFilter);
-    console.log("[filter]", statusFilter, "→", result.length, "of", allCompanies.length, "| sample statuses:", [...new Set(allCompanies.map(c => c.status))]);
-    return result;
-  }, [allCompanies, statusFilter]);
+  const filteredCompanies = useMemo(
+    () => statusFilter === "all" ? allCompanies : allCompanies.filter((c) => c.status === statusFilter),
+    [allCompanies, statusFilter],
+  );
+  const [visibleCount, setVisibleCount] = useState(100);
+  useEffect(() => { setVisibleCount(100); }, [statusFilter]);
+  const tableRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, [statusFilter]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -74,7 +76,7 @@ function EmployeeDetail() {
     <div className="p-8 w-full space-y-6">
       <div>
         <Link
-          to="/admin"
+          to="/admin/employees"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" /> Back to employees
@@ -150,7 +152,7 @@ function EmployeeDetail() {
         </div>
       )}
 
-      <div className="rounded-lg border bg-card overflow-hidden">
+      <div ref={tableRef} className="rounded-lg border bg-card overflow-hidden">
         <div className="flex items-center gap-1 border-b px-2 bg-muted/30">
           <TabButton active={tab === "companies"} onClick={() => setTab("companies")} icon={Building2}>
             Companies ({allCompanies.length})
@@ -198,7 +200,7 @@ function EmployeeDetail() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filteredCompanies.map((c) => {
+                {filteredCompanies.slice(0, visibleCount).map((c) => {
                   const meta = STATUS_META[c.status as keyof typeof STATUS_META] ?? { label: c.status ?? "—", tone: "bg-muted text-foreground", dot: "bg-muted-foreground" };
                   const city = c.address?.split(",")[0]?.trim() || "";
                   return (
@@ -231,6 +233,18 @@ function EmployeeDetail() {
                   <tr>
                     <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground text-sm">
                       No companies found.
+                    </td>
+                  </tr>
+                )}
+                {filteredCompanies.length > visibleCount && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-4 text-center">
+                      <button
+                        onClick={() => setVisibleCount((n) => n + 100)}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Load more ({filteredCompanies.length - visibleCount} remaining)
+                      </button>
                     </td>
                   </tr>
                 )}
