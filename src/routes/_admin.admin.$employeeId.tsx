@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { getEmployeeDetailFn, deleteEmployeeFn } from "@/lib/admin.functions";
-import { STATUS_META, type Company } from "@/lib/companies";
+import { STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
 import { PhoneButtons } from "@/components/PhoneButtons";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { ArrowLeft, Mail, Phone, Building2, PhoneCall, Trash2 } from "lucide-react";
@@ -26,8 +26,12 @@ function EmployeeDetail() {
   });
 
   const [tab, setTab] = useState<Tab>("companies");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const allCompanies = useMemo(() => (data?.companies ?? []) as Company[], [data]);
+  const statusCounts = useMemo(
+    () => STATUS_ORDER.reduce((acc, s) => ({ ...acc, [s]: allCompanies.filter((c) => c.status === s).length }), {} as Record<Status, number>),
+    [allCompanies],
+  );
   const filteredCompanies = useMemo(
     () => statusFilter === "all" ? allCompanies : allCompanies.filter((c) => c.status === statusFilter),
     [allCompanies, statusFilter],
@@ -156,20 +160,26 @@ function EmployeeDetail() {
         {tab === "companies" && (
           <>
             <div className="flex gap-2 flex-wrap px-4 py-3 border-b bg-muted/20 overflow-x-auto">
-              {(["all", ...Object.keys(STATUS_META)] as string[]).map((s) => {
-                const count = s === "all" ? allCompanies.length : allCompanies.filter((c) => c.status === s).length;
-                const meta = s === "all" ? null : STATUS_META[s as keyof typeof STATUS_META];
+              <button
+                onClick={() => setStatusFilter("all")}
+                className={`inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors border ${
+                  statusFilter === "all" ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"
+                }`}
+              >
+                All <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${statusFilter === "all" ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"}`}>{allCompanies.length}</span>
+              </button>
+              {STATUS_ORDER.map((s) => {
+                const meta = STATUS_META[s];
+                const active = statusFilter === s;
                 return (
                   <button
                     key={s}
                     onClick={() => setStatusFilter(s)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                      statusFilter === s
-                        ? "bg-foreground text-background"
-                        : "bg-muted hover:bg-muted/70 text-foreground"
+                    className={`inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors border ${
+                      active ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"
                     }`}
                   >
-                    {meta ? meta.label : "All"} <span className="opacity-60">{count}</span>
+                    {meta.label} <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"}`}>{statusCounts[s]}</span>
                   </button>
                 );
               })}
