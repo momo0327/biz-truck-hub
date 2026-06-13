@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { X, Loader2, RefreshCw, ExternalLink, Trash2, Calendar as CalendarIcon, Plus } from "lucide-react";
+import { useEffect, useState, useContext } from "react";
+import { X, Loader2, RefreshCw, ExternalLink, Trash2, Calendar as CalendarIcon, Plus, PhoneCall } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { researchCompanyFn } from "@/lib/research.functions";
@@ -16,6 +16,7 @@ import {
   type ScheduledCall,
 } from "@/lib/schedule";
 import { toast } from "sonner";
+import { SoftphoneContext } from "@/components/softphone/SoftphoneProvider";
 
 export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCompanyDeleted, readOnly = false }: { company: Company; onClose: () => void; onCompanyChange?: (company: Company) => void; onCompanyDeleted?: (id: string) => void; readOnly?: boolean }) {
   const [company, setCompany] = useState<Company>(initial);
@@ -27,6 +28,11 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
   const [schedDate, setSchedDate] = useState<Date | undefined>(undefined);
   const [schedTime, setSchedTime] = useState("09:00");
   const [schedTitle, setSchedTitle] = useState("Call");
+  const [dialNumber, setDialNumber] = useState("");
+  const [addingPhone, setAddingPhone] = useState(false);
+  const [newPhone, setNewPhone] = useState("");
+  const [savingPhone, setSavingPhone] = useState(false);
+  const softphone = useContext(SoftphoneContext);
   const research = useServerFn(researchCompanyFn);
 
   // Sync when parent passes a different company (e.g. realtime update arrived).
@@ -196,7 +202,98 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
               )}
             </div>
 
-            <PhoneButtons phones={company.phones ?? []} companyId={company.id} contactName={company.name} />
+            <div className="space-y-1.5">
+              <PhoneButtons phones={company.phones ?? []} companyId={company.id} contactName={company.name} />
+              {!readOnly && (
+                addingPhone ? (
+                  <div className="flex gap-1.5">
+                    <input
+                      autoFocus
+                      value={newPhone}
+                      onChange={(e) => setNewPhone(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === "Escape") { setAddingPhone(false); setNewPhone(""); }
+                        if (e.key === "Enter" && newPhone.trim()) {
+                          setSavingPhone(true);
+                          const phones = [...(company.phones ?? []), newPhone.trim()];
+                          const { error } = await supabase.from("companies").update({ phones }).eq("id", company.id);
+                          setSavingPhone(false);
+                          if (error) return toast.error(error.message);
+                          const updated = { ...company, phones };
+                          setCompany(updated); onCompanyChange?.(updated);
+                          setNewPhone(""); setAddingPhone(false);
+                        }
+                      }}
+                      placeholder="+46 70 000 00 00"
+                      className="flex-1 px-2.5 py-1.5 text-xs border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <button
+                      disabled={!newPhone.trim() || savingPhone}
+                      onClick={async () => {
+                        if (!newPhone.trim()) return;
+                        setSavingPhone(true);
+                        const phones = [...(company.phones ?? []), newPhone.trim()];
+                        const { error } = await supabase.from("companies").update({ phones }).eq("id", company.id);
+                        setSavingPhone(false);
+                        if (error) return toast.error(error.message);
+                        const updated = { ...company, phones };
+                        setCompany(updated); onCompanyChange?.(updated);
+                        setNewPhone(""); setAddingPhone(false);
+                      }}
+                      className="px-2.5 py-1.5 rounded-md border bg-background text-xs font-medium hover:bg-muted disabled:opacity-40 transition-colors"
+                    >
+                      {savingPhone ? <Loader2 className="size-3.5 animate-spin" /> : "Save"}
+                    </button>
+                    <button onClick={() => { setAddingPhone(false); setNewPhone(""); }} className="px-2.5 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-muted">
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setAddingPhone(true)} className="text-xs text-muted-foreground hover:text-foreground">
+                    + Add number
+                  </button>
+                )
+              )}
+            </div>
+            {softphone && (
+              <div className="flex gap-1.5 mt-1 items-center">
+                <input
+                  value={dialNumber}
+                  onChange={(e) => setDialNumber(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && dialNumber.trim()) { softphone.startCall({ number: dialNumber.trim(), contactName: company.name, companyId: company.id }); setDialNumber(""); }
+                  }}
+                  placeholder="+46 70 000 00 00"
+                  className="w-56 px-2.5 py-1.5 text-xs border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <button
+                  disabled={!dialNumber.trim()}
+                  onClick={() => { softphone.startCall({ number: dialNumber.trim(), contactName: company.name, companyId: company.id }); setDialNumber(""); }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border bg-background text-xs font-medium hover:bg-muted disabled:opacity-40 transition-colors"
+                >
+                  <PhoneCall className="size-3.5" /> Call
+                </button>
+                {!readOnly && (
+                  <button
+                    disabled={!dialNumber.trim() || savingPhone}
+                    onClick={async () => {
+                      if (!dialNumber.trim()) return;
+                      setSavingPhone(true);
+                      const phones = [...(company.phones ?? []), dialNumber.trim()];
+                      const { error } = await supabase.from("companies").update({ phones }).eq("id", company.id);
+                      setSavingPhone(false);
+                      if (error) return toast.error(error.message);
+                      const updated = { ...company, phones };
+                      setCompany(updated); onCompanyChange?.(updated);
+                      toast.success("Number saved");
+                    }}
+                    className="px-2.5 py-1.5 rounded-md border bg-background text-xs font-medium hover:bg-muted disabled:opacity-40 transition-colors"
+                  >
+                    {savingPhone ? <Loader2 className="size-3.5 animate-spin" /> : "Save"}
+                  </button>
+                )}
+              </div>
+            )}
             {company.website && (
               <a href={company.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-info hover:underline">
                 <ExternalLink className="size-3" /> {company.website}

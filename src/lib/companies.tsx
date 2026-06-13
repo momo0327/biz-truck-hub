@@ -14,15 +14,15 @@ export const STATUS_META: Record<Status, { label: string; emoji: string; tone: s
   in_negotiation: { label: "Förhandlar", emoji: "•", tone: "bg-[color-mix(in_oklab,var(--stage-negotiating)_15%,transparent)] text-[var(--stage-negotiating)]", accent: "var(--stage-negotiating)", dot: "bg-[var(--stage-negotiating)]" },
   price_disagreement: { label: "Ej överens", emoji: "•", tone: "bg-warning/15 text-warning-foreground", accent: "var(--stage-lost)", dot: "bg-[var(--stage-lost)]" },
   deal_made: { label: "Köpt", emoji: "•", tone: "bg-success/15 text-success", accent: "var(--stage-closing)", dot: "bg-[var(--stage-closing)]" },
-  called_no_answer: { label: "Kontaktad", emoji: "•", tone: "bg-muted text-muted-foreground", accent: "var(--stage-contacted)", dot: "bg-[var(--stage-contacted)]" },
+  called_no_answer: { label: "Ej svar", emoji: "•", tone: "bg-muted text-muted-foreground", accent: "var(--stage-contacted)", dot: "bg-[var(--stage-contacted)]" },
 };
 
 export const STATUS_ORDER: Status[] = [
-  "new", "not_interested", "follow_up", "sending_pictures", "in_negotiation", "price_disagreement", "deal_made",
+  "new", "called_no_answer", "not_interested", "follow_up", "sending_pictures", "in_negotiation", "price_disagreement", "deal_made",
 ];
 
 export const PIPELINE_ORDER: Status[] = [
-  "new", "not_interested", "follow_up", "sending_pictures", "in_negotiation", "price_disagreement", "deal_made",
+  "new", "called_no_answer", "not_interested", "follow_up", "sending_pictures", "in_negotiation", "price_disagreement", "deal_made",
 ];
 
 type CompaniesContextValue = {
