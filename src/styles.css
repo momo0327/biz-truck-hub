@@ -103,9 +103,10 @@
   --stage-new: #6B7280;
   --stage-contacted: #2563EB;
   --stage-qualified: #D4A017;
-  --stage-negotiating: #E85D3A;
+  --stage-negotiating: #9333EA;
   --stage-closing: #16A34A;
   --stage-lost: #DC2626;
+  --stage-no-answer: #F97316;
 
   --sidebar: #0F172A;
   --sidebar-foreground: #D5D7DC;

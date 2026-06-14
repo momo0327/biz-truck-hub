@@ -1,5 +1,5 @@
 import { useEffect, useState, useContext } from "react";
-import { X, Loader2, RefreshCw, ExternalLink, Trash2, Calendar as CalendarIcon, Plus, PhoneCall } from "lucide-react";
+import { X, Loader2, RefreshCw, ExternalLink, Trash2, Calendar as CalendarIcon, Plus, PhoneCall, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { researchCompanyFn } from "@/lib/research.functions";
@@ -170,8 +170,14 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
       >
         <div className="sticky top-0 bg-card border-b px-6 py-4 flex items-center justify-between">
           <div className="min-w-0">
-            <h3 className="font-display text-xl truncate">{company.name}</h3>
-            <p className="text-xs text-muted-foreground">Org: {company.org_number ?? "—"}</p>
+            <div className="flex items-center gap-1.5">
+              <h3 className="font-display text-xl truncate">{company.name}</h3>
+              <QuickCopy value={company.name} />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs text-muted-foreground">Org: {company.org_number ?? "—"}</p>
+              {company.org_number && <QuickCopy value={company.org_number} />}
+            </div>
           </div>
           <div className="flex items-center gap-1">
             {!readOnly && (
@@ -507,5 +513,18 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
         </div>
       </div>
     </div>
+  );
+}
+
+function QuickCopy({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+      className="shrink-0 p-0.5 rounded text-muted-foreground hover:text-foreground transition-colors"
+      title="Copy"
+    >
+      {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+    </button>
   );
 }
