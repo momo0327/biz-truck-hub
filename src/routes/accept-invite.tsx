@@ -185,22 +185,13 @@ function AcceptInvitePage() {
 
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      <div className="hidden lg:flex flex-col justify-between p-10 bg-sidebar text-sidebar-foreground">
-        <img src={logo} alt="Auto Wahab Export" className="h-24 w-auto object-contain self-start brightness-0 invert" />
-        <div>
-          <h1 className="font-display text-4xl leading-tight max-w-md">Welcome aboard.</h1>
-          <p className="mt-3 opacity-70 max-w-md">
-            Finish setting up your account to start working with the team.
-          </p>
-        </div>
-        <div className="text-xs opacity-50">Built for callers, not spreadsheets.</div>
-      </div>
-      <div className="flex items-center justify-center p-8">
-        {checking ? (
-          <div className="text-muted-foreground text-sm">Loading…</div>
-        ) : !hasSession ? (
-          <div className="max-w-sm text-center space-y-3">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-8">
+      {checking ? (
+        <div className="text-muted-foreground text-sm">Loading…</div>
+      ) : !hasSession ? (
+        <div className="w-full max-w-md flex flex-col items-center gap-6">
+          <img src={logo} alt="Auto Wahab Export" className="h-16 w-auto object-contain" />
+          <div className="w-full text-center space-y-3 bg-white rounded-xl border border-gray-200 p-10 shadow-sm">
             <h2 className="font-display text-2xl">Invalid or expired invite</h2>
             <p className="text-sm text-muted-foreground">
               This invitation link is no longer valid. Ask your admin to send a new invite.
@@ -212,9 +203,12 @@ function AcceptInvitePage() {
               Go to sign in
             </button>
           </div>
-        ) : (
-          <form onSubmit={submit} className="w-full max-w-sm space-y-5">
-            <div>
+        </div>
+      ) : (
+        <div className="w-full max-w-md flex flex-col items-center gap-6">
+          <img src={logo} alt="Auto Wahab Export" className="h-16 w-auto object-contain" />
+          <form onSubmit={submit} className="w-full space-y-5 bg-white rounded-xl border border-gray-200 p-10 shadow-sm">
+            <div className="text-center">
               <h2 className="font-display text-2xl">Set up your account</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Enter your name and choose a password.
@@ -266,8 +260,8 @@ function AcceptInvitePage() {
               {busy ? "Setting up…" : "Create account"}
             </button>
           </form>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

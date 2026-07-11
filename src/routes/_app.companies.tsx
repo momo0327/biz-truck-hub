@@ -266,10 +266,17 @@ function CompaniesPage() {
                     <PhoneButtons phones={c.phones ?? []} companyId={c.id} contactName={c.name} compact readOnly />
                   </td>
                   <td className="px-4 py-6">
-                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full ${meta.tone}`}>
-                      <span className={`size-1.5 rounded-full ${meta.dot}`} />
-                      {meta.label}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full w-fit ${meta.tone}`}>
+                        <span className={`size-1.5 rounded-full ${meta.dot}`} />
+                        {meta.label}
+                      </span>
+                      {c.status !== "new" && c.status_changed_at && (
+                        <span className="text-[10px] text-muted-foreground/40 pl-1">
+                          {new Date(c.status_changed_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-6 text-right w-[60px]" onClick={(e) => e.stopPropagation()}>
                     <button

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useCompanies, type Company } from "@/lib/companies";
+import { useCompanies, STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
 import { Folder, ArrowLeft, Trash2, ArchiveRestore } from "lucide-react";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ function ArchivesPage() {
   const [open, setOpen] = useState<ArchiveFolder | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const { refresh: refreshCompanies } = useCompanies();
 
   async function loadFolders() {
@@ -43,6 +44,11 @@ function ArchivesPage() {
   }, [open]);
 
   const counts = useMemo(() => new Map(folders.map((f) => [f.id, 0])), [folders]);
+
+  const filteredCompanies = useMemo(
+    () => statusFilter === "all" ? companies : companies.filter((c) => c.status === statusFilter),
+    [companies, statusFilter],
+  );
 
   async function deleteFolder(folder: ArchiveFolder) {
     if (!confirm(`Delete folder "${folder.name}"? Companies inside will be restored to the main list.`))
@@ -118,6 +124,31 @@ function ArchivesPage() {
           </div>
         </header>
 
+        {/* Status filter */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${statusFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-muted"}`}
+          >
+            All <span className="ml-1 opacity-70">{companies.length}</span>
+          </button>
+          {STATUS_ORDER.map((s) => {
+            const meta = STATUS_META[s];
+            const count = companies.filter((c) => c.status === s).length;
+            if (count === 0) return null;
+            return (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${statusFilter === s ? `${meta.tone} border-current` : "bg-card hover:bg-muted"}`}
+              >
+                <span className={`size-1.5 rounded-full ${meta.dot}`} />
+                {meta.label} <span className="opacity-70">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="rounded-lg border bg-card overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
@@ -125,42 +156,52 @@ function ArchivesPage() {
                 <th className="text-left px-4 py-3">Company</th>
                 <th className="text-left px-4 py-3">Contact</th>
                 <th className="text-left px-4 py-3">Fleet</th>
+                <th className="text-left px-4 py-3">Status</th>
                 <th className="text-left px-4 py-3">Archived</th>
                 <th className="text-right px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {companies.map((c) => (
-                <tr
-                  key={c.id}
-                  className="hover:bg-muted/30 cursor-pointer"
-                  onClick={() => setSelectedCompany(c)}
-                >
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{c.name}</div>
-                    <div className="text-xs text-muted-foreground">{c.org_number ?? "—"}</div>
-                  </td>
-                  <td className="px-4 py-3">{c.contact_person || "—"}</td>
-                  <td className="px-4 py-3">{c.fleet_size || "—"}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {(c as any).archived_at
-                      ? new Date((c as any).archived_at).toLocaleDateString()
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => restoreCompany(c.id)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs hover:bg-muted"
-                    >
-                      <ArchiveRestore className="size-3.5" /> Restore
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {companies.length === 0 && (
+              {filteredCompanies.map((c) => {
+                const meta = STATUS_META[c.status];
+                return (
+                  <tr
+                    key={c.id}
+                    className="hover:bg-muted/30 cursor-pointer"
+                    onClick={() => setSelectedCompany(c)}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{c.name}</div>
+                      <div className="text-xs text-muted-foreground">{c.org_number ?? "—"}</div>
+                    </td>
+                    <td className="px-4 py-3">{c.contact_person || "—"}</td>
+                    <td className="px-4 py-3">{c.fleet_size || "—"}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full ${meta.tone}`}>
+                        <span className={`size-1.5 rounded-full ${meta.dot}`} />
+                        {meta.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {(c as any).archived_at
+                        ? new Date((c as any).archived_at).toLocaleDateString()
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => restoreCompany(c.id)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs hover:bg-muted"
+                      >
+                        <ArchiveRestore className="size-3.5" /> Restore
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredCompanies.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-sm">
-                    Folder is empty.
+                  <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground text-sm">
+                    {companies.length === 0 ? "Folder is empty." : "No companies match this filter."}
                   </td>
                 </tr>
               )}
@@ -170,9 +211,17 @@ function ArchivesPage() {
 
         {selectedCompany && (
           <CompanyDrawer
-            company={selectedCompany}
+            company={companies.find((c) => c.id === selectedCompany.id) ?? selectedCompany}
             onClose={() => setSelectedCompany(null)}
-            readOnly
+            onCompanyChange={(updated) => {
+              setCompanies((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+              setSelectedCompany(updated);
+            }}
+            onCompanyDeleted={(id) => {
+              setCompanies((prev) => prev.filter((c) => c.id !== id));
+              setSelectedCompany(null);
+              refreshCompanies();
+            }}
           />
         )}
       </div>

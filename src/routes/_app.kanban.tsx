@@ -165,6 +165,11 @@ function PipelinePage() {
                                         {temp.label}
                                       </span>
                                     </div>
+                                    {c.status !== "new" && c.status_changed_at && (
+                                      <div className="mt-1.5 text-[10px] text-muted-foreground/40">
+                                        {new Date(c.status_changed_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                                      </div>
+                                    )}
                                   </div>
                                 </PortalCard>
                               )}

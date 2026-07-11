@@ -15,7 +15,9 @@ type SortKey = keyof Vehicle;
 
 export function VehiclesTable({ vehicles }: { vehicles: Vehicle[] }) {
   const [q, setQ] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>(() =>
+    vehicles.some((v) => v.type === "lastbil") ? "lastbil" : "",
+  );
   const [brandFilter, setBrandFilter] = useState<string>("");
   const [fuelFilter, setFuelFilter] = useState<string>("");
   const [sortKey, setSortKey] = useState<SortKey>("registration");

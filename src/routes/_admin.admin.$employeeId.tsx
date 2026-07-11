@@ -218,10 +218,17 @@ function EmployeeDetail() {
                         <PhoneButtons phones={c.phones ?? []} companyId={c.id} contactName={c.name} compact />
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full ${meta.tone}`}>
-                          <span className={`size-1.5 rounded-full ${meta.dot}`} />
-                          {meta.label}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full w-fit ${meta.tone}`}>
+                            <span className={`size-1.5 rounded-full ${meta.dot}`} />
+                            {meta.label}
+                          </span>
+                          {c.status !== "new" && c.status_changed_at && (
+                            <span className="text-[10px] text-muted-foreground/40 pl-1">
+                              {new Date(c.status_changed_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {c.last_contact ? new Date(c.last_contact).toLocaleString() : "—"}
@@ -277,7 +284,7 @@ function EmployeeDetail() {
                     {c.duration ? `${c.duration}s` : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={c.status} />
+                    <StatusBadge status={c.status} outcome={c.outcome} />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs max-w-md truncate">
                     {c.note || "—"}
@@ -332,14 +339,22 @@ function TabButton({
   );
 }
 
-function StatusBadge({ status }: { status: string | null }) {
+function StatusBadge({ status, outcome }: { status: string | null; outcome: string | null }) {
+  const resolved = outcome ?? status;
   const tone =
-    status === "success"
+    resolved === "answered" || resolved === "success"
       ? "bg-success/15 text-success"
-      : status === "failed" || status === "noanswer" || status === "busy"
+      : resolved === "no-answer" || resolved === "noanswer" || resolved === "failed" || resolved === "busy"
         ? "bg-destructive/10 text-destructive"
         : "bg-muted text-foreground";
+  const label =
+    resolved === "answered" ? "Answered"
+    : resolved === "no-answer" || resolved === "noanswer" ? "No answer"
+    : resolved === "success" ? "Answered"
+    : resolved === "failed" ? "Failed"
+    : resolved === "busy" ? "Busy"
+    : resolved ?? "—";
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-full ${tone}`}>{status ?? "—"}</span>
+    <span className={`text-xs px-2 py-0.5 rounded-full ${tone}`}>{label}</span>
   );
 }

@@ -18,6 +18,7 @@ import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppKanbanRouteImport } from './routes/_app.kanban'
 import { Route as AppCompaniesRouteImport } from './routes/_app.companies'
 import { Route as AppCallsRouteImport } from './routes/_app.calls'
+import { Route as AppCallModeRouteImport } from './routes/_app.call-mode'
 import { Route as AppCalendarRouteImport } from './routes/_app.calendar'
 import { Route as AppArchivesRouteImport } from './routes/_app.archives'
 import { Route as AdminAdminRouteImport } from './routes/_admin.admin'
@@ -70,6 +71,11 @@ const AppCompaniesRoute = AppCompaniesRouteImport.update({
 const AppCallsRoute = AppCallsRouteImport.update({
   id: '/calls',
   path: '/calls',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCallModeRoute = AppCallModeRouteImport.update({
+  id: '/call-mode',
+  path: '/call-mode',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCalendarRoute = AppCalendarRouteImport.update({
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminAdminRouteWithChildren
   '/archives': typeof AppArchivesRoute
   '/calendar': typeof AppCalendarRoute
+  '/call-mode': typeof AppCallModeRoute
   '/calls': typeof AppCallsRoute
   '/companies': typeof AppCompaniesRoute
   '/kanban': typeof AppKanbanRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/archives': typeof AppArchivesRoute
   '/calendar': typeof AppCalendarRoute
+  '/call-mode': typeof AppCallModeRoute
   '/calls': typeof AppCallsRoute
   '/companies': typeof AppCompaniesRoute
   '/kanban': typeof AppKanbanRoute
@@ -169,6 +177,7 @@ export interface FileRoutesById {
   '/_admin/admin': typeof AdminAdminRouteWithChildren
   '/_app/archives': typeof AppArchivesRoute
   '/_app/calendar': typeof AppCalendarRoute
+  '/_app/call-mode': typeof AppCallModeRoute
   '/_app/calls': typeof AppCallsRoute
   '/_app/companies': typeof AppCompaniesRoute
   '/_app/kanban': typeof AppKanbanRoute
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/archives'
     | '/calendar'
+    | '/call-mode'
     | '/calls'
     | '/companies'
     | '/kanban'
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/archives'
     | '/calendar'
+    | '/call-mode'
     | '/calls'
     | '/companies'
     | '/kanban'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/_admin/admin'
     | '/_app/archives'
     | '/_app/calendar'
+    | '/_app/call-mode'
     | '/_app/calls'
     | '/_app/companies'
     | '/_app/kanban'
@@ -315,6 +327,13 @@ declare module '@tanstack/react-router' {
       path: '/calls'
       fullPath: '/calls'
       preLoaderRoute: typeof AppCallsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/call-mode': {
+      id: '/_app/call-mode'
+      path: '/call-mode'
+      fullPath: '/call-mode'
+      preLoaderRoute: typeof AppCallModeRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/calendar': {
@@ -423,6 +442,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface AppRouteChildren {
   AppArchivesRoute: typeof AppArchivesRoute
   AppCalendarRoute: typeof AppCalendarRoute
+  AppCallModeRoute: typeof AppCallModeRoute
   AppCallsRoute: typeof AppCallsRoute
   AppCompaniesRoute: typeof AppCompaniesRoute
   AppKanbanRoute: typeof AppKanbanRoute
@@ -433,6 +453,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppArchivesRoute: AppArchivesRoute,
   AppCalendarRoute: AppCalendarRoute,
+  AppCallModeRoute: AppCallModeRoute,
   AppCallsRoute: AppCallsRoute,
   AppCompaniesRoute: AppCompaniesRoute,
   AppKanbanRoute: AppKanbanRoute,

@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Inviter, Registerer, SessionState, UserAgent, type Session } from "sip.js";
-import { getWebrtcCredentials } from "@/lib/webrtc.functions";
-import { placeCallFn, hangupCallFn, setCallOutcomeFn } from "@/lib/calls.functions";
+import { TelnyxRTC } from "@telnyx/webrtc";
+import type { INotification } from "@telnyx/webrtc";
+import type Call from "@telnyx/webrtc/lib/src/Modules/Verto/webrtc/Call";
+import { getTelnyxCredentialsFn } from "@/lib/telnyx.functions";
+import { setCallOutcomeFn } from "@/lib/calls.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export type CallState = "idle" | "dialing" | "ringing" | "in-call" | "ended";
@@ -35,14 +37,6 @@ interface SoftphoneCtx {
   markOutcome: (outcome: "answered" | "no-answer") => Promise<void>;
 }
 
-type SessionMedia = Session & {
-  bye?: () => void | Promise<void>;
-  sessionDescriptionHandler?: {
-    peerConnection?: RTCPeerConnection;
-    sendDtmf?: (digit: string) => void;
-  };
-};
-
 const Ctx = createContext<SoftphoneCtx | null>(null);
 export const SoftphoneContext = Ctx;
 
@@ -52,16 +46,11 @@ export function useSoftphone() {
   return v;
 }
 
-function normalizeForSip(num: string) {
-  // Strip everything except digits and leading +
-  let cleaned = num.trim().replace(/[^\d+]/g, "");
+function normalizeE164(num: string) {
+  let cleaned = num.trim().replace(/\s/g, "").replace(/[^\d+]/g, "");
   if (cleaned.startsWith("+")) return cleaned;
-  // 00xx international prefix → +xx
   if (cleaned.startsWith("00")) return `+${cleaned.slice(2)}`;
-  // Swedish national format starting with 0 → +46
   if (cleaned.startsWith("0")) return `+46${cleaned.slice(1)}`;
-  // Bare digits already in country-code form (e.g. 46723…)
-  cleaned = cleaned.replace(/^\++/, "");
   return `+${cleaned}`;
 }
 
@@ -75,27 +64,23 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
   const [sipStatus, setSipStatus] = useState<SipStatus>("disconnected");
   const [sipError, setSipError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<"answered" | "no-answer" | null>(null);
-  const placeCall = useServerFn(placeCallFn);
-  const hangupServerCall = useServerFn(hangupCallFn);
-  const setOutcomeServer = useServerFn(setCallOutcomeFn);
-  const elksCallIdRef = useRef<string | null>(null);
-  const logIdRef = useRef<string | null>(null);
 
-  const uaRef = useRef<UserAgent | null>(null);
-  const registererRef = useRef<Registerer | null>(null);
-  const sessionRef = useRef<Session | null>(null);
+  const setOutcomeServer = useServerFn(setCallOutcomeFn);
+  const fetchCreds = useServerFn(getTelnyxCredentialsFn);
+
+  const clientRef = useRef<InstanceType<typeof TelnyxRTC> | null>(null);
+  const activeCallRef = useRef<Call | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const tickRef = useRef<number | null>(null);
-  const outboundActiveRef = useRef(false);
-  const trunkNumberRef = useRef<string | null>(null);
-  const answerPollRef = useRef<number | null>(null);
-  const fetchCreds = useServerFn(getWebrtcCredentials);
+  const logIdRef = useRef<string | null>(null);
+  const callWasAnsweredRef = useRef(false);
+  const callAnsweredAtRef = useRef<number | null>(null);
+  const pendingOptsRef = useRef<{ number: string; contactName?: string; companyId?: string } | null>(null);
+  const setOutcomeServerRef = useRef(setOutcomeServer);
+  useEffect(() => { setOutcomeServerRef.current = setOutcomeServer; }, [setOutcomeServer]);
 
   const stopTick = useCallback(() => {
-    if (tickRef.current) {
-      window.clearInterval(tickRef.current);
-      tickRef.current = null;
-    }
+    if (tickRef.current) { window.clearInterval(tickRef.current); tickRef.current = null; }
   }, []);
 
   const startTick = useCallback(() => {
@@ -104,119 +89,129 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
     tickRef.current = window.setInterval(() => setDurationSec((d) => d + 1), 1000);
   }, [stopTick]);
 
-  // Lazy-init the audio element
   useEffect(() => {
     const a = document.createElement("audio");
     a.autoplay = true;
     a.style.display = "none";
     document.body.appendChild(a);
     audioRef.current = a;
-    return () => {
-      a.remove();
-      audioRef.current = null;
-    };
-  }, [stopTick]);
+    return () => { a.remove(); audioRef.current = null; };
+  }, []);
 
-  // Connect & register with 46elks once on mount
+  // Init Telnyx on mount
   useEffect(() => {
     let cancelled = false;
+    let client: InstanceType<typeof TelnyxRTC> | null = null;
+
     (async () => {
       setSipStatus("connecting");
       try {
         const creds = await fetchCreds();
         if (cancelled) return;
-        if (!creds.ok) {
-          setSipStatus("failed");
-          setSipError(creds.error);
-          return;
-        }
+        if (!creds.ok) { setSipStatus("failed"); setSipError(creds.error); return; }
 
-        console.log("[softphone] SIP connect →", { uri: creds.uri, wsUrl: creds.wsUrl });
-        // Capture the trunk number (digits only) so we can detect loopback INVITEs
-        trunkNumberRef.current = creds.uri.split("@")[0].replace(/[^\d]/g, "");
-        const ua = new UserAgent({
-          uri: UserAgent.makeURI(`sip:${creds.uri}`)!,
-          authorizationUsername: creds.username,
-          authorizationPassword: creds.password,
-          transportOptions: { server: creds.wsUrl, traceSip: true },
-          delegate: {
-            onInvite: (invitation) => {
-              const fromUser = invitation.remoteIdentity.uri.user ?? "";
-              const fromDigits = fromUser.replace(/[^\d]/g, "");
-              console.log("[softphone] incoming INVITE", {
-                from: fromUser,
-                displayName: invitation.remoteIdentity.displayName,
-                outboundActive: outboundActiveRef.current,
-                trunk: trunkNumberRef.current,
-              });
-              // 46elks' WebRTC flow starts as an API-created call to this browser,
-              // then connects the real target after we answer it.
-              if (
-                sessionRef.current ||
-                (!outboundActiveRef.current &&
-                  trunkNumberRef.current &&
-                  fromDigits === trunkNumberRef.current)
-              ) {
-                console.warn("[softphone] rejecting INVITE — busy or loopback");
-                invitation.reject().catch((err) => console.error("INVITE reject failed", err));
-                return;
-              }
-              if (outboundActiveRef.current) {
-                sessionRef.current = invitation;
-                attachSessionHandlers(invitation);
-                invitation
-                  .accept({
-                    sessionDescriptionHandlerOptions: {
-                      constraints: {
-                        audio: {
-                          echoCancellation: false,
-                          noiseSuppression: false,
-                          autoGainControl: false,
-                          channelCount: 1,
-                          sampleRate: 48000,
-                          sampleSize: 16,
-                        },
-                        video: false,
-                      },
-                    },
-                  })
-                  .catch((err) => console.error("Outbound bridge accept failed", err));
-                return;
-              }
-              // Inbound — auto-attach handlers but don't auto-answer
-              sessionRef.current = invitation;
-              setCall({
-                number: fromUser || "Unknown",
-                contactName: invitation.remoteIdentity.displayName,
-                startedAt: Date.now(),
-                direction: "inbound",
-              });
-              setOpen(true);
-              setState("ringing");
-              attachSessionHandlers(invitation);
-            },
-          },
+        client = new TelnyxRTC({
+          login: creds.username,
+          password: creds.password,
         });
 
-        uaRef.current = ua;
-        await ua.start();
-        if (cancelled) return;
+        clientRef.current = client;
 
-        const registerer = new Registerer(ua);
-        registererRef.current = registerer;
-        registerer.stateChange.addListener((s) => {
+        client.on("telnyx.ready", () => {
           if (cancelled) return;
-          if (s === "Registered") {
-            setSipStatus("registered");
-            setSipError(null);
-          } else if (s === "Unregistered" || s === "Terminated") {
-            setSipStatus("disconnected");
+          setSipStatus("registered");
+          setSipError(null);
+          console.log("[telnyx] ready");
+        });
+
+        client.on("telnyx.error", (err: any) => {
+          if (cancelled) return;
+          console.error("[telnyx] error", err);
+          setSipStatus("failed");
+          setSipError(err?.message ?? "Telnyx error");
+        });
+
+        client.on("telnyx.socket.close", () => {
+          if (cancelled) return;
+          setSipStatus("disconnected");
+        });
+
+        client.on("telnyx.notification", (notification: INotification) => {
+          console.log("[telnyx] notification RAW", JSON.stringify({ type: notification.type, state: (notification.call as any)?.state, error: (notification as any).error?.message }));
+          if (cancelled) return;
+          const telCall = notification.call;
+          console.log("[telnyx] notification", notification.type, (telCall as any)?.state, notification);
+          if (!telCall) return;
+
+          const opts = pendingOptsRef.current;
+
+          if (notification.type === "callUpdate") {
+            const cs = telCall.state;
+
+            if (cs === "ringing" || cs === "trying") {
+              setState("ringing");
+            } else if (cs === "active") {
+              callWasAnsweredRef.current = true;
+              callAnsweredAtRef.current = Date.now();
+              activeCallRef.current = telCall;
+
+              // Attach remote audio
+              if (audioRef.current) {
+                audioRef.current.srcObject = (telCall as any).remoteStream ?? null;
+                audioRef.current.play().catch(() => {});
+              }
+
+              setState("in-call");
+              setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
+              startTick();
+
+              // Log call
+              (async () => {
+                const number = opts?.number ?? "";
+                const { data: inserted } = await supabase.from("call_logs").insert({
+                  company_id: opts?.companyId ?? null,
+                  user_id: (await supabase.auth.getUser()).data.user?.id ?? "",
+                  note: `Outbound call to ${number}`,
+                  status: "ongoing",
+                  to_number: number,
+                  direction: "outbound",
+                }).select("id").single();
+                logIdRef.current = inserted?.id ?? null;
+                if (opts?.companyId) {
+                  await supabase.from("companies").update({ last_contact: new Date().toISOString() }).eq("id", opts.companyId);
+                }
+              })().catch((e) => console.error("[telnyx] call_log failed", e));
+
+            } else if (cs === "hangup" || cs === "destroy") {
+              stopTick();
+
+              const VOICEMAIL_THRESHOLD_MS = 8000;
+              const answeredAt = callAnsweredAtRef.current;
+              const talkDuration = answeredAt ? Date.now() - answeredAt : 0;
+              const wasRealAnswer = callWasAnsweredRef.current && talkDuration >= VOICEMAIL_THRESHOLD_MS;
+              const autoOutcome: "answered" | "no-answer" = wasRealAnswer ? "answered" : "no-answer";
+
+              setOutcome(autoOutcome);
+              if (logIdRef.current) {
+                setOutcomeServerRef.current({ data: { logId: logIdRef.current, outcome: autoOutcome } })
+                  .catch((e) => console.error("[telnyx] auto-outcome failed", e));
+              }
+
+              callWasAnsweredRef.current = false;
+              callAnsweredAtRef.current = null;
+              activeCallRef.current = null;
+              logIdRef.current = null;
+              if (audioRef.current) audioRef.current.srcObject = null;
+              setState("ended");
+              window.setTimeout(() => { setState("idle"); setCall(null); }, 1500);
+            }
           }
         });
-        await registerer.register();
+
+        await client.connect();
       } catch (e) {
         if (cancelled) return;
-        console.error("SIP register failed", e);
+        console.error("[telnyx] init failed", e);
         setSipStatus("failed");
         setSipError(e instanceof Error ? e.message : String(e));
       }
@@ -224,266 +219,104 @@ export function SoftphoneProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       cancelled = true;
-      try {
-        registererRef.current?.unregister();
-      } catch (e) {
-        console.error("SIP unregister failed", e);
-      }
-      try {
-        uaRef.current?.stop();
-      } catch (e) {
-        console.error("SIP stop failed", e);
-      }
+      try { client?.disconnect(); } catch {}
+      clientRef.current = null;
       stopTick();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const attachSessionHandlers = useCallback(
-    (session: Session) => {
-      session.stateChange.addListener((s) => {
-        if (s === SessionState.Establishing) {
-          setState("ringing");
-        } else if (s === SessionState.Established) {
-          // SIP "Established" means our browser leg is up — but 46elks hasn't
-          // necessarily reached the customer yet. Pipe audio through, but stay
-          // in "ringing" (UI shows "Calling…") until we actually see sustained
-          // inbound RTP packets from the customer.
-          const pc = (session as SessionMedia).sessionDescriptionHandler?.peerConnection;
-          if (pc && audioRef.current) {
-            const remote = new MediaStream();
-            const attach = () => {
-              if (!audioRef.current) return;
-              audioRef.current.srcObject = remote;
-              audioRef.current.muted = false;
-              audioRef.current.volume = 1;
-              audioRef.current.play().catch((err) => console.warn("[softphone] audio.play failed", err));
-            };
-            // Attach any receivers already negotiated
-            pc.getReceivers().forEach((r) => {
-              if (r.track && r.track.kind === "audio") remote.addTrack(r.track);
-            });
-            // And any tracks that arrive after SDP negotiation completes
-            pc.ontrack = (ev) => {
-              console.log("[softphone] ontrack", ev.track.kind, ev.streams.length);
-              if (ev.track.kind !== "audio") return;
-              if (!remote.getTracks().includes(ev.track)) remote.addTrack(ev.track);
-              attach();
-            };
-            // Ensure our mic track is actually enabled (sendrecv)
-            pc.getSenders().forEach((s) => {
-              if (s.track && s.track.kind === "audio") s.track.enabled = true;
-            });
-            attach();
-          }
-
-          // Once the SIP leg is up, treat the call as connected. 46elks bridges
-          // the customer leg right after we answer the WebRTC INVITE, so audio
-          // is flowing as soon as we attach the remote stream above.
-          setState("in-call");
-          setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-          startTick();
-        } else if (s === SessionState.Terminated) {
-          if (answerPollRef.current) {
-            window.clearInterval(answerPollRef.current);
-            answerPollRef.current = null;
-          }
-          stopTick();
-          setState("ended");
-          sessionRef.current = null;
-          outboundActiveRef.current = false;
-          if (audioRef.current) audioRef.current.srcObject = null;
-          window.setTimeout(() => {
-            setState((cur) => (cur === "ended" ? "idle" : cur));
-            setCall((c) => (state === "ended" ? null : c));
-          }, 1500);
-        }
-      });
-    },
-    [startTick, state, stopTick],
-  );
-
-  const startCall: SoftphoneCtx["startCall"] = useCallback(
-    (opts) => {
-      outboundActiveRef.current = true;
-      setMuted(false);
-      setDurationSec(0);
-      setNotes("");
+  const startCall: SoftphoneCtx["startCall"] = useCallback((opts) => {
+    const client = clientRef.current;
+    if (!client || sipStatus !== "registered") {
       setOpen(true);
-      setOutcome(null);
-      logIdRef.current = null;
-      setCall({ ...opts, startedAt: Date.now(), direction: "outbound" });
+      setSipError(sipStatus === "connecting" ? "Still connecting, please wait…" : "Softphone not connected");
+      return;
+    }
 
-      // Prime audio playback within the user gesture so the browser allows
-      // autoplay once the remote stream arrives.
-      if (audioRef.current) {
-        audioRef.current.muted = false;
-        audioRef.current.volume = 1;
-        audioRef.current.play().catch(() => {});
-      }
+    callWasAnsweredRef.current = false;
+    callAnsweredAtRef.current = null;
+    logIdRef.current = null;
+    pendingOptsRef.current = opts;
+    setMuted(false);
+    setDurationSec(0);
+    setNotes("");
+    setOpen(true);
+    setOutcome(null);
+    setState("dialing");
+    setCall({ ...opts, startedAt: Date.now(), direction: "outbound" });
 
-      const ua = uaRef.current;
-      if (!ua || sipStatus !== "registered") {
-        // Fallback: mock progression so the UI is still usable
-        setState("dialing");
-        window.setTimeout(() => setState("ringing"), 1200);
-        window.setTimeout(() => {
-          setState("in-call");
-          setCall((c) => (c ? { ...c, startedAt: Date.now() } : c));
-          startTick();
-        }, 3000);
-        return;
-      }
+    const normalized = normalizeE164(opts.number);
+    console.log("[telnyx] calling", normalized);
 
-      setState("dialing");
-      const normalized = normalizeForSip(opts.number);
-      console.log("[softphone] startCall", {
-        rawNumber: opts.number,
-        normalized,
-        contactName: opts.contactName,
-        companyId: opts.companyId,
+    try {
+      const telCall = client.newCall({
+        destinationNumber: normalized,
+        audio: true,
+        video: false,
       });
-      placeCall({ data: { toNumber: normalized, companyId: opts.companyId } })
-        .then((res) => {
-          if (!res.ok) throw new Error(res.error);
-          elksCallIdRef.current = res.callId ?? null;
-          logIdRef.current = res.logId ?? null;
-          console.log("[softphone] 46elks outbound bridge started", { callId: res.callId, logId: res.logId });
-        })
-        .catch((err) => {
-          console.error("46elks outbound bridge failed", err);
-          setSipError(err instanceof Error ? err.message : String(err));
-          setState("ended");
-          outboundActiveRef.current = false;
-        });
-    },
-    [sipStatus, startTick, placeCall],
-  );
+      console.log("[telnyx] newCall returned", telCall);
+      (telCall as any).on?.("telnyx.notification", (n: any) => console.log("[telnyx] call-level notification", n?.type, n?.call?.state));
+      activeCallRef.current = telCall;
+    } catch (err) {
+      console.error("[telnyx] newCall failed", err);
+      setSipError(err instanceof Error ? err.message : String(err));
+      setState("ended");
+      window.setTimeout(() => { setState("idle"); setCall(null); }, 1500);
+    }
+  }, [sipStatus]);
 
   const hangup = useCallback(async () => {
-    const session = sessionRef.current;
-    const callId = elksCallIdRef.current;
-    const activeCall = call;
+    const activeCallSnapshot = call;
     const trimmedNotes = notes.trim();
-    console.log("[softphone] hangup", { state: session?.state, kind: session?.constructor?.name, callId });
 
-    // Persist softphone notes into the company's internal notes (append).
-    if (activeCall?.companyId && trimmedNotes) {
+    if (activeCallSnapshot?.companyId && trimmedNotes) {
       (async () => {
-        const { data: existing } = await supabase
-          .from("companies")
-          .select("notes")
-          .eq("id", activeCall.companyId!)
-          .maybeSingle();
+        const { data: existing } = await supabase.from("companies").select("notes").eq("id", activeCallSnapshot.companyId!).maybeSingle();
         const stamp = new Date().toLocaleString();
-        const header = `[${stamp} — Call ${activeCall.number}]`;
-        const block = `${header}\n${trimmedNotes}`;
+        const block = `[${stamp} — Call ${activeCallSnapshot.number}]\n${trimmedNotes}`;
         const merged = existing?.notes ? `${existing.notes}\n\n${block}` : block;
-        await supabase.from("companies").update({ notes: merged }).eq("id", activeCall.companyId!);
-      })().catch((err) => console.error("[softphone] save notes failed", err));
+        await supabase.from("companies").update({ notes: merged }).eq("id", activeCallSnapshot.companyId!);
+      })().catch((e) => console.error("[telnyx] save notes failed", e));
     }
 
-    // Tell 46elks to terminate the whole call (both legs) — without this the
-    // customer's phone keeps ringing if we hang up before they answer.
-    if (callId) {
-      hangupServerCall({ data: { callId } }).catch((err) => {
-        console.error("[softphone] 46elks hangup failed", err);
-      });
-    }
+    try { activeCallRef.current?.hangup(); } catch (e) { console.error("[telnyx] hangup error", e); }
 
-    if (session) {
-      try {
-        switch (session.state) {
-          case SessionState.Initial:
-          case SessionState.Establishing:
-            if (session instanceof Inviter) {
-              await session.cancel();
-            } else {
-              const inv = session as unknown as { reject?: () => Promise<void> };
-              await inv.reject?.();
-            }
-            break;
-          case SessionState.Established: {
-            const bye = (session as SessionMedia).bye;
-            if (typeof bye === "function") {
-              await bye.call(session);
-            }
-            break;
-          }
-          case SessionState.Terminating:
-          case SessionState.Terminated:
-            break;
-        }
-      } catch (e) {
-        console.error("[softphone] hangup error", e);
-      }
-    }
     stopTick();
     setState("ended");
+    if (audioRef.current) audioRef.current.srcObject = null;
     window.setTimeout(() => {
       setState("idle");
       setCall(null);
-      sessionRef.current = null;
-      outboundActiveRef.current = false;
-      elksCallIdRef.current = null;
+      activeCallRef.current = null;
     }, 1200);
-  }, [stopTick, hangupServerCall, call, notes]);
+  }, [stopTick, call, notes]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
       const next = !m;
-      const session = sessionRef.current;
-      const pc = (session as SessionMedia | null)?.sessionDescriptionHandler?.peerConnection;
-      pc?.getSenders().forEach((sender) => {
-        if (sender.track && sender.track.kind === "audio") sender.track.enabled = !next;
-      });
+      try {
+        if (next) activeCallRef.current?.muteAudio();
+        else activeCallRef.current?.unmuteAudio();
+      } catch {}
       return next;
     });
   }, []);
 
   const sendDtmf = useCallback((digit: string) => {
-    const session = sessionRef.current;
-    if (!session || session.state !== SessionState.Established) return;
-    try {
-      const sdh = (session as SessionMedia).sessionDescriptionHandler;
-      sdh?.sendDtmf?.(digit);
-    } catch (e) {
-      console.error("DTMF failed", e);
-    }
+    try { activeCallRef.current?.dtmf(digit); } catch {}
   }, []);
 
   const markOutcome = useCallback(async (next: "answered" | "no-answer") => {
     setOutcome(next);
     const id = logIdRef.current;
     if (!id) return;
-    try {
-      await setOutcomeServer({ data: { logId: id, outcome: next } });
-    } catch (e) {
-      console.error("[softphone] markOutcome failed", e);
-    }
+    try { await setOutcomeServer({ data: { logId: id, outcome: next } }); }
+    catch (e) { console.error("[telnyx] markOutcome failed", e); }
   }, [setOutcomeServer]);
 
   return (
-    <Ctx.Provider
-      value={{
-        state,
-        call,
-        open,
-        muted,
-        durationSec,
-        sipStatus,
-        sipError,
-        outcome,
-        startCall,
-        hangup,
-        toggleMute,
-        sendDtmf,
-        setOpen,
-        notes,
-        setNotes,
-        markOutcome,
-      }}
-    >
+    <Ctx.Provider value={{ state, call, open, muted, durationSec, sipStatus, sipError, outcome, startCall, hangup, toggleMute, sendDtmf, setOpen, notes, setNotes, markOutcome }}>
       {children}
     </Ctx.Provider>
   );

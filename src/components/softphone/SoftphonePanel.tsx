@@ -50,7 +50,6 @@ export function SoftphonePanel() {
     setOpen,
     notes,
     setNotes,
-    markOutcome,
   } = useSoftphone();
   const [showKeypad, setShowKeypad] = useState(false);
   const [minimized, setMinimized] = useState(false);
@@ -88,7 +87,30 @@ export function SoftphonePanel() {
     };
   }, []);
 
-  if (!open || !call) return null;
+  if (!open) return null;
+
+  // Show status panel if no active call (e.g. not yet connected)
+  if (!call) {
+    return (
+      <div className="fixed z-50 w-[340px] rounded-xl border bg-card shadow-2xl overflow-hidden bottom-4 right-4 animate-in slide-in-from-bottom-4 fade-in duration-200">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-muted/60 border-b">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Softphone</span>
+          <button onClick={() => setOpen(false)} className="p-1.5 rounded hover:bg-muted text-muted-foreground">
+            <X className="size-3.5" />
+          </button>
+        </div>
+        <div className="p-5 text-center space-y-2">
+          <span className={cn("size-2 rounded-full inline-block", STATE_DOT[state])} />
+          <p className="text-sm text-muted-foreground">
+            {sipStatus === "connecting" && "Connecting to Telnyx…"}
+            {sipStatus === "registered" && "Ready"}
+            {sipStatus === "disconnected" && "Disconnected"}
+            {sipStatus === "failed" && (sipError ?? "Connection failed")}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const press = (k: string) => {
     sendDtmf(k);
@@ -226,35 +248,15 @@ export function SoftphonePanel() {
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-              Mark outcome
+          {outcome && (
+            <div className={cn(
+              "flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium",
+              outcome === "answered" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive",
+            )}>
+              {outcome === "answered" ? <Check className="size-4" /> : <PhoneMissed className="size-4" />}
+              {outcome === "answered" ? "Answered" : "Not answered"}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => markOutcome("answered")}
-                className={cn(
-                  "flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors",
-                  outcome === "answered"
-                    ? "bg-success text-success-foreground border-success"
-                    : "bg-success/10 text-success border-success/30 hover:bg-success/20",
-                )}
-              >
-                <Check className="size-4" /> Answered
-              </button>
-              <button
-                onClick={() => markOutcome("no-answer")}
-                className={cn(
-                  "flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors",
-                  outcome === "no-answer"
-                    ? "bg-destructive text-destructive-foreground border-destructive"
-                    : "bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20",
-                )}
-              >
-                <PhoneMissed className="size-4" /> Not answered
-              </button>
-            </div>
-          </div>
+          )}
 
 
           <div className="space-y-1.5">
@@ -271,10 +273,10 @@ export function SoftphonePanel() {
           </div>
 
           <div className="text-[10px] text-muted-foreground text-center italic">
-            {sipStatus === "registered" && "Connected · 46elks WebRTC"}
-            {sipStatus === "connecting" && "Connecting to 46elks…"}
-            {sipStatus === "disconnected" && "WebRTC disconnected"}
-            {sipStatus === "failed" && (sipError ? `WebRTC failed: ${sipError}` : "WebRTC failed")}
+            {sipStatus === "registered" && "Connected · Telnyx"}
+            {sipStatus === "connecting" && "Connecting to Telnyx…"}
+            {sipStatus === "disconnected" && "Telnyx disconnected"}
+            {sipStatus === "failed" && (sipError ? `Telnyx failed: ${sipError}` : "Telnyx failed")}
           </div>
         </div>
       )}

@@ -102,6 +102,7 @@ export type Database = {
           research_raw: Json | null
           researched_at: string | null
           status: Database["public"]["Enums"]["company_status"]
+          status_changed_at: string | null
           trucks_info: string | null
           updated_at: string
           user_id: string
@@ -124,6 +125,7 @@ export type Database = {
           research_raw?: Json | null
           researched_at?: string | null
           status?: Database["public"]["Enums"]["company_status"]
+          status_changed_at?: string | null
           trucks_info?: string | null
           updated_at?: string
           user_id: string
@@ -146,6 +148,7 @@ export type Database = {
           research_raw?: Json | null
           researched_at?: string | null
           status?: Database["public"]["Enums"]["company_status"]
+          status_changed_at?: string | null
           trucks_info?: string | null
           updated_at?: string
           user_id?: string

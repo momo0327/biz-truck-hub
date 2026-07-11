@@ -30,10 +30,6 @@ function SettingsPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [displayPhone, setDisplayPhone] = useState("");
-  const [elksNumber, setElksNumber] = useState("");
-  const [elksUri, setElksUri] = useState("");
-  const [elksUser, setElksUser] = useState("");
-  const [elksPass, setElksPass] = useState("");
   const [savingPhone, setSavingPhone] = useState(false);
   const [tab, setTab] = useState<TabKey>("profile");
 
@@ -41,7 +37,7 @@ function SettingsPage() {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("first_name,last_name,phone_number,display_phone_number,elks_webrtc_uri,elks_webrtc_username")
+      .select("first_name,last_name,display_phone_number")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
@@ -50,11 +46,6 @@ function SettingsPage() {
         setFirstName(d.first_name ?? "");
         setLastName(d.last_name ?? "");
         setDisplayPhone(d.display_phone_number ?? "");
-        setElksNumber(d.phone_number ?? "");
-        setElksUri(d.elks_webrtc_uri ?? "");
-        setElksUser(d.elks_webrtc_username ?? "");
-        // Password is write-only — never read back from the database.
-        setElksPass("");
       });
   }, [user]);
 
@@ -65,12 +56,7 @@ function SettingsPage() {
       first_name: firstName.trim() || null,
       last_name: lastName.trim() || null,
       display_phone_number: displayPhone.trim() || null,
-      phone_number: elksNumber.trim() || null,
-      elks_webrtc_uri: elksUri.trim() || null,
-      elks_webrtc_username: elksUser.trim() || null,
     };
-    // Only overwrite the password when the user typed a new one.
-    if (elksPass.trim()) payload.elks_webrtc_password = elksPass.trim();
 
 
 
@@ -220,56 +206,6 @@ function SettingsPage() {
                   </p>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Your 46elks number</label>
-                  <input
-                    value={elksNumber}
-                    onChange={(e) => setElksNumber(e.target.value)}
-                    placeholder="+4610XXXXXXX"
-                    className="w-full px-3 py-2 rounded-md border bg-background text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    The actual purchased 46elks number assigned to this account.
-                  </p>
-                </div>
-
-                <div className="pt-2 border-t space-y-1">
-                  <div className="text-sm font-medium">46elks WebRTC softphone</div>
-                  <p className="text-xs text-muted-foreground">
-                    Each account needs its own WebRTC credentials so two users can call at the same time. Create a SIP/WebRTC user in your 46elks dashboard and paste the values here.
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">WebRTC URI</label>
-                  <input
-                    value={elksUri}
-                    onChange={(e) => setElksUri(e.target.value)}
-                    placeholder="46XXXXXXXXX@sip.46elks.com"
-                    className="w-full px-3 py-2 rounded-md border bg-background text-sm font-mono"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">WebRTC username</label>
-                    <input
-                      value={elksUser}
-                      onChange={(e) => setElksUser(e.target.value)}
-                      className="w-full px-3 py-2 rounded-md border bg-background text-sm font-mono"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">WebRTC password</label>
-                    <input
-                      type="password"
-                      value={elksPass}
-                      onChange={(e) => setElksPass(e.target.value)}
-                      className="w-full px-3 py-2 rounded-md border bg-background text-sm font-mono"
-                    />
-                  </div>
-                </div>
-
                 <div className="flex justify-end pt-2">
                   <button
                     onClick={savePhone}
@@ -290,7 +226,7 @@ function SettingsPage() {
                 <p className="text-sm text-muted-foreground mt-1">Calling preferences and routing.</p>
               </div>
               <p className="text-sm text-muted-foreground">
-                Calling is powered by 46elks. Configure your phone number in the Profile tab.
+                Calling is powered by Sinch. No per-user configuration required — calling is ready out of the box.
               </p>
             </div>
           )}

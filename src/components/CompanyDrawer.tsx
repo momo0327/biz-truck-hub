@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useRef } from "react";
 import { X, Loader2, RefreshCw, ExternalLink, Trash2, Calendar as CalendarIcon, Plus, PhoneCall, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
@@ -25,7 +25,7 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
   const [notes, setNotes] = useState(initial.notes ?? "");
   const [researching, setResearching] = useState(false);
   const [schedules, setSchedules] = useState<ScheduledCall[]>([]);
-  const [schedDate, setSchedDate] = useState<Date | undefined>(undefined);
+  const [schedDate, setSchedDate] = useState<Date | undefined>(new Date());
   const [schedTime, setSchedTime] = useState("09:00");
   const [schedTitle, setSchedTitle] = useState("Call");
   const [dialNumber, setDialNumber] = useState("");
@@ -119,9 +119,17 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
   }
 
   async function saveNotes() {
-    const { data, error } = await supabase.from("companies").update({ notes }).eq("id", company.id).select().single();
+    const saved = company.notes ?? "";
+    if (notes === saved) return;
+    const stamp = new Date().toLocaleString("sv-SE", {
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    }).replace("T", " ");
+    const stamped = `[${stamp}]\n${notes}`;
+    const { data, error } = await supabase.from("companies").update({ notes: stamped }).eq("id", company.id).select().single();
     if (error) return toast.error(error.message);
     const row = data as Company;
+    setNotes(stamped);
     setCompany(row);
     onCompanyChange?.(row);
     toast.success("Notes saved");
@@ -209,7 +217,12 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
             </div>
 
             <div className="space-y-1.5">
-              <PhoneButtons phones={company.phones ?? []} companyId={company.id} contactName={company.name} />
+              <PhoneButtons
+                phones={company.phones ?? []}
+                researchPhones={(company.research_raw as any)?.phones ?? undefined}
+                companyId={company.id}
+                contactName={company.name}
+              />
               {!readOnly && (
                 addingPhone ? (
                   <div className="flex gap-1.5">
@@ -343,15 +356,7 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
 
           <section className="space-y-2">
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Notes</h4>
-            <textarea
-              value={notes}
-              readOnly={readOnly}
-              onChange={(e) => setNotes(e.target.value)}
-              onBlur={readOnly ? undefined : saveNotes}
-              rows={3}
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm"
-              placeholder={readOnly ? "No notes" : "Internal notes…"}
-            />
+            <NotesField value={notes} onChange={setNotes} onBlur={readOnly ? undefined : saveNotes} readOnly={readOnly} />
           </section>
 
           <section className="space-y-3">
@@ -360,12 +365,15 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
             </h4>
             {!readOnly && (
               <div className="space-y-2">
-                <input
-                  value={schedTitle}
-                  onChange={(e) => setSchedTitle(e.target.value)}
-                  placeholder="Title (e.g. Follow-up call)"
-                  className="w-full px-3 py-2 rounded-md border bg-background text-sm"
-                />
+                <div className="flex gap-2 items-center">
+                  <input
+                    value={schedTitle}
+                    onChange={(e) => setSchedTitle(e.target.value)}
+                    placeholder="Title (e.g. Follow-up call)"
+                    className="flex-1 px-3 py-2 rounded-md border bg-background text-sm"
+                  />
+                  <AutoAnswerPicker onSelect={setSchedTitle} />
+                </div>
                 <div className="flex gap-2">
                   <Popover>
                     <PopoverTrigger asChild>
@@ -383,6 +391,7 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
                         mode="single"
                         selected={schedDate}
                         onSelect={setSchedDate}
+                        defaultMonth={schedDate ?? new Date()}
                         className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
@@ -513,6 +522,166 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
         </div>
       </div>
     </div>
+  );
+}
+
+const STAMP_RE = /^(\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\])$/m;
+
+function NotesField({
+  value,
+  onChange,
+  onBlur,
+  readOnly,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onBlur?: () => void;
+  readOnly: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing || readOnly) {
+    return (
+      <textarea
+        autoFocus={editing}
+        value={value}
+        readOnly={readOnly}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={() => { setEditing(false); onBlur?.(); }}
+        rows={5}
+        className="w-full px-3 py-2 rounded-md border bg-background text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+        placeholder={readOnly ? "No notes" : "Internal notes…"}
+      />
+    );
+  }
+
+  if (!value) {
+    return (
+      <div
+        onClick={() => setEditing(true)}
+        className="w-full px-3 py-2 rounded-md border bg-background text-sm text-muted-foreground cursor-text min-h-[80px]"
+      >
+        Internal notes…
+      </div>
+    );
+  }
+
+  // Render with faded timestamps
+  const lines = value.split("\n");
+  return (
+    <div
+      onClick={() => setEditing(true)}
+      className="w-full px-3 py-2 rounded-md border bg-background text-sm cursor-text whitespace-pre-wrap min-h-[80px] leading-relaxed"
+    >
+      {lines.map((line, i) => (
+        STAMP_RE.test(line)
+          ? <span key={i} className="text-muted-foreground/50 text-xs">{line}{"\n"}</span>
+          : <span key={i}>{line}{i < lines.length - 1 ? "\n" : ""}</span>
+      ))}
+    </div>
+  );
+}
+
+const AUTO_ANSWERS_KEY = "schedule_auto_answers";
+const DEFAULT_ANSWERS = ["Follow-up call", "Återkoppla", "Prisförfrågan", "Boka möte"];
+
+function loadAutoAnswers(): string[] {
+  try {
+    const raw = localStorage.getItem(AUTO_ANSWERS_KEY);
+    if (raw) return JSON.parse(raw) as string[];
+  } catch {}
+  return DEFAULT_ANSWERS;
+}
+
+function saveAutoAnswers(list: string[]) {
+  localStorage.setItem(AUTO_ANSWERS_KEY, JSON.stringify(list));
+}
+
+function AutoAnswerPicker({ onSelect }: { onSelect: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [answers, setAnswers] = useState<string[]>(loadAutoAnswers);
+  const [newAnswer, setNewAnswer] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function pick(a: string) {
+    onSelect(a);
+    setOpen(false);
+  }
+
+  function add() {
+    const trimmed = newAnswer.trim();
+    if (!trimmed || answers.includes(trimmed)) return;
+    const updated = [...answers, trimmed];
+    setAnswers(updated);
+    saveAutoAnswers(updated);
+    setNewAnswer("");
+    onSelect(trimmed);
+    setOpen(false);
+  }
+
+  function remove(a: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    const updated = answers.filter((x) => x !== a);
+    setAnswers(updated);
+    saveAutoAnswers(updated);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title="Quick titles"
+          className="shrink-0 size-8 inline-flex items-center justify-center rounded-md border bg-background hover:bg-muted transition-colors"
+        >
+          <Plus className="size-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64 p-2 space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground px-1">Quick titles</p>
+        <ul className="space-y-0.5">
+          {answers.map((a) => (
+            <li key={a}>
+              <button
+                type="button"
+                onClick={() => pick(a)}
+                className="group w-full flex items-center justify-between gap-2 text-sm px-2 py-1.5 rounded-md hover:bg-muted text-left"
+              >
+                <span className="truncate">{a}</span>
+                <span
+                  role="button"
+                  onClick={(e) => remove(a, e)}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity shrink-0"
+                >
+                  <Trash2 className="size-3" />
+                </span>
+              </button>
+            </li>
+          ))}
+          {answers.length === 0 && (
+            <li className="text-xs text-muted-foreground italic px-2 py-1">No saved titles yet.</li>
+          )}
+        </ul>
+        <div className="flex gap-1.5 pt-1 border-t">
+          <input
+            ref={inputRef}
+            value={newAnswer}
+            onChange={(e) => setNewAnswer(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") add(); }}
+            placeholder="New title…"
+            className="flex-1 px-2 py-1 text-xs rounded-md border bg-background"
+          />
+          <button
+            type="button"
+            onClick={add}
+            disabled={!newAnswer.trim()}
+            className="px-2 py-1 text-xs rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40"
+          >
+            Save
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Building2, KanbanSquare, Phone, Settings, Calendar as CalendarIcon, Archive } from "lucide-react";
+import { LayoutDashboard, Building2, KanbanSquare, Phone, Settings, Calendar as CalendarIcon, Archive, BotMessageSquare } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { useUserRole } from "@/lib/roles";
@@ -21,6 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       { to: "/companies", label: t("nav.companies"), icon: Building2 },
       { to: "/kanban", label: t("nav.pipeline"), icon: KanbanSquare },
       { to: "/calendar", label: t("nav.calendar"), icon: CalendarIcon },
+      { to: "/call-mode", label: t("nav.call_mode"), icon: BotMessageSquare },
       { to: "/calls", label: t("nav.call_history"), icon: Phone },
       { to: "/archives", label: t("nav.archives"), icon: Archive },
       { to: "/settings", label: t("nav.settings"), icon: Settings },
