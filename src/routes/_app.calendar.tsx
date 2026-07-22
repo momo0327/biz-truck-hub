@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useCompanies } from "@/lib/companies";
 import {
@@ -21,7 +21,12 @@ import { toast } from "sonner";
 import { CompanyDrawer } from "@/components/CompanyDrawer";
 import type { Company } from "@/lib/companies";
 
-export const Route = createFileRoute("/_app/calendar")({ component: CalendarPage });
+export const Route = createFileRoute("/_app/calendar")({
+  validateSearch: (s: Record<string, unknown>): { date?: string } => ({
+    date: typeof s.date === "string" ? s.date : undefined,
+  }),
+  component: CalendarPage,
+});
 
 type View = "month" | "week";
 
@@ -31,10 +36,14 @@ const DAY_END = 20; // 20:00
 
 function CalendarPage() {
   const { companies, upsertCompany, removeCompanies } = useCompanies();
+  const { date: dateParam } = useSearch({ from: "/_app/calendar" });
   const [items, setItems] = useState<ScheduledCall[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<View>("month");
-  const [cursor, setCursor] = useState<Date>(new Date());
+  const [view, setView] = useState<View>(dateParam ? "week" : "month");
+  const [cursor, setCursor] = useState<Date>(() => {
+    if (dateParam) { const d = new Date(dateParam); if (!isNaN(d.getTime())) return d; }
+    return new Date();
+  });
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
   const companyById = useMemo(() => {
@@ -334,7 +343,57 @@ function WeekView({
   const today = new Date();
   const week = getWeekDays(cursor);
   const hours = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
-  const totalHeight = hours.length * HOUR_HEIGHT;
+
+  // Compute per-hour heights based on how many events fall in each slot across all days
+  const MIN_HOUR_H = HOUR_HEIGHT;
+  const EVENT_MIN_H = 36;
+  const EVENT_GAP = 2;
+
+  const hourHeights = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const s of items) {
+      const d = new Date(s.scheduled_at);
+      const h = d.getHours();
+      if (h < DAY_START || h >= DAY_END) continue;
+      counts.set(h, Math.max(counts.get(h) ?? 0, 1));
+    }
+    // Count max events per hour across all days
+    for (const day of week) {
+      const dayItems = items.filter((s) => isSameDay(new Date(s.scheduled_at), day));
+      const byHour = new Map<number, number>();
+      for (const s of dayItems) {
+        const h = new Date(s.scheduled_at).getHours();
+        byHour.set(h, (byHour.get(h) ?? 0) + 1);
+      }
+      for (const [h, count] of byHour) {
+        counts.set(h, Math.max(counts.get(h) ?? 0, count));
+      }
+    }
+    return hours.map((h) => {
+      const count = counts.get(h) ?? 0;
+      return Math.max(MIN_HOUR_H, count * (EVENT_MIN_H + EVENT_GAP) + EVENT_GAP + 4);
+    });
+  }, [items, week]);
+
+  // Compute cumulative top offsets per hour
+  const hourTops = useMemo(() => {
+    const tops: number[] = [];
+    let acc = 0;
+    for (const h of hourHeights) { tops.push(acc); acc += h; }
+    return tops;
+  }, [hourHeights]);
+
+  const totalHeight = hourHeights.reduce((a, b) => a + b, 0);
+
+  // Helper: get pixel top for a given fractional hour
+  function hourToTop(hour: number): number {
+    const floorH = Math.floor(hour);
+    const idx = floorH - DAY_START;
+    if (idx < 0) return 0;
+    if (idx >= hourHeights.length) return totalHeight;
+    const frac = hour - floorH;
+    return hourTops[idx] + frac * hourHeights[idx];
+  }
 
   return (
     <div className="h-full flex flex-col border rounded-xl overflow-hidden bg-card">
@@ -364,12 +423,12 @@ function WeekView({
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="flex" style={{ minHeight: totalHeight }}>
           {/* Hour labels */}
-          <div className="w-14 shrink-0 relative">
-            {hours.map((h) => (
+          <div className="w-14 shrink-0 relative" style={{ height: totalHeight }}>
+            {hours.map((h, i) => (
               <div
                 key={h}
                 className="absolute w-full pr-2 text-right text-[10px] text-muted-foreground"
-                style={{ top: (h - DAY_START) * HOUR_HEIGHT - 7 }}
+                style={{ top: hourTops[i] + 4 }}
               >
                 {h === 12 ? "12 PM" : h > 12 ? `${h - 12} PM` : `${h} AM`}
               </div>
@@ -388,22 +447,24 @@ function WeekView({
                 style={{ height: totalHeight }}
               >
                 {/* Hour lines */}
-                {hours.map((h) => (
+                {hours.map((h, i) => (
                   <div
                     key={h}
                     className="absolute w-full border-t border-border/40"
-                    style={{ top: (h - DAY_START) * HOUR_HEIGHT }}
+                    style={{ top: hourTops[i] }}
                   />
                 ))}
 
                 {/* Current time indicator */}
                 {isToday && <CurrentTimeLine />}
 
-                {/* Events */}
-                {dayItems.map((s) => (
+                {/* Events — stacked within their expanded hour slot */}
+                {stackEvents(dayItems, hourToTop, hourHeights, hourTops).map(({ schedule: s, top, height }) => (
                   <WeekEvent
                     key={s.id}
                     schedule={s}
+                    top={top}
+                    height={height}
                     companyById={companyById}
                     onDelete={onDelete}
                     onToggle={onToggle}
@@ -419,14 +480,52 @@ function WeekView({
   );
 }
 
+// Group events by hour slot, distribute them evenly within that slot's dynamic height
+function stackEvents(
+  events: ScheduledCall[],
+  hourToTop: (hour: number) => number,
+  hourHeights: number[],
+  hourTops: number[],
+): { schedule: ScheduledCall; top: number; height: number }[] {
+  const sorted = [...events].sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+
+  const groups = new Map<number, ScheduledCall[]>();
+  for (const s of sorted) {
+    const d = new Date(s.scheduled_at);
+    const h = d.getHours();
+    if (h < DAY_START || h >= DAY_END) continue;
+    if (!groups.has(h)) groups.set(h, []);
+    groups.get(h)!.push(s);
+  }
+
+  const result: { schedule: ScheduledCall; top: number; height: number }[] = [];
+  for (const [h, group] of groups) {
+    const idx = h - DAY_START;
+    const slotH = hourHeights[idx] ?? HOUR_HEIGHT;
+    const slotTop = hourTops[idx] ?? 0;
+    const count = group.length;
+    const gap = 2;
+    const itemH = Math.max(32, Math.floor((slotH - gap) / count) - gap);
+    group.forEach((s, i) => {
+      result.push({ schedule: s, top: slotTop + gap + i * (itemH + gap), height: itemH });
+    });
+  }
+
+  return result;
+}
+
 function WeekEvent({
   schedule: s,
+  top,
+  height,
   companyById,
   onDelete,
   onToggle,
   onCompanyClick,
 }: {
   schedule: ScheduledCall;
+  top: number;
+  height: number;
   companyById: Map<string, string>;
   onDelete: (id: string) => void;
   onToggle: (id: string, done: boolean) => void;
@@ -434,7 +533,6 @@ function WeekEvent({
 }) {
   const d = new Date(s.scheduled_at);
   const hour = d.getHours() + d.getMinutes() / 60;
-  const top = Math.max(0, (hour - DAY_START) * HOUR_HEIGHT);
   const company = companyById.get(s.company_id) ?? s.title;
   const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -447,7 +545,7 @@ function WeekEvent({
           ? "bg-muted border border-border text-muted-foreground"
           : "bg-primary/15 border border-primary/30 text-primary"
       }`}
-      style={{ top, minHeight: 40 }}
+      style={{ top, height }}
       onClick={() => onCompanyClick(s.company_id)}
     >
       <div className="flex items-start justify-between gap-1">

@@ -12,6 +12,8 @@ import { Progress } from "@/components/ui/progress";
 
 
 import { useCompanies, STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
+import { CompanyStatusBadge } from "@/components/CompanyStatusBadge";
+import { useCustomStatuses } from "@/lib/custom-statuses";
 import { CompaniesSkeleton } from "@/components/PageSkeletons";
 import { researchCompanyFn, deleteCompaniesFn } from "@/lib/research.functions";
 import { Plus, Loader2, Sparkles, Search, UserPlus, Trash2, Archive as ArchiveIcon } from "lucide-react";
@@ -30,19 +32,27 @@ function CompaniesPage() {
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
   const cancelRef = useRef(false);
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<Status | "all" | `custom:${string}`>("all");
+  const { customStatuses } = useCustomStatuses();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [visibleCount, setVisibleCount] = useState(100);
   const research = useServerFn(researchCompanyFn);
   const deleteMany = useServerFn(deleteCompaniesFn);
 
   const statusCounts = STATUS_ORDER.reduce(
-    (acc, status) => ({ ...acc, [status]: companies.filter((c) => c.status === status).length }),
+    (acc, status) => ({ ...acc, [status]: companies.filter((c) => c.status === status && !c.custom_status_id).length }),
     {} as Record<Status, number>,
   );
 
   const filtered = useMemo(() => companies.filter((c) => {
-    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
+    let matchesStatus = false;
+    if (statusFilter === "all") {
+      matchesStatus = true;
+    } else if (statusFilter.startsWith("custom:")) {
+      matchesStatus = c.custom_status_id === statusFilter.slice(7);
+    } else {
+      matchesStatus = c.status === statusFilter && !c.custom_status_id;
+    }
     const matchesSearch =
       !q ||
       c.name.toLowerCase().includes(q.toLowerCase()) ||
@@ -181,9 +191,30 @@ function CompaniesPage() {
                   active ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"
                 }`}
               >
+                <span className={`size-2 rounded-full shrink-0 ${meta.dot}`} />
                 {meta.label}
                 <span className={`rounded-full px-2 py-0.5 text-xs ${active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"}`}>
                   {statusCounts[status]}
+                </span>
+              </button>
+            );
+          })}
+          {customStatuses.map((cs) => {
+            const key = `custom:${cs.id}` as const;
+            const active = statusFilter === key;
+            const count = companies.filter((c) => c.custom_status_id === cs.id).length;
+            return (
+              <button
+                key={cs.id}
+                onClick={() => setStatusFilter(key)}
+                className={`inline-flex shrink-0 items-center gap-3 rounded-full border px-5 py-3 text-sm font-medium transition ${
+                  active ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"
+                }`}
+              >
+                <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: cs.color }} />
+                {cs.label}
+                <span className={`rounded-full px-2 py-0.5 text-xs ${active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"}`}>
+                  {count}
                 </span>
               </button>
             );
@@ -233,7 +264,6 @@ function CompaniesPage() {
           </thead>
           <tbody className="divide-y">
             {visible.map((c) => {
-              const meta = STATUS_META[c.status];
               const busy = busyIds.has(c.id);
               const city = c.address?.split(",")[0]?.trim() || "";
               return (
@@ -267,10 +297,7 @@ function CompaniesPage() {
                   </td>
                   <td className="px-4 py-6">
                     <div className="flex flex-col gap-1">
-                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full w-fit ${meta.tone}`}>
-                        <span className={`size-1.5 rounded-full ${meta.dot}`} />
-                        {meta.label}
-                      </span>
+                      <CompanyStatusBadge company={c} />
                       {c.status !== "new" && c.status_changed_at && (
                         <span className="text-[10px] text-muted-foreground/40 pl-1">
                           {new Date(c.status_changed_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}

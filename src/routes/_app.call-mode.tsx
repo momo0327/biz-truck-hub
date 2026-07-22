@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCompanies, STATUS_META, STATUS_ORDER, type Company, type Status } from "@/lib/companies";
+import { CompanyStatusBadge } from "@/components/CompanyStatusBadge";
+import { useCustomStatuses } from "@/lib/custom-statuses";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ChevronLeft,
@@ -10,6 +12,9 @@ import {
   Plus,
   ExternalLink,
   Trash2,
+  Copy,
+  Check,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PhoneButtons } from "@/components/PhoneButtons";
@@ -44,16 +49,22 @@ function saveAutoAnswers(list: string[]) {
 
 function CallModePage() {
   const { companies, upsertCompany } = useCompanies();
+  const { customStatuses } = useCustomStatuses();
+  const [selectedStatus, setSelectedStatus] = useState<Status | `custom:${string}`>("new");
+  const [statusOpen, setStatusOpen] = useState(false);
 
-  // Snapshot the "Ny" queue once on mount so navigating back works even after
-  // a status change removes the company from the live filtered list.
+  // Snapshot the queue when status or companies first load
   const [queue, setQueue] = useState<Company[]>([]);
   useEffect(() => {
-    if (companies.length > 0 && queue.length === 0) {
-      setQueue(companies.filter((c) => c.status === "new"));
+    if (companies.length > 0) {
+      const filtered = selectedStatus.startsWith("custom:")
+        ? companies.filter((c) => c.custom_status_id === selectedStatus.slice(7))
+        : companies.filter((c) => c.status === selectedStatus && !c.custom_status_id);
+      setQueue(filtered);
+      setIdx(0);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companies]);
+  }, [selectedStatus, companies.length]);
 
   // Keep queue entries up-to-date when company data changes (e.g. status change)
   // but never remove entries — so swiping back still works.
@@ -97,15 +108,9 @@ function CallModePage() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  if (queue.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground p-8">
-        <Phone className="size-12 opacity-20" />
-        <p className="text-lg font-medium">No companies with status "Ny"</p>
-        <p className="text-sm">All caught up!</p>
-      </div>
-    );
-  }
+  const isCustomSelected = selectedStatus.startsWith("custom:");
+  const selectedCustom = isCustomSelected ? customStatuses.find((cs) => cs.id === selectedStatus.slice(7)) : null;
+  const meta = isCustomSelected ? null : STATUS_META[selectedStatus as Status];
 
   const slideClass = animating
     ? direction === "right"
@@ -119,9 +124,60 @@ function CallModePage() {
       <div className="shrink-0 border-b px-6 py-4 flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl tracking-wide uppercase">Call Mode</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {idx + 1} of {queue.length} · Status: Ny
-          </p>
+          <div className="relative mt-0.5">
+            <button
+              onClick={() => setStatusOpen((o) => !o)}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              {selectedCustom
+                ? <span className="size-1.5 rounded-full" style={{ backgroundColor: selectedCustom.color }} />
+                : <span className={`size-1.5 rounded-full ${meta?.dot}`} />}
+              {selectedCustom?.label ?? meta?.label} · {queue.length} companies
+              <ChevronDown className="size-3" />
+            </button>
+            {statusOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setStatusOpen(false)} />
+                <div className="absolute top-full left-0 mt-1 z-50 bg-card border rounded-lg shadow-lg py-1 min-w-[160px]">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-3 py-1.5">Default</p>
+                  {STATUS_ORDER.map((s) => {
+                    const m = STATUS_META[s];
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => { setSelectedStatus(s); setStatusOpen(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left ${selectedStatus === s ? "font-semibold" : ""}`}
+                      >
+                        <span className={`size-2 rounded-full ${m.dot}`} />
+                        {m.label}
+                        {selectedStatus === s && <Check className="size-3 ml-auto" />}
+                      </button>
+                    );
+                  })}
+                  {customStatuses.length > 0 && (
+                    <>
+                      <div className="border-t my-1" />
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-3 py-1.5">Custom</p>
+                      {customStatuses.map((cs) => {
+                        const key = `custom:${cs.id}` as const;
+                        return (
+                          <button
+                            key={cs.id}
+                            onClick={() => { setSelectedStatus(key); setStatusOpen(false); }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left ${selectedStatus === key ? "font-semibold" : ""}`}
+                          >
+                            <span className="size-2 rounded-full" style={{ backgroundColor: cs.color }} />
+                            {cs.label}
+                            {selectedStatus === key && <Check className="size-3 ml-auto" />}
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -152,47 +208,60 @@ function CallModePage() {
         />
       </div>
 
-      {/* Content area — relative so zones are scoped below header */}
-      <div className="flex-1 min-h-0 relative">
-        {/* Invisible click zones */}
-        <button
-          onClick={() => navigate("left")}
-          disabled={idx === 0 || animating}
-          className="absolute left-0 top-0 h-full w-36 z-10 disabled:pointer-events-none cursor-w-resize"
-          aria-label="Previous"
-        />
-        <button
-          onClick={() => navigate("right")}
-          disabled={idx === queue.length - 1 || animating}
-          className="absolute right-0 top-0 h-full w-36 z-10 disabled:pointer-events-none cursor-e-resize"
-          aria-label="Next"
-        />
-
-        {/* Scrollable card */}
-        <div className="h-full overflow-y-auto py-6 px-4">
-        <div
-          ref={cardRef}
-          className={`max-w-2xl mx-auto transition-all duration-280 ease-in-out ${slideClass}`}
-          onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
-          onTouchEnd={(e) => {
-            if (touchStartX.current === null) return;
-            const dx = e.changedTouches[0].clientX - touchStartX.current;
-            touchStartX.current = null;
-            if (Math.abs(dx) < 50) return;
-            navigate(dx < 0 ? "right" : "left");
-          }}
-        >
-          {company && (
-            <CompanyCard
-              key={company.id}
-              company={company}
-              onCompanyChange={(c) => upsertCompany(c)}
-            />
-          )}
-        </div>
-      </div>
+      {/* Content area */}
+      <div className="flex-1 min-h-0 relative overflow-hidden">
+        {queue.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
+            <Phone className="size-12 opacity-20" />
+            <p className="text-lg font-medium">No companies with status "{selectedCustom?.label ?? meta?.label}"</p>
+            <p className="text-sm">All caught up!</p>
+          </div>
+        ) : (
+          <div
+            ref={cardRef}
+            className={`h-full transition-all duration-280 ease-in-out ${slideClass}`}
+            onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+            onTouchEnd={(e) => {
+              if (touchStartX.current === null) return;
+              const dx = e.changedTouches[0].clientX - touchStartX.current;
+              touchStartX.current = null;
+              if (Math.abs(dx) < 50) return;
+              navigate(dx < 0 ? "right" : "left");
+            }}
+          >
+            {company && (
+              <CompanyCard
+                key={company.id}
+                company={company}
+                onCompanyChange={(c) => upsertCompany(c)}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+// ─── Copy button ──────────────────────────────────────────────────────────────
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  function copy(e: React.MouseEvent) {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+  return (
+    <button
+      onClick={copy}
+      title="Copy"
+      className="shrink-0 size-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+    >
+      {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+    </button>
   );
 }
 
@@ -230,11 +299,11 @@ function CompanyCard({
       .eq("id", company.id)
       .select()
       .single();
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(error.message, { position: "bottom-right" });
     const row = data as Company;
     setCompany(row);
     onCompanyChange(row);
-    toast.success(`Status: ${STATUS_META[status].label}`);
+    toast.success(`Status: ${STATUS_META[status].label}`, { position: "bottom-right" });
   }
 
   async function saveNotes() {
@@ -245,193 +314,206 @@ function CompanyCard({
       year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit",
     }).replace("T", " ");
-    const stamped = `[${stamp}]\n${notes}`;
+    // Only stamp the new content the user added, then append to existing notes
+    const newContent = notes.slice(saved.length).trim();
+    const stamped = newContent
+      ? (saved ? `${saved}\n\n[${stamp}]\n${newContent}` : `[${stamp}]\n${newContent}`)
+      : notes;
     const { data, error } = await supabase.from("companies").update({ notes: stamped }).eq("id", company.id).select().single();
     setSavingNotes(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(error.message, { position: "bottom-right" });
     const row = data as Company;
     setNotes(stamped);
     setCompany(row);
     onCompanyChange(row);
-    toast.success("Notes saved");
+    toast.success("Notes saved", { position: "bottom-right" });
   }
 
   async function addSchedule() {
-    if (!schedDate) return toast.error("Pick a date");
+    if (!schedDate) return toast.error("Pick a date", { position: "bottom-right" });
     const [hh, mm] = schedTime.split(":").map(Number);
     const dt = new Date(schedDate);
     dt.setHours(hh || 9, mm || 0, 0, 0);
     try {
       await createSchedule({ company_id: company.id, scheduled_at: dt.toISOString(), title: schedTitle.trim() || "Call" });
-      toast.success("Scheduled");
+      toast.success("Scheduled", { position: "bottom-right" });
       setSchedDate(new Date());
       setSchedTitle("Call");
       listSchedulesForCompany(company.id).then(setSchedules).catch(() => {});
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to schedule");
+      toast.error(e.message ?? "Failed to schedule", { position: "bottom-right" });
     }
   }
 
-  const meta = STATUS_META[company.status];
   const researchPhones = (company.research_raw as any)?.phones as string[] | undefined;
+  const vehicles = (company.vehicles as unknown) as Vehicle[] | undefined;
 
   return (
-    <div className="space-y-4">
-      {/* Identity */}
-      <div className="bg-card border rounded-xl p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="font-display text-2xl tracking-wide">{company.name}</h2>
-            {company.org_number && (
-              <p className="text-xs text-muted-foreground mt-0.5">{company.org_number}</p>
-            )}
+    <div className="h-full grid grid-cols-2 grid-rows-1 gap-0 p-4 gap-4">
+
+      {/* ── Left column ── */}
+      <div className="flex flex-col gap-3 min-h-0">
+
+        {/* Identity */}
+        <div className="bg-card border rounded-xl p-4 shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h2 className="font-display text-xl tracking-wide truncate">{company.name}</h2>
+                <CopyButton text={company.name} />
+              </div>
+              {company.org_number && (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <p className="text-xs text-muted-foreground">{company.org_number}</p>
+                  <CopyButton text={company.org_number} />
+                </div>
+              )}
+              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                {company.address && <span>{company.address}</span>}
+                {company.fleet_size && <span>{company.fleet_size} fordon</span>}
+                {company.contact_person && <span>{company.contact_person}</span>}
+                {company.website && (
+                  <a href={company.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">
+                    <ExternalLink className="size-3" /> Website
+                  </a>
+                )}
+              </div>
+            </div>
+            <CompanyStatusBadge company={company} />
           </div>
-          <span className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full ${meta.tone}`}>
-            <span className={`size-1.5 rounded-full ${meta.dot}`} />
-            {meta.label}
-          </span>
+          <div className="mt-3">
+            <PhoneButtons
+              phones={company.phones ?? []}
+              researchPhones={researchPhones}
+              companyId={company.id}
+              contactName={company.name}
+            />
+          </div>
         </div>
 
-        {/* Quick info row */}
-        <div className="mt-3 flex flex-wrap gap-3 text-sm text-muted-foreground">
-          {company.address && <span>{company.address}</span>}
-          {company.fleet_size && <span>· {company.fleet_size} fordon</span>}
-          {company.contact_person && <span>· {company.contact_person}</span>}
-          {company.website && (
-            <a href={company.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">
-              <ExternalLink className="size-3" /> Website
-            </a>
-          )}
-        </div>
-
-        {/* Phones */}
-        <div className="mt-3">
-          <PhoneButtons
-            phones={company.phones ?? []}
-            researchPhones={researchPhones}
-            companyId={company.id}
-            contactName={company.name}
-          />
-        </div>
-
-      </div>
-
-      {/* Status change */}
-      <div className="bg-card border rounded-xl p-5 space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Change Status</h3>
-        <div className="flex flex-wrap gap-2">
-          {STATUS_ORDER.filter((s) => s !== "new").map((s) => {
-            const m = STATUS_META[s];
-            return (
-              <button
-                key={s}
-                onClick={() => changeStatus(s)}
-                className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-3 py-1.5 rounded-full border transition-colors hover:opacity-80 ${m.tone}`}
-              >
-                <span className={`size-1.5 rounded-full ${m.dot}`} />
-                {m.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Notes */}
-      <div className="bg-card border rounded-xl p-5 space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Internal Notes</h3>
-        <CallModeNotesField value={notes} onChange={setNotes} onBlur={saveNotes} saving={savingNotes} />
-      </div>
-
-      {/* Vehicles */}
-      {((company.vehicles as unknown) as Vehicle[])?.length > 0 && (
-        <div className="bg-card border rounded-xl p-5 space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Vehicles</h3>
-          <VehiclesTable vehicles={(company.vehicles as unknown) as Vehicle[]} />
-        </div>
-      )}
-
-      {/* Schedule a call */}
-      <div className="bg-card border rounded-xl p-5 space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Schedule a Call</h3>
-        <div className="flex gap-2 items-center">
-          <input
-            value={schedTitle}
-            onChange={(e) => setSchedTitle(e.target.value)}
-            placeholder="Title"
-            className="flex-1 px-3 py-2 rounded-md border bg-background text-sm"
-          />
-          <CallModeAutoAnswerPicker onSelect={setSchedTitle} />
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="flex-1 min-w-[140px] inline-flex items-center gap-2 px-3 py-2 rounded-md border bg-background text-sm">
-                <CalendarIcon className="size-4 text-muted-foreground" />
-                {schedDate
-                  ? schedDate.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
-                  : "Pick a date"}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={schedDate}
-                onSelect={setSchedDate}
-                defaultMonth={schedDate ?? new Date()}
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-          <input
-            type="time"
-            value={schedTime}
-            onChange={(e) => setSchedTime(e.target.value)}
-            className="px-3 py-2 rounded-md border bg-background text-sm w-32"
-          />
-          <button
-            onClick={addSchedule}
-            className="px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:opacity-90 inline-flex items-center gap-1"
-          >
-            <Plus className="size-4" /> Add
-          </button>
-        </div>
-
-        {schedules.length > 0 && (
-          <ul className="space-y-1.5 pt-1">
-            {schedules.map((s) => {
-              const dt = new Date(s.scheduled_at);
+        {/* Status change */}
+        <div className="bg-card border rounded-xl p-4 shrink-0">
+          <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Change Status</h3>
+          <div className="flex flex-wrap gap-2">
+            {STATUS_ORDER.filter((s) => s !== "new").map((s) => {
+              const m = STATUS_META[s];
               return (
-                <li key={s.id} className="flex items-center gap-2 text-sm border rounded-md px-3 py-2">
-                  <CalendarIcon className="size-3.5 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className={`font-medium truncate ${s.done ? "line-through text-muted-foreground" : ""}`}>{s.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-                      {" · "}
-                      {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </div>
-                  </div>
-                  <button
-                    onClick={async () => { await toggleScheduleDone(s.id, !s.done); listSchedulesForCompany(company.id).then(setSchedules).catch(() => {}); }}
-                    className="text-xs px-2 py-1 rounded border hover:bg-muted"
-                  >
-                    {s.done ? "Undo" : "Done"}
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (!confirm("Delete?")) return;
-                      await deleteSchedule(s.id);
-                      listSchedulesForCompany(company.id).then(setSchedules).catch(() => {});
-                    }}
-                    className="size-7 inline-flex items-center justify-center rounded border hover:bg-destructive/10 text-destructive"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                </li>
+                <button
+                  key={s}
+                  onClick={() => changeStatus(s)}
+                  className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-3 py-1.5 rounded-full border transition-colors hover:opacity-80 cursor-pointer ${m.tone}`}
+                >
+                  <span className={`size-1.5 rounded-full ${m.dot}`} />
+                  {m.label}
+                </button>
               );
             })}
-          </ul>
+          </div>
+        </div>
+
+        {/* Vehicles (if any) */}
+        {vehicles && vehicles.length > 0 && (
+          <div className="bg-card border rounded-xl p-4 flex-1 min-h-0 overflow-y-auto">
+            <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Vehicles</h3>
+            <VehiclesTable vehicles={vehicles} />
+          </div>
         )}
+      </div>
+
+      {/* ── Right column ── */}
+      <div className="flex flex-col gap-3 min-h-0">
+
+        {/* Notes */}
+        <div className="bg-card border rounded-xl p-4 flex-1 min-h-0 flex flex-col">
+          <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 shrink-0">Internal Notes</h3>
+          <div className="flex-1 min-h-0">
+            <CallModeNotesField value={notes} onChange={setNotes} onBlur={saveNotes} saving={savingNotes} />
+          </div>
+        </div>
+
+        {/* Schedule */}
+        <div className="bg-card border rounded-xl p-4 shrink-0">
+          <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Schedule a Call</h3>
+          <div className="flex gap-2 items-center mb-2">
+            <input
+              value={schedTitle}
+              onChange={(e) => setSchedTitle(e.target.value)}
+              placeholder="Title"
+              className="flex-1 px-3 py-1.5 rounded-md border bg-background text-sm"
+            />
+            <CallModeAutoAnswerPicker onSelect={setSchedTitle} />
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex-1 min-w-[130px] inline-flex items-center gap-2 px-3 py-1.5 rounded-md border bg-background text-sm">
+                  <CalendarIcon className="size-3.5 text-muted-foreground" />
+                  {schedDate
+                    ? schedDate.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
+                    : "Pick a date"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={schedDate}
+                  onSelect={setSchedDate}
+                  defaultMonth={schedDate ?? new Date()}
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            <input
+              type="time"
+              value={schedTime}
+              onChange={(e) => setSchedTime(e.target.value)}
+              className="px-3 py-1.5 rounded-md border bg-background text-sm w-28"
+            />
+            <button
+              onClick={addSchedule}
+              className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm hover:opacity-90 inline-flex items-center gap-1"
+            >
+              <Plus className="size-4" /> Add
+            </button>
+          </div>
+
+          {schedules.length > 0 && (
+            <ul className="space-y-1.5 mt-2 max-h-36 overflow-y-auto">
+              {schedules.map((s) => {
+                const dt = new Date(s.scheduled_at);
+                return (
+                  <li key={s.id} className="flex items-center gap-2 text-sm border rounded-md px-3 py-1.5">
+                    <CalendarIcon className="size-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className={`font-medium truncate text-xs ${s.done ? "line-through text-muted-foreground" : ""}`}>{s.title}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                        {" · "}
+                        {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => { await toggleScheduleDone(s.id, !s.done); listSchedulesForCompany(company.id).then(setSchedules).catch(() => {}); }}
+                      className="text-xs px-2 py-1 rounded border hover:bg-muted shrink-0"
+                    >
+                      {s.done ? "Undo" : "Done"}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm("Delete?")) return;
+                        await deleteSchedule(s.id);
+                        listSchedulesForCompany(company.id).then(setSchedules).catch(() => {});
+                      }}
+                      className="size-6 inline-flex items-center justify-center rounded border hover:bg-destructive/10 text-destructive shrink-0"
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -461,8 +543,7 @@ function CallModeNotesField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={() => { setEditing(false); onBlur(); }}
-        rows={4}
-        className="w-full px-3 py-2 rounded-md border bg-background text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+        className="w-full h-full px-3 py-2 rounded-md border bg-background text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
         placeholder="Internal notes…"
       />
     );
@@ -472,7 +553,7 @@ function CallModeNotesField({
     return (
       <div
         onClick={() => setEditing(true)}
-        className="w-full px-3 py-2 rounded-md border bg-background text-sm text-muted-foreground cursor-text min-h-[72px]"
+        className="w-full h-full px-3 py-2 rounded-md border bg-background text-sm text-muted-foreground cursor-text"
       >
         Internal notes…
       </div>
@@ -483,7 +564,7 @@ function CallModeNotesField({
   return (
     <div
       onClick={() => setEditing(true)}
-      className="w-full px-3 py-2 rounded-md border bg-background text-sm cursor-text whitespace-pre-wrap min-h-[72px] leading-relaxed"
+      className="w-full h-full px-3 py-2 rounded-md border bg-background text-sm cursor-text whitespace-pre-wrap overflow-y-auto leading-relaxed"
     >
       {lines.map((line, i) =>
         STAMP_RE.test(line)

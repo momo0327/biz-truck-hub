@@ -1,9 +1,10 @@
 import { useEffect, useState, useContext, useRef } from "react";
-import { X, Loader2, RefreshCw, ExternalLink, Trash2, Calendar as CalendarIcon, Plus, PhoneCall, Copy, Check } from "lucide-react";
+import { X, Loader2, RefreshCw, ExternalLink, Trash2, Calendar as CalendarIcon, Plus, PhoneCall, Copy, Check, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { researchCompanyFn } from "@/lib/research.functions";
 import { STATUS_META, STATUS_ORDER, type Company, type CallLog, type Status } from "@/lib/companies";
+import { useCustomStatuses, STATUS_COLORS, type CustomStatus } from "@/lib/custom-statuses";
 import { PhoneButtons } from "./PhoneButtons";
 import { VehiclesTable, type Vehicle } from "./VehiclesTable";
 import { Calendar } from "@/components/ui/calendar";
@@ -34,6 +35,11 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
   const [savingPhone, setSavingPhone] = useState(false);
   const softphone = useContext(SoftphoneContext);
   const research = useServerFn(researchCompanyFn);
+  const { customStatuses, createCustomStatus, deleteCustomStatus } = useCustomStatuses();
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const [creatingStatus, setCreatingStatus] = useState(false);
+  const [newStatusLabel, setNewStatusLabel] = useState("");
+  const [newStatusColor, setNewStatusColor] = useState(STATUS_COLORS[0].value);
 
   // Sync when parent passes a different company (e.g. realtime update arrived).
   useEffect(() => {
@@ -108,7 +114,20 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
   async function changeStatus(status: Status) {
     const { data, error } = await supabase
       .from("companies")
-      .update({ status, last_contact: new Date().toISOString() })
+      .update({ status, custom_status_id: null, last_contact: new Date().toISOString() })
+      .eq("id", company.id)
+      .select()
+      .single();
+    if (error) return toast.error(error.message);
+    const row = data as Company;
+    setCompany(row);
+    onCompanyChange?.(row);
+  }
+
+  async function changeCustomStatus(cs: CustomStatus) {
+    const { data, error } = await supabase
+      .from("companies")
+      .update({ custom_status_id: cs.id, last_contact: new Date().toISOString() })
       .eq("id", company.id)
       .select()
       .single();
@@ -342,16 +361,153 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
 
           <section className="space-y-2">
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Status</h4>
-            <select
-              value={company.status}
-              disabled={readOnly}
-              onChange={(e) => changeStatus(e.target.value as Status)}
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm disabled:opacity-70"
-            >
-              {STATUS_ORDER.map((s) => (
-                <option key={s} value={s}>{STATUS_META[s].emoji} {STATUS_META[s].label}</option>
-              ))}
-            </select>
+            {readOnly ? (
+              <div className="px-3 py-2 rounded-md border bg-background text-sm opacity-70">
+                {company.custom_status_id
+                  ? (customStatuses.find((cs) => cs.id === company.custom_status_id)?.label ?? "Custom")
+                  : STATUS_META[company.status].label}
+              </div>
+            ) : (
+              <div className="relative">
+                <button
+                  onClick={() => setStatusMenuOpen((o) => !o)}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md border bg-background text-sm hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {company.custom_status_id ? (
+                      <>
+                        <span
+                          className="size-2 rounded-full shrink-0"
+                          style={{ backgroundColor: customStatuses.find((cs) => cs.id === company.custom_status_id)?.color ?? "#6366f1" }}
+                        />
+                        {customStatuses.find((cs) => cs.id === company.custom_status_id)?.label ?? "Custom"}
+                      </>
+                    ) : (
+                      <>
+                        <span className={`size-2 rounded-full shrink-0 ${STATUS_META[company.status].dot}`} />
+                        {STATUS_META[company.status].label}
+                      </>
+                    )}
+                  </div>
+                  <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+                </button>
+
+                {statusMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => { setStatusMenuOpen(false); setCreatingStatus(false); }} />
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-card border rounded-lg shadow-lg py-1 max-h-80 overflow-y-auto">
+                      {/* Built-in statuses */}
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-3 py-1.5">Default</p>
+                      {STATUS_ORDER.map((s) => {
+                        const m = STATUS_META[s];
+                        const active = !company.custom_status_id && company.status === s;
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => { changeStatus(s); setStatusMenuOpen(false); }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
+                          >
+                            <span className={`size-2 rounded-full shrink-0 ${m.dot}`} />
+                            <span className="flex-1">{m.label}</span>
+                            {active && <Check className="size-3.5 text-primary shrink-0" />}
+                          </button>
+                        );
+                      })}
+
+                      {/* Custom statuses */}
+                      {customStatuses.length > 0 && (
+                        <>
+                          <div className="border-t my-1" />
+                          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-3 py-1.5">Custom</p>
+                          {customStatuses.map((cs) => {
+                            const active = company.custom_status_id === cs.id;
+                            return (
+                              <div key={cs.id} className="group flex items-center gap-2 px-3 py-2 hover:bg-muted transition-colors">
+                                <button
+                                  onClick={() => { changeCustomStatus(cs); setStatusMenuOpen(false); }}
+                                  className="flex items-center gap-2 flex-1 text-sm text-left"
+                                >
+                                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: cs.color }} />
+                                  <span className="flex-1">{cs.label}</span>
+                                  {active && <Check className="size-3.5 text-primary shrink-0" />}
+                                </button>
+                                <button
+                                  onClick={() => deleteCustomStatus(cs.id)}
+                                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
+
+                      {/* Create new */}
+                      <div className="border-t my-1" />
+                      {!creatingStatus ? (
+                        <button
+                          onClick={() => setCreatingStatus(true)}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-muted transition-colors text-left"
+                        >
+                          <Plus className="size-3.5" /> Create new status
+                        </button>
+                      ) : (
+                        <div className="px-3 py-2 space-y-2">
+                          <input
+                            autoFocus
+                            value={newStatusLabel}
+                            onChange={(e) => setNewStatusLabel(e.target.value)}
+                            placeholder="Status name…"
+                            className="w-full px-2 py-1.5 rounded-md border bg-background text-sm"
+                            onKeyDown={(e) => { if (e.key === "Escape") setCreatingStatus(false); }}
+                          />
+                          <div className="flex flex-wrap gap-1.5">
+                            {STATUS_COLORS.map((c) => (
+                              <button
+                                key={c.value}
+                                onClick={() => setNewStatusColor(c.value)}
+                                className="size-5 rounded-full border-2 transition-all"
+                                style={{
+                                  backgroundColor: c.value,
+                                  borderColor: newStatusColor === c.value ? "white" : "transparent",
+                                  boxShadow: newStatusColor === c.value ? `0 0 0 2px ${c.value}` : "none",
+                                }}
+                                title={c.label}
+                              />
+                            ))}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                if (!newStatusLabel.trim()) return;
+                                try {
+                                  const cs = await createCustomStatus(newStatusLabel.trim(), newStatusColor);
+                                  await changeCustomStatus(cs);
+                                  setNewStatusLabel("");
+                                  setCreatingStatus(false);
+                                  setStatusMenuOpen(false);
+                                } catch (e: any) { toast.error(e.message); }
+                              }}
+                              disabled={!newStatusLabel.trim()}
+                              className="flex-1 px-2 py-1.5 rounded-md bg-primary text-primary-foreground text-xs hover:opacity-90 disabled:opacity-40"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setCreatingStatus(false)}
+                              className="px-2 py-1.5 rounded-md border text-xs hover:bg-muted"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </section>
 
           <section className="space-y-2">

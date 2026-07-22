@@ -8,8 +8,8 @@ export type Status = Database["public"]["Enums"]["company_status"];
 
 export const STATUS_META: Record<Status, { label: string; emoji: string; tone: string; accent: string; dot: string }> = {
   new: { label: "Ny", emoji: "•", tone: "bg-muted text-foreground", accent: "var(--stage-new)", dot: "bg-[var(--stage-new)]" },
-  not_interested: { label: "Ej intresserad", emoji: "•", tone: "bg-destructive/10 text-destructive", accent: "var(--stage-lost)", dot: "bg-[var(--stage-lost)]" },
-  follow_up: { label: "Intresserad", emoji: "•", tone: "bg-info/10 text-info", accent: "var(--stage-contacted)", dot: "bg-[var(--stage-contacted)]" },
+  not_interested: { label: "Ej sälja", emoji: "•", tone: "bg-destructive/10 text-destructive", accent: "var(--stage-lost)", dot: "bg-[var(--stage-lost)]" },
+  follow_up: { label: "Vill sälja", emoji: "•", tone: "bg-info/10 text-info", accent: "var(--stage-contacted)", dot: "bg-[var(--stage-contacted)]" },
   sending_pictures: { label: "Skickar bilder", emoji: "•", tone: "bg-warning/15 text-warning-foreground", accent: "var(--stage-qualified)", dot: "bg-[var(--stage-qualified)]" },
   in_negotiation: { label: "Förhandlar", emoji: "•", tone: "bg-purple-500/15 text-purple-600 dark:text-purple-400", accent: "var(--stage-negotiating)", dot: "bg-[var(--stage-negotiating)]" },
   price_disagreement: { label: "Ej överens", emoji: "•", tone: "bg-warning/15 text-warning-foreground", accent: "var(--stage-lost)", dot: "bg-[var(--stage-lost)]" },

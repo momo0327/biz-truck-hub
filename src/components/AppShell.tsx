@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { SoftphoneProvider } from "@/components/softphone/SoftphoneProvider";
 import { SoftphonePanel } from "@/components/softphone/SoftphonePanel";
 import { CompaniesProvider } from "@/lib/companies";
+import { CustomStatusesProvider } from "@/lib/custom-statuses";
 import { Shell, type ShellNavItem } from "@/components/Shell";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -55,7 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SoftphoneProvider>
       <Shell user={user} nav={nav} roleLabel={t("shell.role.senior_agent")}>
-        <CompaniesProvider>{children}</CompaniesProvider>
+        <CustomStatusesProvider><CompaniesProvider>{children}</CompaniesProvider></CustomStatusesProvider>
       </Shell>
       <SoftphonePanel />
     </SoftphoneProvider>

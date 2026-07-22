@@ -92,6 +92,7 @@ export type Database = {
           archived_folder_id: string | null
           contact_person: string | null
           created_at: string
+          custom_status_id: string | null
           fleet_size: string | null
           id: string
           last_contact: string | null
@@ -115,6 +116,7 @@ export type Database = {
           archived_folder_id?: string | null
           contact_person?: string | null
           created_at?: string
+          custom_status_id?: string | null
           fleet_size?: string | null
           id?: string
           last_contact?: string | null
@@ -138,6 +140,7 @@ export type Database = {
           archived_folder_id?: string | null
           contact_person?: string | null
           created_at?: string
+          custom_status_id?: string | null
           fleet_size?: string | null
           id?: string
           last_contact?: string | null
@@ -163,7 +166,38 @@ export type Database = {
             referencedRelation: "archive_folders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "companies_custom_status_id_fkey"
+            columns: ["custom_status_id"]
+            isOneToOne: false
+            referencedRelation: "custom_statuses"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      custom_statuses: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          label: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          label: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          label?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

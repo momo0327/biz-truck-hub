@@ -175,6 +175,7 @@ function WeekPreview({
         </div>
         <Link
           to="/calendar"
+          search={{}}
           className="text-xs text-primary inline-flex items-center gap-1 hover:underline"
         >
           Open calendar <ArrowRight className="size-3" />
@@ -186,10 +187,13 @@ function WeekPreview({
             .filter((s) => isSameDay(new Date(s.scheduled_at), day))
             .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
           const isToday = idx === 0;
+          const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
           return (
-            <div
+            <Link
               key={day.toISOString()}
-              className={`rounded-lg border bg-background/50 p-3 flex flex-col gap-2 min-h-[120px] ${isToday ? "border-primary/50" : ""}`}
+              to="/calendar"
+              search={{ date: dateStr }}
+              className={`rounded-lg border bg-background/50 p-3 flex flex-col gap-2 min-h-[120px] hover:border-primary/40 transition-colors ${isToday ? "border-primary/50" : ""}`}
             >
               <div className="flex items-baseline justify-between">
                 <div className="text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground">
@@ -204,10 +208,9 @@ function WeekPreview({
                   <div className="text-[11px] text-muted-foreground italic">—</div>
                 )}
                 {dayItems.slice(0, 3).map((s) => (
-                  <Link
+                  <div
                     key={s.id}
-                    to="/calendar"
-                    className="block bg-card border rounded-md px-2 py-1.5 hover:border-primary/40"
+                    className="block bg-card border rounded-md px-2 py-1.5"
                   >
                     <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground tabular-nums">
                       <CalendarIcon className="size-2.5" />
@@ -216,13 +219,13 @@ function WeekPreview({
                     <div className="text-xs font-medium truncate">
                       {companyById.get(s.company_id) ?? s.title}
                     </div>
-                  </Link>
+                  </div>
                 ))}
                 {dayItems.length > 3 && (
                   <div className="text-[10px] text-muted-foreground">+{dayItems.length - 3} more</div>
                 )}
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

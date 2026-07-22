@@ -23,20 +23,22 @@ function EmployeeDetail() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-employee", employeeId],
     queryFn: () => fetchDetail({ data: { employeeId } }),
-    staleTime: Infinity,
+    staleTime: 0,
   });
 
   const [tab, setTab] = useState<Tab>("companies");
-  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<Status | "all" | `custom:${string}`>("all");
   const allCompanies = useMemo(() => (data?.companies ?? []) as Company[], [data]);
+  const customStatuses = useMemo(() => (data?.customStatuses ?? []) as { id: string; label: string; color: string }[], [data]);
   const statusCounts = useMemo(
-    () => STATUS_ORDER.reduce((acc, s) => ({ ...acc, [s]: allCompanies.filter((c) => c.status === s).length }), {} as Record<Status, number>),
+    () => STATUS_ORDER.reduce((acc, s) => ({ ...acc, [s]: allCompanies.filter((c) => c.status === s && !c.custom_status_id).length }), {} as Record<Status, number>),
     [allCompanies],
   );
-  const filteredCompanies = useMemo(
-    () => statusFilter === "all" ? allCompanies : allCompanies.filter((c) => c.status === statusFilter),
-    [allCompanies, statusFilter],
-  );
+  const filteredCompanies = useMemo(() => {
+    if (statusFilter === "all") return allCompanies;
+    if (statusFilter.startsWith("custom:")) return allCompanies.filter((c) => c.custom_status_id === statusFilter.slice(7));
+    return allCompanies.filter((c) => c.status === statusFilter && !c.custom_status_id);
+  }, [allCompanies, statusFilter]);
   const [visibleCount, setVisibleCount] = useState(100);
   useEffect(() => { setVisibleCount(100); }, [statusFilter]);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -184,7 +186,25 @@ function EmployeeDetail() {
                       active ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"
                     }`}
                   >
+                    <span className={`size-2 rounded-full shrink-0 ${meta.dot}`} />
                     {meta.label} <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"}`}>{statusCounts[s]}</span>
+                  </button>
+                );
+              })}
+              {customStatuses.map((cs) => {
+                const key = `custom:${cs.id}` as const;
+                const active = statusFilter === key;
+                const count = allCompanies.filter((c) => c.custom_status_id === cs.id).length;
+                return (
+                  <button
+                    key={cs.id}
+                    onClick={() => setStatusFilter(key)}
+                    className={`inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors border ${
+                      active ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"
+                    }`}
+                  >
+                    <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: cs.color }} />
+                    {cs.label} <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"}`}>{count}</span>
                   </button>
                 );
               })}
@@ -201,6 +221,7 @@ function EmployeeDetail() {
               </thead>
               <tbody className="divide-y">
                 {filteredCompanies.slice(0, visibleCount).map((c) => {
+                  const customStatus = c.custom_status_id ? customStatuses.find((cs) => cs.id === c.custom_status_id) : null;
                   const meta = STATUS_META[c.status as keyof typeof STATUS_META] ?? { label: c.status ?? "—", tone: "bg-muted text-foreground", dot: "bg-muted-foreground" };
                   const city = c.address?.split(",")[0]?.trim() || "";
                   return (
@@ -219,10 +240,20 @@ function EmployeeDetail() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">
-                          <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full w-fit ${meta.tone}`}>
-                            <span className={`size-1.5 rounded-full ${meta.dot}`} />
-                            {meta.label}
-                          </span>
+                          {customStatus ? (
+                            <span
+                              className="inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full w-fit"
+                              style={{ backgroundColor: `${customStatus.color}22`, color: customStatus.color }}
+                            >
+                              <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: customStatus.color }} />
+                              {customStatus.label}
+                            </span>
+                          ) : (
+                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium tracking-[0.12em] uppercase px-2.5 py-1 rounded-full w-fit ${meta.tone}`}>
+                              <span className={`size-1.5 rounded-full ${meta.dot}`} />
+                              {meta.label}
+                            </span>
+                          )}
                           {c.status !== "new" && c.status_changed_at && (
                             <span className="text-[10px] text-muted-foreground/40 pl-1">
                               {new Date(c.status_changed_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}

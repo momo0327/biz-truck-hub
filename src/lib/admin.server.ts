@@ -123,7 +123,7 @@ export async function fetchOverviewData(userIds: string[]) {
 }
 
 export async function fetchEmployeeDetail(employeeId: string) {
-  const [{ data: user }, { data: profile }, { data: calls }] = await Promise.all([
+  const [{ data: user }, { data: profile }, { data: calls }, { data: customStatuses }] = await Promise.all([
     supabaseAdmin.auth.admin.getUserById(employeeId),
     supabaseAdmin.from("profiles").select("*").eq("user_id", employeeId).maybeSingle(),
     supabaseAdmin
@@ -132,6 +132,11 @@ export async function fetchEmployeeDetail(employeeId: string) {
       .eq("user_id", employeeId)
       .order("created_at", { ascending: false })
       .limit(500),
+    supabaseAdmin
+      .from("custom_statuses")
+      .select("*")
+      .eq("user_id", employeeId)
+      .order("created_at", { ascending: true }),
   ]);
 
   const companies = await fetchAll<any>(() =>
@@ -151,6 +156,7 @@ export async function fetchEmployeeDetail(employeeId: string) {
     },
     companies,
     calls: calls ?? [],
+    customStatuses: customStatuses ?? [],
   };
 }
 
