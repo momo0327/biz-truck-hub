@@ -102,12 +102,15 @@ function parseMerinfoVehicles(md: string): Vehicle[] {
   return vehicles;
 }
 
-const NOISE_WORDS = ["behandlingen", "personuppgifter", "dataskydd", "integritetspolicy", "cookies", "samtycke", "tillgänglig", "närvarande"];
+const NOISE_WORDS = ["behandlingen", "personuppgifter", "dataskydd", "integritetspolicy", "cookies", "samtycke", "tillgänglig", "närvarande", "teckna", "firman", "rätt", "bolaget", "aktier", "registrerad"];
 
 function isRealName(s: string): boolean {
   const lower = s.toLowerCase();
   if (NOISE_WORDS.some((w) => lower.includes(w))) return false;
-  if (s.split(/[\s,]+/).filter(Boolean).length < 2) return false;
+  // Must have at least 2 capitalized words
+  const words = s.split(/\s+/).filter(Boolean);
+  if (words.length < 2) return false;
+  if (!words.every((w) => /^[A-ZÅÄÖ]/.test(w))) return false;
   if (s.length > 60) return false;
   return true;
 }
@@ -118,24 +121,22 @@ function normalizeSwedishName(s: string): string {
   return s;
 }
 
-const LASTNAME_FIRSTNAME_RE = /([A-ZÅÄÖ][a-zåäö\-]+),\s*([A-ZÅÄÖ][a-zåäö\-]+(?:\s+[A-ZÅÄÖ][a-zåäö\-]+)*)/;
+
+const SKIP_PHRASES = /^(bolagsinformation|bolagsfakta|fordonsinnehav|styrelseledamot|styrelseordf|verkst[äa]llande|kontaktperson|org\.?nummer|e-post|hemsida|adress|telefon|antal|snittl|utdelning|telefonabonnemang)/i;
 
 function extractContactPerson(md: string): string | undefined {
-  const patterns = [
-    /verkst[äa]llande direkt[öo]r[:\s]+([A-ZÅÄÖ][a-zåäö]+(?: [A-ZÅÄÖ][a-zåäö]+)+)/i,
-    /styrelseordf[öo]rande[:\s]+([A-ZÅÄÖ][a-zåäö]+(?: [A-ZÅÄÖ][a-zåäö]+)+)/i,
-    /\bvd[:\s]+([A-ZÅÄÖ][a-zåäö]+(?: [A-ZÅÄÖ][a-zåäö]+)+)/i,
-    /kontaktperson[:\s]+([A-ZÅÄÖ][a-zåäö]+(?: [A-ZÅÄÖ][a-zåäö]+)+)/i,
-    /ansvarig[:\s]+([A-ZÅÄÖ][a-zåäö]+(?: [A-ZÅÄÖ][a-zåäö]+)+)/i,
-  ];
-  for (const re of patterns) {
-    const m = md.match(re);
-    if (m?.[1] && isRealName(m[1])) return normalizeSwedishName(m[1].trim());
-  }
-  const vhMatch = md.match(LASTNAME_FIRSTNAME_RE);
-  if (vhMatch) {
-    const full = `${vhMatch[1]}, ${vhMatch[2]}`;
-    if (isRealName(full)) return normalizeSwedishName(full);
+  // Find the bolagsinformation section, then grab the first proper person name.
+  const bolagsIdx = md.toLowerCase().indexOf("bolagsinformation");
+  const section = bolagsIdx !== -1 ? md.slice(bolagsIdx, bolagsIdx + 800) : md.slice(0, 800);
+
+  // Remove the org.nummer line, then scan for first 2+ capitalized word sequence
+  // that isn't a known heading or role label.
+  const afterOrg = section.replace(/org\.?nummer[^\n]*/i, "");
+  const nameRe = /\b([A-ZÅÄÖ][a-zåäö\-]+(?:\s+[A-ZÅÄÖ][a-zåäö\-]+)+)/g;
+  for (const m of afterOrg.matchAll(nameRe)) {
+    const candidate = m[1].trim().replace(/,\s*$/, "");
+    if (SKIP_PHRASES.test(candidate)) continue;
+    if (isRealName(candidate)) return candidate;
   }
   return undefined;
 }
@@ -149,21 +150,6 @@ function extractAddress(md: string): string | undefined {
   return undefined;
 }
 
-function extractWebsite(results: Array<{ url: string }>): string | undefined {
-  const excluded = ["allabolag.se", "hitta.se", "eniro.se", "merinfo.se", "linkedin.com", "facebook.com", "instagram.com", "twitter.com", "google.com", "bing.com"];
-  const own = results.find((r) => {
-    const u = r.url.toLowerCase();
-    return excluded.every((e) => !u.includes(e));
-  });
-  if (!own) return undefined;
-  try {
-    const u = new URL(own.url);
-    return `${u.protocol}//${u.hostname}`;
-  } catch {
-    return own.url;
-  }
-}
-
 // Strip subpage suffix from a merinfo URL to get the company base URL.
 function merinfoBase(url: string): string {
   return url
@@ -174,130 +160,91 @@ function merinfoBase(url: string): string {
 export async function researchCompany(name: string, orgNumber?: string | null): Promise<ResearchResult> {
   if (!FIRECRAWL_KEY()) throw new Error("FIRECRAWL_API_KEY not configured");
 
-  // ── Phase 1: fire all broad searches in parallel ──────────────────────────
-  const queries = [
-    orgNumber
-      ? `"${name}" ${orgNumber} telefon kontakt`
-      : `"${name}" telefon kontakt Sverige`,
-    `"${name}" lastbil OR fordon OR åkeri`,
-    orgNumber
-      ? `${orgNumber} site:merinfo.se OR site:allabolag.se OR site:hitta.se`
-      : `"${name}" site:merinfo.se OR site:allabolag.se OR site:hitta.se`,
-  ];
+  // ── Phase 1: search directly for the /fordon page on merinfo ────────────
+  // Searching for the vehicles page means the search result markdown often
+  // already contains page 1 of vehicles — saving a separate scrape.
+  const cleanedOrg = orgNumber ? orgNumber.replace(/\D/g, "") : "";
+  const query = cleanedOrg
+    ? `${cleanedOrg} fordon site:merinfo.se`
+    : `"${name}" fordon site:merinfo.se`;
 
-  const searchResponses = await Promise.allSettled(queries.map((q) => firecrawlSearch(q, 4)));
+  const searchResponse = await firecrawlSearch(query, 6).catch((e) => { console.warn("search failed", e); return null; });
+  const searchHits: Array<{ url: string; markdown?: string }> = searchResponse ? pickResults(searchResponse) : [];
 
-  const allResults: Array<{ url: string; title?: string; markdown?: string; description?: string }> = [];
-  for (const r of searchResponses) {
-    if (r.status === "fulfilled") allResults.push(...pickResults(r.value));
-    else console.warn("search failed", r.reason);
-  }
+  // ── Phase 2: resolve merinfo base URL from search results ─────────────────
+  // Only use search results to find the URL — we'll do our own explicit scrapes.
+  let merinoBaseUrl: string | undefined;
+  const fordonHit = searchHits.find((r) => /merinfo\.se\/foretag\/.+\/fordon/i.test(r.url))
+    ?? searchHits.find((r) => /merinfo\.se\/foretag\//i.test(r.url));
+  if (fordonHit) merinoBaseUrl = merinfoBase(fordonHit.url);
 
-  // Dedupe by URL, keeping whichever copy has markdown.
-  const byUrl = new Map<string, { url: string; title?: string; markdown?: string; description?: string }>();
-  for (const r of allResults) {
-    if (!r.url) continue;
-    const existing = byUrl.get(r.url);
-    if (!existing || (!existing.markdown && r.markdown)) byUrl.set(r.url, r);
-  }
-  const results = Array.from(byUrl.values());
+  // Cache /fordon markdown from search if it came back with content.
+  const fordonFromSearch = searchHits.find((r) => /merinfo\.se\/foretag\/.+\/fordon$/i.test(r.url))?.markdown ?? "";
 
-  // ── Phase 2: resolve merinfo base URL ────────────────────────────────────
-  let merinoBaseUrl: string | undefined = results
-    .find((r) => /merinfo\.se\/foretag\//i.test(r.url))
-    ?.url;
-  if (merinoBaseUrl) merinoBaseUrl = merinfoBase(merinoBaseUrl);
-
-  // Fallback: try to discover merinfo URL if the searches missed it.
-  if (!merinoBaseUrl && orgNumber) {
-    const cleanedOrg = orgNumber.replace(/\D/g, "");
-
-    // Run both targeted searches in parallel.
-    const [targeted, generic] = await Promise.allSettled([
-      firecrawlSearch(`site:merinfo.se/foretag ${cleanedOrg}`, 5),
-      firecrawlSearch(`merinfo ${cleanedOrg} fordon`, 5),
-    ]);
-
-    for (const r of [targeted, generic]) {
-      if (r.status === "fulfilled") {
-        const hit = pickResults(r.value).find((h) => /merinfo\.se\/foretag\//i.test(h.url));
-        if (hit) {
-          merinoBaseUrl = merinfoBase(hit.url);
-          // Reuse any markdown the search already returned.
-          if (!byUrl.has(hit.url)) byUrl.set(hit.url, hit);
-          results.push(...pickResults(r.value).filter((h) => !byUrl.has(h.url)));
-          break;
-        }
-      }
+  // Fallback: scrape merinfo search page if URL not found.
+  if (!merinoBaseUrl) {
+    const fallbackQuery = cleanedOrg
+      ? `site:merinfo.se/foretag ${cleanedOrg}`
+      : `"${name}" site:merinfo.se/foretag`;
+    const fallback = await firecrawlSearch(fallbackQuery, 5).catch(() => null);
+    if (fallback) {
+      const hit = pickResults(fallback).find((h) => /merinfo\.se\/foretag\//i.test(h.url));
+      if (hit) merinoBaseUrl = merinfoBase(hit.url);
     }
-
-    // Last resort: scrape merinfo's own search page (JS-rendered).
-    if (!merinoBaseUrl) {
-      const searchScrape = await firecrawlScrape(`https://www.merinfo.se/sok?q=${cleanedOrg}`, { waitFor: 3000 }).catch(() => null);
-      const searchMd = searchScrape?.data?.markdown || searchScrape?.markdown || "";
-      const m = searchMd.match(/https:\/\/www\.merinfo\.se\/foretag\/[^\s)"']+/i);
-      if (m) merinoBaseUrl = merinfoBase(m[0]);
-    }
-
-    if (!merinoBaseUrl) console.warn("[research] merinfo /foretag page not found for", name, orgNumber);
   }
+
+  if (!merinoBaseUrl && cleanedOrg) {
+    const searchScrape = await firecrawlScrape(`https://www.merinfo.se/sok?q=${cleanedOrg}`, { waitFor: 3000 }).catch(() => null);
+    const searchMd = searchScrape?.data?.markdown || searchScrape?.markdown || "";
+    const m = searchMd.match(/https:\/\/www\.merinfo\.se\/foretag\/[^\s)"']+/i);
+    if (m) merinoBaseUrl = merinfoBase(m[0]);
+  }
+
+  if (!merinoBaseUrl) console.warn("[research] merinfo /foretag page not found for", name, orgNumber);
 
   // ── Phase 3: scrape merinfo subpages ─────────────────────────────────────
   let parsedVehicles: Vehicle[] = [];
   let totalFleetFromMerinfo: string | undefined;
   let merinoMainMd = "";
 
-  if (merinoBaseUrl) {
-    // Only scrape the main merinfo page if the search didn't already return its markdown.
-    const existingMain = byUrl.get(merinoBaseUrl);
-    let mainMd = existingMain?.markdown ?? "";
-    if (!mainMd) {
-      const main = await firecrawlScrape(merinoBaseUrl).catch(() => null);
-      mainMd = main?.data?.markdown || main?.markdown || "";
-      if (existingMain) existingMain.markdown = mainMd;
-      else results.push({ url: merinoBaseUrl, title: "Merinfo main", markdown: mainMd });
-    }
-    merinoMainMd = mainMd;
+  const sources: string[] = [];
+  let allMd = "";
 
-    // Scrape /verklig-huvudman in parallel with the first /fordon page.
-    const vhUrl = `${merinoBaseUrl}/verklig-huvudman`;
+  if (merinoBaseUrl) {
     const fordon1Url = `${merinoBaseUrl}/fordon`;
 
-    const [vhRes, fordon1Res] = await Promise.all([
-      byUrl.has(vhUrl)
+    // Scrape main page and /fordon in parallel.
+    // Reuse /fordon markdown from search if it was already returned.
+    const [mainRes, fordon1Res] = await Promise.all([
+      firecrawlScrape(merinoBaseUrl).catch(() => null),
+      fordonFromSearch
         ? Promise.resolve(null)
-        : firecrawlScrape(vhUrl).catch(() => null),
-      byUrl.has(fordon1Url)
-        ? Promise.resolve({ _cached: true, markdown: byUrl.get(fordon1Url)!.markdown })
         : firecrawlScrape(fordon1Url, { waitFor: 2500 }).catch(() => null),
     ]);
 
-    // Handle /verklig-huvudman result.
-    const vhMd = vhRes?.data?.markdown || vhRes?.markdown || byUrl.get(vhUrl)?.markdown || "";
-    if (vhMd) {
-      results.push({ url: vhUrl, markdown: vhMd });
-      merinoMainMd += "\n\n" + vhMd;
+    merinoMainMd = mainRes?.data?.markdown || mainRes?.markdown || "";
+    if (merinoMainMd) sources.push(merinoBaseUrl);
+
+    // Debug: log the bolagsinformation section so we can tune the regex.
+    const bolagsIdx = merinoMainMd.toLowerCase().indexOf("bolagsinformation");
+    if (bolagsIdx !== -1) {
+      console.log("[research] bolagsinformation snippet:\n", merinoMainMd.slice(bolagsIdx, bolagsIdx + 600));
+    } else {
+      console.log("[research] 'bolagsinformation' not found in main page markdown. First 800 chars:\n", merinoMainMd.slice(0, 800));
     }
 
-    // Handle first /fordon page.
-    const fordon1Md = (fordon1Res as any)?._cached
-      ? (fordon1Res as any).markdown
-      : (fordon1Res as any)?.data?.markdown || (fordon1Res as any)?.markdown;
+    const fordon1Md = fordonFromSearch || (fordon1Res as any)?.data?.markdown || (fordon1Res as any)?.markdown || "";
 
     if (fordon1Md) {
+      sources.push(fordon1Url);
       const totalMatch = fordon1Md.match(/Totalt antal fordon:\s*(\d+)/i);
-      if (totalMatch) {
-        totalFleetFromMerinfo = totalMatch[1];
-      }
+      if (totalMatch) totalFleetFromMerinfo = totalMatch[1];
       const expectedTotal = parseInt(totalFleetFromMerinfo ?? "0", 10) || 0;
       const page1Vehicles = parseMerinfoVehicles(fordon1Md);
       parsedVehicles.push(...page1Vehicles);
-      results.push({ url: fordon1Url, title: "Merinfo - Fordon page 1", markdown: fordon1Md });
+      allMd += fordon1Md;
 
-      // Paginate remaining pages only if the first page is full (25 vehicles)
-      // and we haven't collected everything yet.
       if (page1Vehicles.length >= 25 && (expectedTotal === 0 || parsedVehicles.length < expectedTotal)) {
-        // Figure out how many more pages we need (max 19 more = 20 total).
         const remainingPages = expectedTotal > 0
           ? Math.min(Math.ceil((expectedTotal - parsedVehicles.length) / 25), 19)
           : 19;
@@ -311,13 +258,16 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
           const pageVehicles = parseMerinfoVehicles(fordonMd);
           if (pageVehicles.length === 0) break;
           parsedVehicles.push(...pageVehicles);
-          results.push({ url: fordonUrl, title: `Merinfo - Fordon page ${page}`, markdown: fordonMd });
+          sources.push(fordonUrl);
+          allMd += "\n\n" + fordonMd;
 
           if (expectedTotal > 0 && parsedVehicles.length >= expectedTotal) break;
           if (pageVehicles.length < 25) break;
         }
       }
     }
+
+    allMd = merinoMainMd + "\n\n" + allMd;
 
     // Dedupe vehicles by registration.
     const seenReg = new Set<string>();
@@ -329,35 +279,12 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
     });
   }
 
-  // ── Phase 4: company's own website ───────────────────────────────────────
-  // The search result already includes markdown for the homepage — only scrape
-  // /kontakt as an extra page (one credit instead of two).
-  const excluded = ["allabolag.se", "hitta.se", "eniro.se", "merinfo.se", "linkedin.com", "facebook.com", "instagram.com", "twitter.com", "google.com", "bing.com"];
-  const ownSite = results.find((r) => excluded.every((e) => !r.url.toLowerCase().includes(e)));
-  if (ownSite) {
-    try {
-      const u = new URL(ownSite.url);
-      const contactUrl = `${u.origin}/kontakt`;
-      if (!byUrl.has(contactUrl)) {
-        const c = await firecrawlScrape(contactUrl).catch(() => null);
-        const cmd = c?.data?.markdown || c?.markdown;
-        if (cmd) results.push({ url: contactUrl, markdown: cmd });
-      }
-    } catch { /* ignore */ }
-  }
-
-  // ── Phase 5: extract data from collected content ──────────────────────────
-  const sources = [...new Set(results.map((r) => r.url).filter(Boolean))];
-
-  const context = results
-    .map((r) => r.markdown ?? r.description ?? "")
-    .join("\n\n")
-    .slice(0, 24000);
+  // ── Phase 4: extract data from collected content ─────────────────────────
+  const context = allMd.slice(0, 24000);
 
   const phones = Array.from(new Set(extractSwedishPhones(context))).slice(0, 10);
   const contactPerson = extractContactPerson(merinoMainMd) ?? extractContactPerson(context);
   const address = extractAddress(merinoMainMd) ?? extractAddress(context);
-  const website = extractWebsite(results);
 
   const brandCounts: Record<string, number> = {};
   for (const v of parsedVehicles) {
@@ -372,7 +299,6 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
     : undefined;
 
   return {
-    website,
     phones,
     trucks_info,
     fleet_size: totalFleetFromMerinfo ?? (parsedVehicles.length ? String(parsedVehicles.length) : undefined),
@@ -380,6 +306,6 @@ export async function researchCompany(name: string, orgNumber?: string | null): 
     address,
     vehicles: parsedVehicles,
     sources,
-    debug: { query: queries.join(" | "), contextChars: context.length },
+    debug: { query, contextChars: context.length },
   };
 }
