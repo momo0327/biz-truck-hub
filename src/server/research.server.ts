@@ -34,7 +34,6 @@ async function firecrawlSearch(query: string, limit = 6) {
       limit,
       lang: "sv",
       country: "se",
-      scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
     }),
   });
   if (!res.ok) throw new Error(`Firecrawl search failed: ${res.status} ${await res.text()}`);
