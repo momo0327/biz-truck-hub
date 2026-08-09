@@ -111,7 +111,15 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
     }
   }
 
+  async function logStatusCall() {
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) return;
+    const { error } = await supabase.from("call_logs").insert({ company_id: company.id, user_id: u.user.id, outcome: "status_change", note: "" });
+    if (error) console.error("[logStatusCall]", error.message, error.details);
+  }
+
   async function changeStatus(status: Status) {
+    const wasNew = company.status === "new" && !company.custom_status_id;
     const { data, error } = await supabase
       .from("companies")
       .update({ status, custom_status_id: null, last_contact: new Date().toISOString() })
@@ -122,9 +130,11 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
     const row = data as Company;
     setCompany(row);
     onCompanyChange?.(row);
+    if (wasNew) await logStatusCall();
   }
 
   async function changeCustomStatus(cs: CustomStatus) {
+    const wasNew = company.status === "new" && !company.custom_status_id;
     const { data, error } = await supabase
       .from("companies")
       .update({ custom_status_id: cs.id, last_contact: new Date().toISOString() })
@@ -135,6 +145,7 @@ export function CompanyDrawer({ company: initial, onClose, onCompanyChange, onCo
     const row = data as Company;
     setCompany(row);
     onCompanyChange?.(row);
+    if (wasNew) await logStatusCall();
   }
 
   async function saveNotes() {

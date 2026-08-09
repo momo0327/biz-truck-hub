@@ -11,6 +11,7 @@ export const Route = createFileRoute("/_app/")({ component: Dashboard });
 function Dashboard() {
   const { companies, loading } = useCompanies();
   const [calls, setCalls] = useState<CallLog[]>([]);
+  const [callsTodayCount, setCallsTodayCount] = useState(0);
   const [schedules, setSchedules] = useState<ScheduledCall[]>([]);
 
   useEffect(() => {
@@ -27,18 +28,26 @@ function Dashboard() {
   }, []);
 
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("call_logs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(10);
-      setCalls((data ?? []) as CallLog[]);
-    })();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    async function fetchCalls() {
+      const [{ data: recent }, { count }] = await Promise.all([
+        supabase.from("call_logs").select("*").order("created_at", { ascending: false }).limit(10),
+        supabase.from("call_logs").select("*", { count: "exact", head: true }).gte("created_at", todayStart.toISOString()),
+      ]);
+      setCalls((recent ?? []) as CallLog[]);
+      setCallsTodayCount(count ?? 0);
+    }
+    fetchCalls();
+
     const channel = supabase
       .channel("dash-calls")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "call_logs" }, (p) => {
         setCalls((prev) => [p.new as CallLog, ...prev].slice(0, 10));
+        if (new Date(p.new.created_at).toDateString() === new Date().toDateString()) {
+          setCallsTodayCount((n) => n + 1);
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -52,11 +61,10 @@ function Dashboard() {
 
   if (loading) return <DashboardSkeleton />;
 
-  const today = new Date().toDateString();
   const stats = {
     total: companies.length,
     researched: companies.filter((c) => c.researched_at).length,
-    callsToday: companies.filter((c) => c.last_contact && new Date(c.last_contact).toDateString() === today).length,
+    callsToday: callsTodayCount,
     inProgress: companies.filter((c) => ["follow_up", "sending_pictures", "in_negotiation", "price_disagreement"].includes(c.status)).length,
     closed: companies.filter((c) => c.status === "deal_made").length,
   };

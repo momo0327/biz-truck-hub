@@ -293,6 +293,7 @@ function CompanyCard({
   }, [initial.id]);
 
   async function changeStatus(status: Status) {
+    const wasNew = company.status === "new" && !company.custom_status_id;
     const { data, error } = await supabase
       .from("companies")
       .update({ status, last_contact: new Date().toISOString() })
@@ -304,6 +305,12 @@ function CompanyCard({
     setCompany(row);
     onCompanyChange(row);
     toast.success(`Status: ${STATUS_META[status].label}`, { position: "bottom-right" });
+    if (wasNew) {
+      const { data: u } = await supabase.auth.getUser();
+      if (u.user) {
+        await supabase.from("call_logs").insert({ company_id: company.id, user_id: u.user.id, outcome: "status_change", note: "" });
+      }
+    }
   }
 
   async function saveNotes() {

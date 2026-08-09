@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getEmployeesOverviewFn } from "@/lib/admin.functions";
-import { Mail, Phone, ShieldCheck, Building2, CheckCircle2, Clock } from "lucide-react";
+import { Mail, Phone, ShieldCheck, Building2, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/_admin/admin/employees")({
   component: AdminEmployees,
@@ -85,10 +85,9 @@ function AdminEmployees() {
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
                     <Stat label="Companies" value={e.stats.companies} icon={Building2} />
                     <Stat label="Calls" value={e.stats.calls} icon={Phone} />
-                    <Stat label="Call minutes" value={e.stats.callMinutes} icon={Clock} />
                     <Stat
                       label="Deals closed"
                       value={e.stats.dealsClosed}

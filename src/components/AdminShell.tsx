@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useUserRole } from "@/lib/roles";
 import { useI18n } from "@/lib/i18n";
 import { Shell, type ShellNavItem } from "@/components/Shell";
+import { CustomStatusesProvider } from "@/lib/custom-statuses";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
@@ -45,8 +46,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <Shell user={user} nav={nav} roleLabel={t("shell.role.admin")}>
-      {children}
-    </Shell>
+    <CustomStatusesProvider>
+      <Shell user={user} nav={nav} roleLabel={t("shell.role.admin")}>
+        {children}
+      </Shell>
+    </CustomStatusesProvider>
   );
 }

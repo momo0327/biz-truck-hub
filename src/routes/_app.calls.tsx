@@ -4,11 +4,7 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   PhoneMissed,
-  // Voicemail removed
   Search,
-  Check,
-  X,
-  PhoneCall,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { CallLog } from "@/lib/companies";
@@ -192,10 +188,10 @@ function CallsHistoryPage() {
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <KpiCard label="Total calls" value={stats.total.toString()} suffix="today" />
-        <KpiCard label="Inbound" value={stats.inbound.toString()} />
-        <KpiCard label="Outbound" value={stats.outbound.toString()} />
-        <KpiCard label="Connect rate" value={stats.connectRate.toString()} suffix="%" />
-        <KpiCard label="Talk time" value={stats.talkHrs} suffix="hrs" />
+        <KpiCard label="Inbound" value="—" disabled />
+        <KpiCard label="Outbound" value="—" disabled />
+        <KpiCard label="Connect rate" value="—" disabled />
+        <KpiCard label="Talk time" value="—" disabled />
       </div>
 
       {/* Filters */}
@@ -287,12 +283,6 @@ function CallsHistoryPage() {
                       ? "bg-success/15 text-success"
                       : "bg-muted text-muted-foreground";
                   const name = (c.company_id && companyById.get(c.company_id)) || "Unknown";
-                  const outcome = answered
-                    ? { label: "answered", tone: "bg-success/15 text-success", icon: Check }
-                    : notAnswered
-                      ? { label: "not answered", tone: "bg-destructive/10 text-destructive", icon: X }
-                      : { label: c.status ?? "pending", tone: "bg-muted text-foreground", icon: PhoneCall };
-                  const OutIcon = outcome.icon;
                   return (
                     <tr key={c.id} className="border-t hover:bg-muted/30">
                       <td className="px-5 py-3">
@@ -319,11 +309,7 @@ function CallsHistoryPage() {
                         <div className="font-medium">{c.note?.split(" — ")[0] || "—"}</div>
                         <div className="text-[11px] font-mono text-muted-foreground">{c.to_number ?? "—"}</div>
                       </td>
-                      <td className="px-3 py-3">
-                        <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ${outcome.tone}`}>
-                          <OutIcon className="size-3" /> {outcome.label}
-                        </span>
-                      </td>
+                      <td className="px-3 py-3"></td>
                       <td className="px-3 py-3 font-mono text-xs">{formatDuration(c.duration)}</td>
                       <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
                         {new Date(c.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -345,13 +331,15 @@ function KpiCard({
   label,
   value,
   suffix,
+  disabled,
 }: {
   label: string;
   value: string;
   suffix?: string;
+  disabled?: boolean;
 }) {
   return (
-    <div className="bg-card border rounded-xl p-5">
+    <div className={`bg-card border rounded-xl p-5${disabled ? " opacity-60" : ""}`}>
       <div className="text-[11px] font-medium tracking-[0.18em] uppercase text-muted-foreground">
         {label}
       </div>

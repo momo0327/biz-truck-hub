@@ -39,8 +39,8 @@ function AdminDashboard() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin-employees"],
     queryFn: () => fetchOverview({}),
-    refetchInterval: 15000,
-    refetchOnWindowFocus: false,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
@@ -57,7 +57,6 @@ function AdminDashboard() {
   const totals = data?.totals ?? { calls: 0, answered: 0, leads: 0 };
   const weekly = data?.weekly ?? [];
   const today = weekly.length > 0 ? weekly[weekly.length - 1] : { calls: 0, answered: 0 };
-  const todayAnswerRate = today.calls > 0 ? Math.round((today.answered / today.calls) * 100) : 0;
   const [weekDialogOpen, setWeekDialogOpen] = useState(false);
   const topEmployees = (data?.employees ?? [])
     .slice()
@@ -84,13 +83,12 @@ function AdminDashboard() {
         />
         <StatCard
           label={`${t("admin.dash.answered")} (today)`}
-          value={today.answered.toLocaleString()}
+          value="—"
           icon={PhoneCall}
-          subtitle={t("admin.dash.answer_rate", { rate: todayAnswerRate })}
-          iconColor="text-success"
-          iconBorder="border-success/40"
-          iconBg="bg-success/10"
-          onClick={() => setWeekDialogOpen(true)}
+          iconColor="text-muted-foreground"
+          iconBorder="border-muted-foreground/20"
+          iconBg="bg-muted"
+          disabled
         />
         <StatCard
           label={t("admin.dash.total_leads")}
@@ -230,6 +228,7 @@ function StatCard({
   iconBorder,
   iconBg,
   onClick,
+  disabled,
 }: {
   label: string;
   value: string;
@@ -239,15 +238,16 @@ function StatCard({
   iconBorder: string;
   iconBg: string;
   onClick?: () => void;
+  disabled?: boolean;
 }) {
-  const interactive = !!onClick;
+  const interactive = !!onClick && !disabled;
   const Comp: React.ElementType = interactive ? "button" : "div";
   return (
     <Comp
-      onClick={onClick}
+      onClick={interactive ? onClick : undefined}
       className={`w-full text-left rounded-xl border bg-card p-6 ${
         interactive ? "hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer" : ""
-      }`}
+      } ${disabled ? "opacity-60 select-none" : ""}`}
     >
       <div className="flex items-start justify-between gap-4">
         <span

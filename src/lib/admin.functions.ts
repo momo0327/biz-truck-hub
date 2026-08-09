@@ -62,18 +62,16 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
       leads: companies.length,
     };
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const byDate = new Map<string, { calls: number; answered: number }>();
-    const weekly: { day: string; calls: number; answered: number }[] = [];
+    // Use UTC date arithmetic so keys match call created_at timestamps.
+    const nowUtc = new Date();
+    const todayUtcKey = nowUtc.toISOString().slice(0, 10);
+    const byDate = new Map<string, { calls: number; answered: number; day: string }>();
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
+      const d = new Date(nowUtc);
+      d.setUTCDate(d.getUTCDate() - i);
       const key = d.toISOString().slice(0, 10);
-      const day = d.toLocaleDateString(undefined, { weekday: "short" });
-      const bucket = { calls: 0, answered: 0 };
-      byDate.set(key, bucket);
-      weekly.push({ day, ...bucket });
+      const day = d.toLocaleDateString("sv-SE", { weekday: "short", timeZone: "UTC" });
+      byDate.set(key, { calls: 0, answered: 0, day });
     }
     calls.forEach((c) => {
       const key = new Date(c.created_at).toISOString().slice(0, 10);
@@ -82,17 +80,7 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
       b.calls++;
       if (isCallAnswered(c)) b.answered++;
     });
-    // sync mutated values back into the array
-    let i = 6;
-    for (const item of weekly) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      const v = byDate.get(key)!;
-      item.calls = v.calls;
-      item.answered = v.answered;
-      i--;
-    }
+    const weekly = Array.from(byDate.values()).map(({ calls, answered, day }) => ({ day, calls, answered }));
 
     return { employees, totals, weekly };
   });
