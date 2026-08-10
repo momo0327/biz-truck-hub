@@ -85,7 +85,7 @@ function CompaniesPage() {
     cancelRef.current = false;
     setBulkProgress({ done: 0, total: targets.length });
     setBulkBusy(true);
-    const CONCURRENCY = 2;
+    const CONCURRENCY = 1;
     const queue = [...targets];
     let done = 0;
     async function worker() {

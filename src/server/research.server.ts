@@ -26,18 +26,23 @@ export type ResearchResult = {
 async function firecrawlSearch(query: string, limit = 6) {
   const key = FIRECRAWL_KEY();
   if (!key) throw new Error("FIRECRAWL_API_KEY not configured");
-  const res = await fetch("https://api.firecrawl.dev/v2/search", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      query,
-      limit,
-      lang: "sv",
-      country: "se",
-    }),
-  });
-  if (!res.ok) throw new Error(`Firecrawl search failed: ${res.status} ${await res.text()}`);
-  return res.json();
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch("https://api.firecrawl.dev/v2/search", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query, limit, lang: "sv", country: "se" }),
+    });
+    if (res.status === 429) {
+      const wait = (attempt + 1) * 5000;
+      console.warn(`[firecrawl] search rate limited, retrying in ${wait}ms`);
+      await new Promise((r) => setTimeout(r, wait));
+      continue;
+    }
+    if (!res.ok) throw new Error(`Firecrawl search failed: ${res.status} ${await res.text()}`);
+    return res.json();
+  }
+  throw new Error("Firecrawl search failed after retries");
 }
 
 async function firecrawlScrape(url: string, opts?: { waitFor?: number }) {
@@ -45,13 +50,23 @@ async function firecrawlScrape(url: string, opts?: { waitFor?: number }) {
   if (!key) throw new Error("FIRECRAWL_API_KEY not configured");
   const body: any = { url, formats: ["markdown"], onlyMainContent: true };
   if (opts?.waitFor) body.waitFor = opts.waitFor;
-  const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) return null;
-  return res.json();
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 429) {
+      const wait = (attempt + 1) * 5000;
+      console.warn(`[firecrawl] rate limited, retrying in ${wait}ms`);
+      await new Promise((r) => setTimeout(r, wait));
+      continue;
+    }
+    if (!res.ok) return null;
+    return res.json();
+  }
+  return null;
 }
 
 function pickResults(json: any): Array<{ url: string; title?: string; markdown?: string; description?: string }> {
