@@ -79,15 +79,13 @@ function CompaniesPage() {
   }
 
   async function researchAll() {
-    const targets = filtered.filter((c) => !c.researched_at);
+    const targets = companies.filter((c) => !c.researched_at);
     if (!targets.length) return toast.info("Nothing to research");
     if (!confirm(`Research ${targets.length} companies? This may take a while.`)) return;
     cancelRef.current = false;
     setBulkProgress({ done: 0, total: targets.length });
     setBulkBusy(true);
-    // Run up to 4 in parallel — Firecrawl + AI gateway tolerate this and it
-    // cuts wall-clock time ~4x for large batches.
-    const CONCURRENCY = 4;
+    const CONCURRENCY = 2;
     const queue = [...targets];
     let done = 0;
     async function worker() {

@@ -48,7 +48,6 @@ export const researchCompanyFn = createServerFn({ method: "POST" })
       const { error: upErr } = await supabase
         .from("companies")
         .update({
-          website: result.website ?? null,
           phones: result.phones,
           trucks_info: result.trucks_info ?? null,
           fleet_size: result.fleet_size ?? null,
