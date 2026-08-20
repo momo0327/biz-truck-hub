@@ -19,16 +19,22 @@ export const deleteAllCompaniesFn = createServerFn({ method: "POST" })
 
 export const deleteCompaniesFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ ids: z.array(z.string().uuid()).min(1).max(5000) }).parse(d))
+  .inputValidator((d: unknown) => z.object({ ids: z.array(z.string().uuid()).min(1) }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { error, count } = await supabase
-      .from("companies")
-      .delete({ count: "exact" })
-      .eq("user_id", userId)
-      .in("id", data.ids);
-    if (error) throw new Error(error.message);
-    return { ok: true, deleted: count ?? 0 };
+    const CHUNK = 1000;
+    let deleted = 0;
+    for (let i = 0; i < data.ids.length; i += CHUNK) {
+      const chunk = data.ids.slice(i, i + CHUNK);
+      const { error, count } = await supabase
+        .from("companies")
+        .delete({ count: "exact" })
+        .eq("user_id", userId)
+        .in("id", chunk);
+      if (error) throw new Error(error.message);
+      deleted += count ?? 0;
+    }
+    return { ok: true, deleted };
   });
 
 export const researchCompanyFn = createServerFn({ method: "POST" })
