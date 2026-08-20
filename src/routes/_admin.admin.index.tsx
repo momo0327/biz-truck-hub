@@ -178,6 +178,7 @@ function AdminDashboard() {
 
         <CallsByEmployee
           employees={(data as any)?.todayByEmployee ?? []}
+          colorMap={Object.fromEntries(weeklyEmployees.map((n, i) => [n, DONUT_COLORS[i % DONUT_COLORS.length]]))}
         />
       </div>
 
@@ -354,7 +355,13 @@ function WeeklyBreakdownDialog({
 }
 
 
-function CallsByEmployee({ employees }: { employees: { name: string; calls: number }[] }) {
+function CallsByEmployee({
+  employees,
+  colorMap = {},
+}: {
+  employees: { name: string; calls: number }[];
+  colorMap?: Record<string, string>;
+}) {
   const filtered = employees.filter((e) => e.calls > 0).sort((a, b) => b.calls - a.calls);
   const top = filtered.slice(0, 6);
   const restTotal = filtered.slice(6).reduce((s, e) => s + e.calls, 0);
@@ -362,6 +369,8 @@ function CallsByEmployee({ employees }: { employees: { name: string; calls: numb
   const total = data.reduce((s, e) => s + e.calls, 0);
   const leader = data[0];
   const leaderPct = leader && total > 0 ? Math.round((leader.calls / total) * 100) : 0;
+  const getColor = (name: string, fallbackIdx: number) =>
+    colorMap[name] ?? DONUT_COLORS[fallbackIdx % DONUT_COLORS.length];
 
   return (
     <section className="rounded-lg border bg-card p-5">
@@ -390,8 +399,8 @@ function CallsByEmployee({ employees }: { employees: { name: string; calls: numb
                   paddingAngle={2}
                   stroke="none"
                 >
-                  {data.map((_, i) => (
-                    <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+                  {data.map((entry, i) => (
+                    <Cell key={i} fill={getColor(entry.name, i)} />
                   ))}
                 </Pie>
                 <Tooltip
@@ -419,7 +428,7 @@ function CallsByEmployee({ employees }: { employees: { name: string; calls: numb
               <li key={e.name} className="flex items-center gap-2 text-xs">
                 <span
                   className="size-2.5 rounded-full shrink-0"
-                  style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                  style={{ background: getColor(e.name, i) }}
                 />
                 <span className="flex-1 truncate text-foreground">{e.name}</span>
                 <span className="font-display font-semibold text-sm">{e.calls}</span>
