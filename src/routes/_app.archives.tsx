@@ -34,12 +34,21 @@ function ArchivesPage() {
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const { data, error } = await supabase
-        .from("companies")
-        .select("*")
-        .eq("archived_folder_id" as any, open.id);
-      if (error) return toast.error(error.message);
-      setCompanies((data ?? []) as Company[]);
+      const PAGE = 1000;
+      let all: Company[] = [];
+      let from = 0;
+      for (;;) {
+        const { data, error } = await supabase
+          .from("companies")
+          .select("*")
+          .eq("archived_folder_id" as any, open.id)
+          .range(from, from + PAGE - 1);
+        if (error) return toast.error(error.message);
+        all = all.concat((data ?? []) as Company[]);
+        if (!data || data.length < PAGE) break;
+        from += PAGE;
+      }
+      setCompanies(all);
     })();
   }, [open]);
 
