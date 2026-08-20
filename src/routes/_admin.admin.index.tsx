@@ -167,8 +167,7 @@ function AdminDashboard() {
                       name={name}
                       fill={DONUT_COLORS[i % DONUT_COLORS.length]}
                       radius={[4, 4, 0, 0]}
-                      maxBarSize={28}
-                      stackId="employees"
+                      maxBarSize={20}
                     />
                   ))}
                 </BarChart>
