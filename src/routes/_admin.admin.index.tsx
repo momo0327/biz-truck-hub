@@ -130,14 +130,6 @@ function AdminDashboard() {
                 {t("admin.dash.calls_week_sub")}
               </p>
             </div>
-            <div className="flex items-center gap-3 flex-wrap text-xs">
-              {weeklyEmployees.map((name, i) => (
-                <span key={name} className="inline-flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                  {name}
-                </span>
-              ))}
-            </div>
           </div>
           <div className="h-72">
             {isLoading ? (
