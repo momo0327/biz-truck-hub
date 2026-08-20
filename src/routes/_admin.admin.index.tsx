@@ -32,6 +32,16 @@ export const Route = createFileRoute("/_admin/admin/")({
   component: AdminDashboard,
 });
 
+// Employee palette: lime green, pink, baby blue, then soft extras for overflow.
+const DONUT_COLORS = [
+  "#00CC77", // lime green
+  "#FF4AD6", // pink
+  "#7dd3fc", // baby blue
+  "#fcd34d", // soft amber
+  "#c4b5fd", // lavender
+  "#fdba74", // peach
+  "#94a3b8", // slate (Others)
+];
 
 function AdminDashboard() {
   const { t } = useI18n();
@@ -56,7 +66,10 @@ function AdminDashboard() {
 
   const totals = data?.totals ?? { calls: 0, answered: 0, leads: 0 };
   const weekly = data?.weekly ?? [];
-  const today = weekly.length > 0 ? weekly[weekly.length - 1] : { calls: 0, answered: 0 };
+  const weeklyEmployees: string[] = (data as any)?.weeklyEmployees ?? [];
+  const todayRow = weekly.length > 0 ? weekly[weekly.length - 1] : ({} as Record<string, string | number>);
+  const todayCallsTotal = weeklyEmployees.reduce((s, n) => s + ((todayRow[n] as number) ?? 0), 0);
+  const today = { calls: todayCallsTotal, answered: 0 };
   const [weekDialogOpen, setWeekDialogOpen] = useState(false);
   const topEmployees = (data?.employees ?? [])
     .slice()
@@ -104,6 +117,7 @@ function AdminDashboard() {
         open={weekDialogOpen}
         onOpenChange={setWeekDialogOpen}
         weekly={weekly}
+        weeklyEmployees={weeklyEmployees}
       />
 
 
@@ -116,13 +130,13 @@ function AdminDashboard() {
                 {t("admin.dash.calls_week_sub")}
               </p>
             </div>
-            <div className="flex items-center gap-4 text-xs">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full bg-primary" /> {t("admin.dash.calls")}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full bg-info" /> {t("admin.dash.answered")}
-              </span>
+            <div className="flex items-center gap-3 flex-wrap text-xs">
+              {weeklyEmployees.map((name, i) => (
+                <span key={name} className="inline-flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                  {name}
+                </span>
+              ))}
             </div>
           </div>
           <div className="h-72">
@@ -132,7 +146,7 @@ function AdminDashboard() {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weekly} margin={{ top: 8, right: 12, left: -16, bottom: 0 }} barGap={6}>
+                <BarChart data={weekly} margin={{ top: 8, right: 12, left: -16, bottom: 0 }} barGap={4}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="day" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis allowDecimals={false} stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
@@ -146,8 +160,17 @@ function AdminDashboard() {
                     }}
                   />
                   <Legend wrapperStyle={{ display: "none" }} />
-                  <Bar dataKey="calls" name="Calls" fill="var(--primary)" radius={[6, 6, 0, 0]} maxBarSize={36} />
-                  <Bar dataKey="answered" name="Answered" fill="var(--info)" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                  {weeklyEmployees.map((name, i) => (
+                    <Bar
+                      key={name}
+                      dataKey={name}
+                      name={name}
+                      fill={DONUT_COLORS[i % DONUT_COLORS.length]}
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={28}
+                      stackId="employees"
+                    />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -271,42 +294,57 @@ function WeeklyBreakdownDialog({
   open,
   onOpenChange,
   weekly,
+  weeklyEmployees,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  weekly: { day: string; calls: number; answered: number }[];
+  weekly: Record<string, string | number>[];
+  weeklyEmployees: string[];
 }) {
-  const totalCalls = weekly.reduce((s, d) => s + d.calls, 0);
-  const totalAnswered = weekly.reduce((s, d) => s + d.answered, 0);
+  const totalCalls = weekly.reduce(
+    (s, d) => s + weeklyEmployees.reduce((ss, n) => ss + ((d[n] as number) ?? 0), 0),
+    0,
+  );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>This week's calls</DialogTitle>
           <DialogDescription>
-            Daily breakdown for the last 7 days · {totalCalls} calls, {totalAnswered} answered
+            Daily breakdown for the last 7 days · {totalCalls} total calls
           </DialogDescription>
         </DialogHeader>
         <ul className="divide-y rounded-md border">
           {weekly.map((d, i) => {
-            const rate = d.calls > 0 ? Math.round((d.answered / d.calls) * 100) : 0;
+            const dayTotal = weeklyEmployees.reduce((s, n) => s + ((d[n] as number) ?? 0), 0);
             const isToday = i === weekly.length - 1;
             return (
-              <li key={`${d.day}-${i}`} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{d.day}</span>
-                  {isToday && (
-                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                      Today
-                    </span>
-                  )}
+              <li key={`${d.day}-${i}`} className="px-4 py-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">{d.day as string}</span>
+                    {isToday && (
+                      <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                        Today
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-display font-semibold text-sm">{dayTotal}</span>
                 </div>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="font-display font-semibold">{d.calls}</span>
-                  <span className="text-muted-foreground">calls</span>
-                  <span className="font-display font-semibold text-success">{d.answered}</span>
-                  <span className="text-muted-foreground text-xs">({rate}%)</span>
-                </div>
+                {dayTotal > 0 && (
+                  <div className="flex gap-3 flex-wrap">
+                    {weeklyEmployees.map((name, ei) => {
+                      const count = (d[name] as number) ?? 0;
+                      if (!count) return null;
+                      return (
+                        <span key={name} className="inline-flex items-center gap-1 text-xs">
+                          <span className="size-2 rounded-full" style={{ background: DONUT_COLORS[ei % DONUT_COLORS.length] }} />
+                          {name}: {count}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </li>
             );
           })}
@@ -319,17 +357,6 @@ function WeeklyBreakdownDialog({
   );
 }
 
-
-// Employee palette: lime green, pink, baby blue, then soft extras for overflow.
-const DONUT_COLORS = [
-  "#00CC77", // lime green
-  "#FF4AD6", // pink
-  "#7dd3fc", // baby blue
-  "#fcd34d", // soft amber
-  "#c4b5fd", // lavender
-  "#fdba74", // peach
-  "#94a3b8", // slate (Others)
-];
 
 function CallsByEmployee({ employees }: { employees: { name: string; calls: number }[] }) {
   const filtered = employees.filter((e) => e.calls > 0).sort((a, b) => b.calls - a.calls);

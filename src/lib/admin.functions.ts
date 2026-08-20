@@ -62,27 +62,55 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
       leads: companies.length,
     };
 
-    // Use UTC date arithmetic so keys match call created_at timestamps.
+    // Build weekly breakdown per employee (last 7 days, UTC).
     const nowUtc = new Date();
-    const todayUtcKey = nowUtc.toISOString().slice(0, 10);
-    const byDate = new Map<string, { calls: number; answered: number; day: string }>();
+    const days: { key: string; day: string }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(nowUtc);
       d.setUTCDate(d.getUTCDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      const day = d.toLocaleDateString("sv-SE", { weekday: "short", timeZone: "UTC" });
-      byDate.set(key, { calls: 0, answered: 0, day });
+      days.push({
+        key: d.toISOString().slice(0, 10),
+        day: d.toLocaleDateString("sv-SE", { weekday: "short", timeZone: "UTC" }),
+      });
     }
-    calls.forEach((c) => {
-      const key = new Date(c.created_at).toISOString().slice(0, 10);
-      const b = byDate.get(key);
-      if (!b) return;
-      b.calls++;
-      if (isCallAnswered(c)) b.answered++;
-    });
-    const weekly = Array.from(byDate.values()).map(({ calls, answered, day }) => ({ day, calls, answered }));
 
-    return { employees, totals, weekly };
+    // Map userId -> displayName/email for the chart
+    const employeeNames = new Map(
+      allUsers.map((u) => {
+        const profile = profiles.find((p) => p.user_id === u.id);
+        return [u.id, profile?.display_name || u.email || u.id];
+      }),
+    );
+
+    // Count calls per (day, userId)
+    const callsByDayUser = new Map<string, Map<string, number>>();
+    for (const { key } of days) callsByDayUser.set(key, new Map());
+    for (const c of calls) {
+      const key = new Date(c.created_at).toISOString().slice(0, 10);
+      const dayMap = callsByDayUser.get(key);
+      if (!dayMap || !c.user_id) continue;
+      dayMap.set(c.user_id, (dayMap.get(c.user_id) ?? 0) + 1);
+    }
+
+    // Employees sorted by total calls (descending) — same order as donut chart
+    const activeEmployees = employees
+      .filter((e) => e.stats.calls > 0)
+      .sort((a, b) => b.stats.calls - a.stats.calls)
+      .slice(0, 6);
+
+    const weekly = days.map(({ key, day }) => {
+      const dayMap = callsByDayUser.get(key) ?? new Map<string, number>();
+      const row: Record<string, string | number> = { day };
+      for (const e of activeEmployees) {
+        row[employeeNames.get(e.id) ?? e.id] = dayMap.get(e.id) ?? 0;
+      }
+      return row;
+    });
+
+    // Pass employee names (in order) so the chart knows which keys to render
+    const weeklyEmployees = activeEmployees.map((e) => employeeNames.get(e.id) ?? e.id);
+
+    return { employees, totals, weekly, weeklyEmployees };
   });
 
 export const getEmployeeDetailFn = createServerFn({ method: "GET" })
