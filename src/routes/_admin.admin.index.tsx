@@ -177,10 +177,7 @@ function AdminDashboard() {
         </section>
 
         <CallsByEmployee
-          employees={(data?.employees ?? []).map((e) => ({
-            name: e.displayName || e.email || "—",
-            calls: e.stats.calls,
-          }))}
+          employees={(data as any)?.todayByEmployee ?? []}
         />
       </div>
 
@@ -371,7 +368,7 @@ function CallsByEmployee({ employees }: { employees: { name: string; calls: numb
       <div className="mb-2">
         <h2 className="font-display text-lg uppercase tracking-wide">Calls by Employee</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          All time · {total.toLocaleString()} total
+          Today · {total.toLocaleString()} calls
         </p>
       </div>
 

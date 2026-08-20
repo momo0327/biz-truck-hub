@@ -110,7 +110,20 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
     // Pass employee names (in order) so the chart knows which keys to render
     const weeklyEmployees = activeEmployees.map((e) => employeeNames.get(e.id) ?? e.id);
 
-    return { employees, totals, weekly, weeklyEmployees };
+    // Per-employee calls today
+    const todayKey = nowUtc.toISOString().slice(0, 10);
+    const callsToday = calls.filter(
+      (c) => new Date(c.created_at).toISOString().slice(0, 10) === todayKey,
+    );
+    const todayByEmployee = allUsers.map((u) => ({
+      name:
+        profiles.find((p) => p.user_id === u.id)?.display_name ||
+        u.email ||
+        u.id,
+      calls: callsToday.filter((c) => c.user_id === u.id).length,
+    }));
+
+    return { employees, totals, weekly, weeklyEmployees, todayByEmployee };
   });
 
 export const getEmployeeDetailFn = createServerFn({ method: "GET" })
