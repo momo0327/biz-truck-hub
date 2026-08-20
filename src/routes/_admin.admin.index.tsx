@@ -32,12 +32,12 @@ export const Route = createFileRoute("/_admin/admin/")({
   component: AdminDashboard,
 });
 
-// Employee palette: lime green, pink, baby blue, then soft extras for overflow.
+// Employee palette: lime green, pink, yellow, baby blue, then soft extras for overflow.
 const DONUT_COLORS = [
   "#00CC77", // lime green
   "#FF4AD6", // pink
+  "#fcd34d", // yellow
   "#7dd3fc", // baby blue
-  "#fcd34d", // soft amber
   "#c4b5fd", // lavender
   "#fdba74", // peach
   "#94a3b8", // slate (Others)
@@ -67,6 +67,10 @@ function AdminDashboard() {
   const totals = data?.totals ?? { calls: 0, answered: 0, leads: 0 };
   const weekly = data?.weekly ?? [];
   const weeklyEmployees: string[] = (data as any)?.weeklyEmployees ?? [];
+  const colorIndex: Record<string, number> = (data as any)?.colorIndex ?? {};
+  const colorMap: Record<string, string> = Object.fromEntries(
+    Object.entries(colorIndex).map(([name, i]) => [name, DONUT_COLORS[i % DONUT_COLORS.length]])
+  );
   const todayRow = weekly.length > 0 ? weekly[weekly.length - 1] : ({} as Record<string, string | number>);
   const todayCallsTotal = weeklyEmployees.reduce((s, n) => s + ((todayRow[n] as number) ?? 0), 0);
   const today = { calls: todayCallsTotal, answered: 0 };
@@ -118,6 +122,7 @@ function AdminDashboard() {
         onOpenChange={setWeekDialogOpen}
         weekly={weekly}
         weeklyEmployees={weeklyEmployees}
+        colorMap={colorMap}
       />
 
 
@@ -152,12 +157,12 @@ function AdminDashboard() {
                     }}
                   />
                   <Legend wrapperStyle={{ display: "none" }} />
-                  {weeklyEmployees.map((name, i) => (
+                  {weeklyEmployees.map((name) => (
                     <Bar
                       key={name}
                       dataKey={name}
                       name={name}
-                      fill={DONUT_COLORS[i % DONUT_COLORS.length]}
+                      fill={colorMap[name] ?? DONUT_COLORS[0]}
                       radius={[4, 4, 0, 0]}
                       maxBarSize={20}
                     />
@@ -170,7 +175,7 @@ function AdminDashboard() {
 
         <CallsByEmployee
           employees={(data as any)?.todayByEmployee ?? []}
-          colorMap={Object.fromEntries(weeklyEmployees.map((n, i) => [n, DONUT_COLORS[i % DONUT_COLORS.length]]))}
+          colorMap={colorMap}
         />
       </div>
 
@@ -284,11 +289,13 @@ function WeeklyBreakdownDialog({
   onOpenChange,
   weekly,
   weeklyEmployees,
+  colorMap = {},
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   weekly: Record<string, string | number>[];
   weeklyEmployees: string[];
+  colorMap?: Record<string, string>;
 }) {
   const totalCalls = weekly.reduce(
     (s, d) => s + weeklyEmployees.reduce((ss, n) => ss + ((d[n] as number) ?? 0), 0),
@@ -327,7 +334,7 @@ function WeeklyBreakdownDialog({
                       if (!count) return null;
                       return (
                         <span key={name} className="inline-flex items-center gap-1 text-xs">
-                          <span className="size-2 rounded-full" style={{ background: DONUT_COLORS[ei % DONUT_COLORS.length] }} />
+                          <span className="size-2 rounded-full" style={{ background: colorMap[name] ?? DONUT_COLORS[ei % DONUT_COLORS.length] }} />
                           {name}: {count}
                         </span>
                       );
@@ -354,12 +361,14 @@ function CallsByEmployee({
   employees: { name: string; calls: number }[];
   colorMap?: Record<string, string>;
 }) {
-  const filtered = employees.filter((e) => e.calls > 0).sort((a, b) => b.calls - a.calls);
-  const top = filtered.slice(0, 6);
-  const restTotal = filtered.slice(6).reduce((s, e) => s + e.calls, 0);
-  const data = restTotal > 0 ? [...top, { name: "Others", calls: restTotal }] : top;
-  const total = data.reduce((s, e) => s + e.calls, 0);
-  const leader = data[0];
+  // All employees sorted by calls desc, keep stable color by original index
+  const sorted = employees.slice().sort((a, b) => b.calls - a.calls);
+  const withCalls = sorted.filter((e) => e.calls > 0);
+  const top = withCalls.slice(0, 6);
+  const restTotal = withCalls.slice(6).reduce((s, e) => s + e.calls, 0);
+  const pieData = restTotal > 0 ? [...top, { name: "Others", calls: restTotal }] : top;
+  const total = pieData.reduce((s, e) => s + e.calls, 0);
+  const leader = pieData[0];
   const leaderPct = leader && total > 0 ? Math.round((leader.calls / total) * 100) : 0;
   const getColor = (name: string, fallbackIdx: number) =>
     colorMap[name] ?? DONUT_COLORS[fallbackIdx % DONUT_COLORS.length];
@@ -373,17 +382,13 @@ function CallsByEmployee({
         </p>
       </div>
 
-      {total === 0 ? (
-        <div className="h-60 flex items-center justify-center text-muted-foreground text-sm">
-          No calls yet.
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-4">
+        {total > 0 && (
           <div className="relative w-full h-44">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={data}
+                  data={pieData}
                   dataKey="calls"
                   nameKey="name"
                   innerRadius={50}
@@ -391,7 +396,7 @@ function CallsByEmployee({
                   paddingAngle={2}
                   stroke="none"
                 >
-                  {data.map((entry, i) => (
+                  {pieData.map((entry, i) => (
                     <Cell key={i} fill={getColor(entry.name, i)} />
                   ))}
                 </Pie>
@@ -414,21 +419,23 @@ function CallsByEmployee({
               </div>
             </div>
           </div>
+        )}
 
-          <ul className="w-full space-y-1.5">
-            {data.map((e, i) => (
-              <li key={e.name} className="flex items-center gap-2 text-xs">
-                <span
-                  className="size-2.5 rounded-full shrink-0"
-                  style={{ background: getColor(e.name, i) }}
-                />
-                <span className="flex-1 truncate text-foreground">{e.name}</span>
-                <span className="font-display font-semibold text-sm">{e.calls}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        <ul className="w-full space-y-1.5">
+          {sorted.map((e, i) => (
+            <li key={e.name} className="flex items-center gap-2 text-xs">
+              <span
+                className="size-2.5 rounded-full shrink-0"
+                style={{ background: getColor(e.name, i) }}
+              />
+              <span className="flex-1 truncate text-foreground">{e.name}</span>
+              <span className={`font-display font-semibold text-sm ${e.calls === 0 ? "text-muted-foreground" : ""}`}>
+                {e.calls}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }

@@ -16,13 +16,26 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
 
-    const rawUsers = await listAllAuthUsers();
-    // Hide users who were invited but never completed account setup.
-    const allUsers = rawUsers.filter((u) => !u.needsPasswordSetup);
-    const userIds = allUsers.map((u) => u.id);
-    const { profiles, roles, companies, calls } = await fetchOverviewData(userIds);
+    const DEVELOPER_EMAILS = new Set(["arriahmed673@gmail.com"]);
 
-    const employees = allUsers.map((u) => {
+    const rawUsers = await listAllAuthUsers();
+    const setupUsers = rawUsers.filter((u) => !u.needsPasswordSetup);
+    const allIds = setupUsers.map((u) => u.id);
+    const { profiles, roles, companies, calls } = await fetchOverviewData(allIds);
+
+    // Exclude developer accounts from all stats and charts.
+    const developerIds = new Set(
+      roles.filter((r) => r.role === "developer").map((r) => r.user_id),
+    );
+    const allUsers = setupUsers.filter(
+      (u) => !developerIds.has(u.id) && !DEVELOPER_EMAILS.has((u.email ?? "").toLowerCase()),
+    );
+
+    const adminIds = new Set(
+      roles.filter((r) => r.role === "admin").map((r) => r.user_id),
+    );
+
+    const employees = allUsers.filter((u) => !adminIds.has(u.id)).map((u) => {
       const profile = profiles.find((p) => p.user_id === u.id);
       const userRoles = roles.filter((r) => r.user_id === u.id).map((r) => r.role);
       const userCompanies = companies.filter((c) => c.user_id === u.id);
@@ -110,12 +123,24 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
     // Pass employee names (in order) so the chart knows which keys to render
     const weeklyEmployees = activeEmployees.map((e) => employeeNames.get(e.id) ?? e.id);
 
+    // Stable color index per user: based on allUsers creation order (excludes admins for donut)
+    const nonAdminUsers = allUsers.filter(
+      (u) => !roles.some((r) => r.user_id === u.id && r.role === "admin"),
+    );
+    // colorIndex maps display name -> palette index (stable, creation-order based)
+    const colorIndex: Record<string, number> = {};
+    nonAdminUsers.forEach((u, i) => {
+      const name =
+        profiles.find((p) => p.user_id === u.id)?.display_name || u.email || u.id;
+      colorIndex[name] = i;
+    });
+
     // Per-employee calls today
     const todayKey = nowUtc.toISOString().slice(0, 10);
     const callsToday = calls.filter(
       (c) => new Date(c.created_at).toISOString().slice(0, 10) === todayKey,
     );
-    const todayByEmployee = allUsers.map((u) => ({
+    const todayByEmployee = nonAdminUsers.map((u) => ({
       name:
         profiles.find((p) => p.user_id === u.id)?.display_name ||
         u.email ||
@@ -123,7 +148,7 @@ export const getEmployeesOverviewFn = createServerFn({ method: "GET" })
       calls: callsToday.filter((c) => c.user_id === u.id).length,
     }));
 
-    return { employees, totals, weekly, weeklyEmployees, todayByEmployee };
+    return { employees, totals, weekly, weeklyEmployees, todayByEmployee, colorIndex };
   });
 
 export const getEmployeeDetailFn = createServerFn({ method: "GET" })
